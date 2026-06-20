@@ -21,7 +21,6 @@ public class Administrator extends User {
     @Column(name = "contact_phone")
     private String contactPhone;
 
-    // An admin manages exactly one school (simplified — one admin = one school for now)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "school_id")
     private School school;

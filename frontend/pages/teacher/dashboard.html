@@ -1,0 +1,105 @@
+<!-- VoiceAssess — Teacher Dashboard -->
+<div class="animate-fade-in">
+  <!-- Greeting -->
+  <h2 style="font-size: var(--text-lg); margin-bottom: var(--space-1);" id="teacher-greeting">Hello, Ms. Erika</h2>
+  <p class="text-xs text-muted" style="margin-bottom: var(--space-5);" id="teacher-term">Term 2, 2026</p>
+
+  <!-- Stats Row -->
+  <div class="stat-row" style="margin-bottom: var(--space-6);">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-my-classes">4</div>
+      <div class="stat-label">Classes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-pending">3</div>
+      <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-reviewed">8</div>
+      <div class="stat-label">Reviewed</div>
+    </div>
+  </div>
+
+  <!-- My Classes -->
+  <div class="section-header">
+    <span class="section-title">My Classes</span>
+  </div>
+  <div class="list-stack" style="margin-bottom: var(--space-6);">
+    <div class="list-item clickable" data-class="c1">
+      <div class="list-item-body">
+        <div class="list-item-title">Grade 4B — English Language</div>
+        <div class="list-item-subtitle">32 students · Last assessment: May 25</div>
+      </div>
+      <div class="list-item-trailing">
+        <span class="badge badge-success">Active</span>
+        <span class="list-chevron">&#x25B8;</span>
+      </div>
+    </div>
+    <div class="list-item clickable" data-class="c2">
+      <div class="list-item-body">
+        <div class="list-item-title">Grade 5A — Kiswahili</div>
+        <div class="list-item-subtitle">28 students · Last assessment: May 18</div>
+      </div>
+      <div class="list-item-trailing">
+        <span class="badge badge-neutral">STAGED</span>
+        <span class="list-chevron">&#x25B8;</span>
+      </div>
+    </div>
+    <div class="list-item clickable" data-class="c1">
+      <div class="list-item-body">
+        <div class="list-item-title">Grade 4B — Kiswahili</div>
+        <div class="list-item-subtitle">32 students · Last assessment: May 20</div>
+      </div>
+      <div class="list-item-trailing">
+        <span class="badge badge-success">Finalized</span>
+        <span class="list-chevron">&#x25B8;</span>
+      </div>
+    </div>
+    <div class="list-item clickable" data-class="c2">
+      <div class="list-item-body">
+        <div class="list-item-title">Grade 5A — English Language</div>
+        <div class="list-item-subtitle">28 students · Last assessment: May 12</div>
+      </div>
+      <div class="list-item-trailing">
+        <span class="badge badge-success">Finalized</span>
+        <span class="list-chevron">&#x25B8;</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Actions -->
+  <div style="display: flex; gap: var(--space-3);">
+    <a href="#teacher/curate" class="btn btn-primary" style="flex: 2;">+ New Assessment</a>
+    <a href="#teacher/review" class="btn btn-secondary" style="flex: 1;">Reviews</a>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // update greeting with teacher name
+    if (AuthStore.user) {
+      var greet = document.getElementById('teacher-greeting');
+      if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName;
+    }
+
+    // stats from mock data
+    if (window.mockData) {
+      var s = mockData.stats.teacher;
+      var sv = function(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = val;
+      };
+      sv('stat-my-classes', s.classes);
+      sv('stat-pending', s.pendingReviews);
+      sv('stat-reviewed', s.reviewed);
+    }
+
+    // class row clicks — navigate to class grid (future page)
+    document.querySelectorAll('[data-class]').forEach(function(row) {
+      row.addEventListener('click', function() {
+        var classId = row.getAttribute('data-class');
+        showToast('Class grid for ' + classId + ' coming soon.', 'info');
+      });
+    });
+  })();
+</script>

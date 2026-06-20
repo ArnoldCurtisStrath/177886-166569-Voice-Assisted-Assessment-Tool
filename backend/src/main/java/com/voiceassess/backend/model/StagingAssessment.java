@@ -17,9 +17,11 @@ public class StagingAssessment {
     @Column(name = "staging_id")
     private UUID stagingId;
 
+    /** First 200 chars of the transcription — shown in review previews */
     @Column(name = "transcript_snippet", columnDefinition = "TEXT")
     private String transcriptSnippet;
 
+    /** Raw JSON response from the AI gateway — parsed into structured feedback */
     @Column(name = "parsed_json_payload", columnDefinition = "TEXT")
     private String parsedJsonPayload;
 

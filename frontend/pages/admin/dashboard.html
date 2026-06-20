@@ -1,0 +1,114 @@
+<!-- VoiceAssess — Admin Dashboard -->
+<div class="animate-fade-in">
+  <!-- Welcome -->
+  <h2 style="margin-bottom: var(--space-1);" id="admin-greeting">Hello, Administrator</h2>
+  <p class="text-sm text-secondary" style="margin-bottom: var(--space-6);">Moi Primary School — Nairobi</p>
+
+  <!-- Stats Row -->
+  <div class="stat-row" style="margin-bottom: var(--space-6);">
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="stat-teachers">2</div>
+      <div class="stat-label">Teachers</div>
+    </div>
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="stat-students">5</div>
+      <div class="stat-label">Students</div>
+    </div>
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="stat-classes">4</div>
+      <div class="stat-label">Classes</div>
+    </div>
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="stat-assessments">12</div>
+      <div class="stat-label">Assessments</div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="section-header">
+    <span class="section-title">Quick Actions</span>
+  </div>
+  <div class="grid-2" style="margin-bottom: var(--space-6);">
+    <a href="#admin/users" class="card card-hover">
+      <div class="quick-icon" style="color: var(--color-primary);">+</div>
+      <div class="list-item-title">Create Teacher</div>
+      <div class="text-xs text-muted">Add a new teaching staff profile</div>
+    </a>
+    <a href="#admin/users" class="card card-hover">
+      <div class="quick-icon" style="color: var(--color-primary);">+</div>
+      <div class="list-item-title">Create Student</div>
+      <div class="text-xs text-muted">Register a new student</div>
+    </a>
+    <a href="#admin/classes" class="card card-hover">
+      <div class="quick-icon" style="color: var(--color-accent);">[</div>
+      <div class="list-item-title">Manage Classes</div>
+      <div class="text-xs text-muted">Create and assign classes</div>
+    </a>
+    <a href="#admin/rubrics" class="card card-hover">
+      <div class="quick-icon" style="color: var(--color-accent);">R</div>
+      <div class="list-item-title">Upload Rubrics</div>
+      <div class="text-xs text-muted">KNEC assessment criteria</div>
+    </a>
+    <a href="#admin/terms" class="card card-hover">
+      <div class="quick-icon" style="color: var(--color-success);">T</div>
+      <div class="list-item-title">Set Active Term</div>
+      <div class="text-xs text-muted">Current: Term 2, 2026</div>
+    </a>
+    <a href="#admin/compliance" class="card card-hover">
+      <div class="quick-icon" style="color: var(--color-success);">%</div>
+      <div class="list-item-title">View Compliance</div>
+      <div class="text-xs text-muted">School-wide analytics</div>
+    </a>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="section-header">
+    <span class="section-title">Recent Activity</span>
+    <a href="#admin/compliance" class="section-action">View all</a>
+  </div>
+  <div class="list-stack">
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">English Comprehension — Grade 4B</div>
+        <div class="list-item-subtitle">Uploaded by Ms. Erika · May 25, 2026</div>
+      </div>
+      <span class="badge badge-warning">UPLOADED</span>
+    </div>
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">Kiswahili Sarufi — Grade 4B</div>
+        <div class="list-item-subtitle">Uploaded by Ms. Erika · May 20, 2026</div>
+      </div>
+      <span class="badge badge-success">FINALIZED</span>
+    </div>
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">Mathematics Fractions — Grade 4C</div>
+        <div class="list-item-subtitle">Uploaded by Grace Muthoni · May 15, 2026</div>
+      </div>
+      <span class="badge badge-neutral">STAGED</span>
+    </div>
+  </div>
+</div>
+
+<!-- wire up stats from mock data -->
+<script>
+  (function() {
+    if (!window.mockData) return;
+    var s = mockData.stats.admin;
+    var setVal = function(id, val) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+    setVal('stat-teachers', s.totalTeachers);
+    setVal('stat-students', s.totalStudents);
+    setVal('stat-classes', s.activeClasses);
+    setVal('stat-assessments', s.assessmentsThisTerm);
+
+    // update greeting with admin name
+    if (AuthStore.user) {
+      var greet = document.getElementById('admin-greeting');
+      if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName.split(' ')[0];
+    }
+  })();
+</script>

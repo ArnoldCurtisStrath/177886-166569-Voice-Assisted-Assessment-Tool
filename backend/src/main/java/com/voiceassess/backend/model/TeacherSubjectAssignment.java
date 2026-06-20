@@ -17,6 +17,7 @@ public class TeacherSubjectAssignment {
     @Column(name = "assignment_id")
     private UUID assignmentId;
 
+    /** When this teacher-subject assignment was created — used for term scheduling */
     @Column(name = "assigned_date", nullable = false)
     private LocalDateTime assignedDate = LocalDateTime.now();
 

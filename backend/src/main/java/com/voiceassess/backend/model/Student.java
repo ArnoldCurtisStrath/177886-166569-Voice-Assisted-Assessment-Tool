@@ -17,10 +17,10 @@ public class Student extends User {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    /** Denormalized from dateOfBirth — avoids joins on dashboard queries */
     @Column(name = "age")
     private Integer age;
 
-    // Each student has one guardian (simplified from real-world where a child may have two)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Parent parent;

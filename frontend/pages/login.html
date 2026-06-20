@@ -1,0 +1,90 @@
+<!-- VoiceAssess — Login Page -->
+<div style="display: flex; flex-direction: column; justify-content: center; min-height: 80dvh; max-width: 360px; margin: 0 auto; padding: var(--space-4);">
+  <div style="text-align: center; margin-bottom: var(--space-8);">
+    <h1 style="font-size: 1.75rem; color: var(--color-primary); margin-bottom: var(--space-1);">VoiceAssess</h1>
+    <p class="text-sm text-secondary">Voice-Assisted CBC Assessment</p>
+  </div>
+
+  <!-- Role Selector -->
+  <div style="display: flex; justify-content: center; gap: var(--space-1); margin-bottom: var(--space-6);">
+    <button class="tab tab-active" data-role="TEACHER" id="role-teacher">Teacher</button>
+    <button class="tab" data-role="ADMIN" id="role-admin">Admin</button>
+    <button class="tab" data-role="PARENT" id="role-parent">Parent</button>
+    <button class="tab" data-role="STUDENT" id="role-student">Student</button>
+  </div>
+
+  <!-- Login Form -->
+  <form id="login-form" style="display: flex; flex-direction: column; gap: var(--space-4);">
+    <div class="form-group">
+      <label for="login-email">Email address</label>
+      <input type="email" id="login-email" class="input" placeholder="erika.lusiola@moiprimary.ac.ke" autocomplete="email" required>
+    </div>
+
+    <div class="form-group">
+      <label for="login-password">Password</label>
+      <input type="password" id="login-password" class="input" placeholder="Enter your password" autocomplete="current-password" required>
+    </div>
+
+    <div id="login-error" style="display: none; padding: var(--space-3); background: #FDEDEC; border: 1px solid var(--color-error); border-radius: var(--radius-sm); color: #8B1A1A; font-size: var(--text-sm);"></div>
+
+    <button type="submit" class="btn btn-primary btn-block btn-lg" id="login-submit">Log In</button>
+  </form>
+
+  <p style="text-align: center; margin-top: var(--space-4);">
+    <a href="#" class="text-sm text-muted">Forgot password?</a>
+  </p>
+</div>
+
+<script>
+  // Login page logic
+  (function() {
+    var selectedRole = 'TEACHER';
+    var tabs = document.querySelectorAll('[data-role]');
+
+    // Role tab switching
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        tabs.forEach(function(t) { t.classList.remove('tab-active'); });
+        tab.classList.add('tab-active');
+        selectedRole = tab.getAttribute('data-role');
+      });
+    });
+
+    // Form submission
+    var form = document.getElementById('login-form');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var email = document.getElementById('login-email').value.trim();
+        var password = document.getElementById('login-password').value;
+        var errorEl = document.getElementById('login-error');
+        var submitBtn = document.getElementById('login-submit');
+
+        if (!email || !password) {
+          errorEl.textContent = 'Please enter your email and password.';
+          errorEl.style.display = 'block';
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing in...';
+        errorEl.style.display = 'none';
+
+        AuthStore.login(email, password)
+          .then(function(user) {
+            // redirect to the appropriate dashboard
+            var dashboard = user.role === 'ADMIN' ? '#admin' :
+                           user.role === 'TEACHER' ? '#teacher' :
+                           user.role === 'PARENT' ? '#parent' : '#student';
+            Router.navigate(dashboard);
+          })
+          .catch(function(err) {
+            errorEl.textContent = err.message;
+            errorEl.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Log In';
+          });
+      });
+    }
+  })();
+</script>

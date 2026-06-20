@@ -1,0 +1,200 @@
+<!-- VoiceAssess — Teacher Pending Reviews -->
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">Pending Reviews</span>
+    <span class="badge badge-warning" id="review-count">3</span>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" style="margin-bottom: var(--space-4);">
+    <button class="tab tab-active" data-review-filter="all">All</button>
+    <button class="tab" data-review-filter="flagged">Flagged</button>
+    <button class="tab" data-review-filter="reviewed">Reviewed</button>
+  </div>
+
+  <!-- Review Cards -->
+  <div class="list-stack" id="review-list" style="gap: var(--space-4);">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" id="review-empty" style="display: none;">
+    <div class="empty-state-icon">&#10003;</div>
+    <h4>All caught up</h4>
+    <p>No pending reviews to process.</p>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var reviews = window.mockData ? window.mockData.reviews : [];
+    var activeFilter = 'all';
+
+    function renderReviews() {
+      var filtered = activeFilter === 'all' ? [...reviews] :
+                     activeFilter === 'flagged' ? reviews.filter(function(r) { return r.issue.includes('mismatch') || r.issue.includes('Unmatched'); }) :
+                     []; // reviewed are those removed from the list
+
+      var listEl = document.getElementById('review-list');
+      var emptyEl = document.getElementById('review-empty');
+      var countEl = document.getElementById('review-count');
+
+      if (countEl) countEl.textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        if (listEl) listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+      }
+
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      if (listEl) {
+        listEl.innerHTML = filtered.map(function(r) {
+          // determine issue severity for styling
+          var isWarning = r.issue.includes('mismatch') || r.issue.includes('Unmatched');
+          var issueBg = isWarning ? '#FEF3E0' : '#E8F8EF';
+          var issueBorder = isWarning ? 'var(--color-warning)' : 'var(--color-success)';
+
+          return `
+            <div class="card" data-review-id="${r.id}">
+              <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
+                <div class="avatar avatar-md">${r.studentInitials}</div>
+                <div style="flex: 1; min-width: 0;">
+                  <div class="list-item-title">${r.studentName}</div>
+                  <div class="list-item-subtitle">${r.subject} &middot; ${r.strand} &middot; ${r.date}</div>
+                </div>
+                <span style="font-size: 1.25rem;">${isWarning ? '(!)' : '&#10003;'}</span>
+              </div>
+
+              <!-- Issue box -->
+              <div style="padding: var(--space-3); background: ${issueBg}; border: 1px solid ${issueBorder}; border-radius: var(--radius-sm); margin-bottom: var(--space-3);">
+                <p class="text-sm" style="color: var(--color-text); line-height: 1.5;">${r.issue}</p>
+              </div>
+
+              <!-- Action buttons -->
+              <div style="display: flex; gap: var(--space-2);">
+                <button class="btn btn-sm review-approve" data-id="${r.id}" style="flex: 1; background-color: #E8F8EF; color: var(--color-success); border: 1.5px solid var(--color-success); border-radius: var(--radius-sm); text-align: center;">Approve</button>
+                <button class="btn btn-sm review-edit" data-id="${r.id}" style="flex: 1; background-color: transparent; color: var(--color-primary); border: 1.5px solid var(--color-primary); border-radius: var(--radius-sm); text-align: center;">Edit</button>
+                <button class="btn btn-sm review-reject" data-id="${r.id}" style="flex: 1; background-color: #FDEDEC; color: var(--color-error); border: 1.5px solid var(--color-error); border-radius: var(--radius-sm); text-align: center;">Reject</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // wire up actions
+        wireActions();
+      }
+    }
+
+    function wireActions() {
+      // Approve
+      document.querySelectorAll('.review-approve').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = btn.getAttribute('data-id');
+          showModal('Confirm Approval',
+            '<p class="text-sm">Approve this assessment? It will be finalized and visible to parents and students.</p>',
+            '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+            '<button class="btn btn-sm" style="background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);" id="confirm-approve" data-id="' + id + '">Approve</button>'
+          );
+          // wire confirm button
+          setTimeout(function() {
+            var confirmBtn = document.getElementById('confirm-approve');
+            if (confirmBtn) {
+              confirmBtn.addEventListener('click', function() {
+                removeReview(id);
+                document.querySelector('.modal-overlay').remove();
+                showToast('Assessment approved and finalized.', 'success');
+              });
+            }
+            // close buttons
+            document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+              b.addEventListener('click', function() {
+                var overlay = document.querySelector('.modal-overlay');
+                if (overlay) overlay.remove();
+              });
+            });
+          }, 50);
+        });
+      });
+
+      // Edit
+      document.querySelectorAll('.review-edit').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = btn.getAttribute('data-id');
+          var review = reviews.find(function(r) { return r.id === id; });
+          showModal('Edit Assessment — ' + (review ? review.studentName : ''),
+            '<div class="form-group"><label>Student Name</label><input class="input" value="' + (review ? review.studentName : '') + '"></div>' +
+            '<div class="form-group"><label>Strand</label><input class="input" value="' + (review ? review.strand : '') + '"></div>' +
+            '<div class="form-group"><label>Issue Resolution</label><textarea class="input" rows="2">' + (review ? review.issue : '') + '</textarea></div>',
+            '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+            '<button class="btn btn-primary btn-sm" id="confirm-edit" data-id="' + id + '">Save Changes</button>'
+          );
+          setTimeout(function() {
+            var saveBtn = document.getElementById('confirm-edit');
+            if (saveBtn) {
+              saveBtn.addEventListener('click', function() {
+                removeReview(id);
+                document.querySelector('.modal-overlay').remove();
+                showToast('Assessment edited successfully.', 'success');
+              });
+            }
+            document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+              b.addEventListener('click', function() {
+                var overlay = document.querySelector('.modal-overlay');
+                if (overlay) overlay.remove();
+              });
+            });
+          }, 50);
+        });
+      });
+
+      // Reject
+      document.querySelectorAll('.review-reject').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = btn.getAttribute('data-id');
+          showModal('Reject Assessment',
+            '<p class="text-sm" style="margin-bottom:var(--space-3);">This assessment will be discarded. This action cannot be undone.</p>' +
+            '<div class="form-group"><label>Reason for rejection</label><textarea class="input" rows="2" placeholder="Optional note..."></textarea></div>',
+            '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+            '<button class="btn btn-danger btn-sm" id="confirm-reject" data-id="' + id + '">Reject</button>'
+          );
+          setTimeout(function() {
+            var rejectBtn = document.getElementById('confirm-reject');
+            if (rejectBtn) {
+              rejectBtn.addEventListener('click', function() {
+                removeReview(id);
+                document.querySelector('.modal-overlay').remove();
+                showToast('Assessment rejected.', 'error');
+              });
+            }
+            document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+              b.addEventListener('click', function() {
+                var overlay = document.querySelector('.modal-overlay');
+                if (overlay) overlay.remove();
+              });
+            });
+          }, 50);
+        });
+      });
+    }
+
+    function removeReview(id) {
+      reviews = reviews.filter(function(r) { return r.id !== id; });
+      renderReviews();
+    }
+
+    // tab filters
+    document.querySelectorAll('[data-review-filter]').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('[data-review-filter]').forEach(function(t) { t.classList.remove('tab-active'); });
+        tab.classList.add('tab-active');
+        activeFilter = tab.getAttribute('data-review-filter');
+        renderReviews();
+      });
+    });
+
+    // initial render
+    renderReviews();
+  })();
+</script>

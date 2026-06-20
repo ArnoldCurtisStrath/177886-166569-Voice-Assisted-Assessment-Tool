@@ -1,0 +1,142 @@
+<!-- VoiceAssess — Student Dashboard -->
+<div class="animate-fade-in">
+  <!-- Greeting -->
+  <div style="margin-bottom: var(--space-5);">
+    <h2 style="font-size: var(--text-lg);" id="student-greeting">Hello, Ethan</h2>
+    <p class="text-xs text-muted">Grade 5B &middot; Moi Primary School</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-row" style="margin-bottom: var(--space-6);">
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="stat-total">5</div>
+      <div class="stat-label">Assessments</div>
+    </div>
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="stat-avg">78%</div>
+      <div class="stat-label">Average</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-appeals" style="color: var(--color-warning);">0</div>
+      <div class="stat-label">Appeals</div>
+    </div>
+  </div>
+
+  <!-- Recent Assessments -->
+  <div class="section-header">
+    <span class="section-title">My Assessments</span>
+  </div>
+  <div class="list-stack" style="margin-bottom: var(--space-6);">
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">English — Comprehension</div>
+        <div class="list-item-subtitle">May 25, 2026</div>
+      </div>
+      <div class="list-item-trailing">
+        <span style="font-weight: 700; color: var(--color-success); font-size: var(--text-base);">78%</span>
+        <a href="#" class="text-xs text-primary view-feedback" style="margin-left: var(--space-2);">Feedback</a>
+      </div>
+    </div>
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">Kiswahili — Sarufi</div>
+        <div class="list-item-subtitle">May 20, 2026</div>
+      </div>
+      <div class="list-item-trailing">
+        <span style="font-weight: 700; color: var(--color-success); font-size: var(--text-base);">82%</span>
+        <a href="#" class="text-xs text-primary view-feedback" style="margin-left: var(--space-2);">Feedback</a>
+      </div>
+    </div>
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">Mathematics — Fractions</div>
+        <div class="list-item-subtitle">May 15, 2026</div>
+      </div>
+      <div class="list-item-trailing">
+        <span style="font-weight: 700; color: var(--color-warning); font-size: var(--text-base);">62%</span>
+        <a href="#" class="text-xs text-primary view-feedback" style="margin-left: var(--space-2);">Feedback</a>
+      </div>
+    </div>
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">English — Oral Presentation</div>
+        <div class="list-item-subtitle">May 12, 2026</div>
+      </div>
+      <div class="list-item-trailing">
+        <span style="font-weight: 700; color: var(--color-success); font-size: var(--text-base);">85%</span>
+        <a href="#" class="text-xs text-primary view-feedback" style="margin-left: var(--space-2);">Feedback</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit Appeal (shown when applicable) -->
+  <div class="card" style="background: #FEF3E0; border-color: var(--color-warning);">
+    <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
+      <span style="font-size: 1.5rem;">(!)</span>
+      <div>
+        <div class="text-sm font-semibold" style="margin-bottom: var(--space-1);">Disagree with a score?</div>
+        <p class="text-xs text-secondary" style="margin-bottom: var(--space-3);">You can submit an appeal for any assessment within 7 days. Your teacher will review it.</p>
+        <button class="btn btn-sm" style="background: var(--color-warning); color: #fff;" id="submit-appeal-btn">Submit Appeal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // update greeting with student name
+    if (AuthStore.user) {
+      var greet = document.getElementById('student-greeting');
+      if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName.split(' ')[0];
+    }
+
+    // feedback link clicks
+    document.querySelectorAll('.view-feedback').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        // find a relevant feedback from mock data
+        var fb = window.mockData && window.mockData.feedback ? window.mockData.feedback[0] : null;
+        showModal('Assessment Feedback',
+          '<p class="text-sm" style="line-height:1.6;">' + (fb ? fb.text : 'Feedback not yet available.') + '</p>',
+          '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>'
+        );
+        setTimeout(function() {
+          document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+            b.addEventListener('click', function() {
+              var overlay = document.querySelector('.modal-overlay');
+              if (overlay) overlay.remove();
+            });
+          });
+        }, 50);
+      });
+    });
+
+    // appeal button
+    var appealBtn = document.getElementById('submit-appeal-btn');
+    if (appealBtn) {
+      appealBtn.addEventListener('click', function() {
+        showModal('Submit Appeal',
+          '<div class="form-group"><label>Assessment</label><select class="select"><option>Mathematics — Fractions (62%)</option><option>English — Comprehension (78%)</option></select></div>' +
+          '<div class="form-group"><label>Reason for appeal</label><textarea class="input" rows="3" placeholder="Explain why you believe the score should be reviewed..."></textarea></div>',
+          '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+          '<button class="btn btn-primary btn-sm" id="confirm-appeal">Submit</button>'
+        );
+        setTimeout(function() {
+          var confirmBtn = document.getElementById('confirm-appeal');
+          if (confirmBtn) {
+            confirmBtn.addEventListener('click', function() {
+              document.querySelector('.modal-overlay').remove();
+              showToast('Appeal submitted. Your teacher will review it.', 'success');
+            });
+          }
+          document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+            b.addEventListener('click', function() {
+              var overlay = document.querySelector('.modal-overlay');
+              if (overlay) overlay.remove();
+            });
+          });
+        }, 50);
+      });
+    }
+  })();
+</script>

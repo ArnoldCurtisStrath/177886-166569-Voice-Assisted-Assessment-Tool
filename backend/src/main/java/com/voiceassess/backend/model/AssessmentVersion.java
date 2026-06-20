@@ -6,8 +6,7 @@ import java.util.UUID;
 
 /**
  * Immutable version history for an assessment record.
- * Every time a teacher overrides an assessment, we create a new version
- * and keep the original. This satisfies the audit requirement.
+ * Keeps previous values when a teacher overrides.
  */
 @Entity
 @Table(name = "assessment_versions")
@@ -25,6 +24,7 @@ public class AssessmentVersion {
     @Column(name = "version_number", nullable = false)
     private int versionNumber;
 
+    /** Full snapshot of the assessment at this version point */
     @Column(name = "json_data", columnDefinition = "TEXT", nullable = false)
     private String jsonData;
 

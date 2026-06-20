@@ -6,8 +6,7 @@ import java.util.UUID;
 
 /**
  * Audit log for system-level errors.
- * When the AI gateway times out, or a parsing error occurs,
- * we write a row here so the admin can investigate later.
+ * Stores error details for admin investigation.
  */
 @Entity
 @Table(name = "system_error_logs")
@@ -27,7 +26,7 @@ public class SystemErrorLog {
     @Column(name = "timestamp", nullable = false)
     private LocalDateTime timestamp = LocalDateTime.now();
 
-    // Optional reference to the entity that caused the error (e.g. audio_id)
+    /** Reference to the entity that triggered the error, e.g. 'AudioAssessment:abc123' */
     @Column(name = "related_entity")
     private String relatedEntity;
 

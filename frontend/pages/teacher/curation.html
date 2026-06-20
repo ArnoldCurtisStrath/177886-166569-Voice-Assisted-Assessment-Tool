@@ -1,0 +1,106 @@
+<!-- VoiceAssess — Teacher Assessment Curation -->
+<div class="animate-fade-in">
+  <p class="text-sm text-secondary" style="margin-bottom: var(--space-5);">
+    Set up assessment parameters before recording.
+  </p>
+
+  <!-- Curation Form -->
+  <form id="curation-form" style="display: flex; flex-direction: column; gap: var(--space-4);">
+    <!-- Class -->
+    <div class="form-group">
+      <label for="cur-class">Class</label>
+      <select id="cur-class" class="select" required>
+        <option value="">Select a class...</option>
+        <option value="c1">Grade 4B</option>
+        <option value="c2">Grade 5A</option>
+        <option value="c3">Grade 4C</option>
+      </select>
+    </div>
+
+    <!-- Subject (filtered by class) -->
+    <div class="form-group">
+      <label for="cur-subject">Subject</label>
+      <select id="cur-subject" class="select" required>
+        <option value="">Select a subject...</option>
+        <option value="sub1">English Language</option>
+        <option value="sub2">Kiswahili</option>
+        <option value="sub3">Mathematics</option>
+      </select>
+    </div>
+
+    <!-- Strand -->
+    <div class="form-group">
+      <label for="cur-strand">Strand</label>
+      <select id="cur-strand" class="select" required>
+        <option value="">Select a strand...</option>
+        <option value="listening">Listening &amp; Speaking</option>
+        <option value="reading">Reading</option>
+        <option value="grammar">Grammar</option>
+        <option value="writing">Writing</option>
+      </select>
+    </div>
+
+    <!-- Sub-strand -->
+    <div class="form-group">
+      <label for="cur-substrand">Sub-strand</label>
+      <select id="cur-substrand" class="select" required>
+        <option value="">Select a sub-strand...</option>
+        <option value="comprehension">Comprehension</option>
+        <option value="oral-presentation">Oral Presentation</option>
+        <option value="pronunciation">Pronunciation</option>
+      </select>
+    </div>
+
+    <!-- Topic + Date side by side on wider screens -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+      <div class="form-group">
+        <label for="cur-topic">Topic</label>
+        <input type="text" id="cur-topic" class="input" placeholder="Storytelling" value="Storytelling">
+      </div>
+      <div class="form-group">
+        <label for="cur-date">Date</label>
+        <input type="date" id="cur-date" class="input" value="2026-05-26">
+      </div>
+    </div>
+
+    <!-- Custom Instructions -->
+    <div class="form-group">
+      <label for="cur-instructions">Custom Instructions</label>
+      <textarea id="cur-instructions" class="input" placeholder="Any special instructions for the assessment..." rows="3">Focus on pronunciation and fluency. Ask students to retell the main events in order.</textarea>
+    </div>
+
+    <!-- Submit -->
+    <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: var(--space-4);">
+      Next: Set Up Recording &rarr;
+    </button>
+  </form>
+</div>
+
+<script>
+  (function() {
+    var form = document.getElementById('curation-form');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      // quick validation — all selects required
+      var selects = form.querySelectorAll('select[required]');
+      var valid = true;
+      selects.forEach(function(sel) {
+        if (!sel.value) valid = false;
+      });
+
+      if (!valid) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+      }
+
+      // success — navigate to recording page
+      showToast('Assessment parameters saved.', 'success');
+      setTimeout(function() {
+        Router.navigate('teacher/record');
+      }, 500);
+    });
+  })();
+</script>

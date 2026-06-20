@@ -1,0 +1,91 @@
+<!-- VoiceAssess — Parent Dashboard -->
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">My Children</span>
+  </div>
+
+  <p class="text-sm text-secondary" style="margin-bottom: var(--space-5);">
+    Select a child to view their progress.
+  </p>
+
+  <!-- Children List -->
+  <div class="list-stack" id="children-list" style="margin-bottom: var(--space-6);">
+    <div class="list-item clickable" data-child="st1">
+      <div class="avatar avatar-md">JM</div>
+      <div class="list-item-body">
+        <div class="list-item-title">James Mutua</div>
+        <div class="list-item-subtitle">Grade 4B &middot; Moi Primary School</div>
+      </div>
+      <div class="list-item-trailing">
+        <span class="badge badge-success">Active</span>
+        <span class="list-chevron">&#x25B8;</span>
+      </div>
+    </div>
+
+    <div class="list-item clickable" data-child="st3">
+      <div class="avatar avatar-md">KO</div>
+      <div class="list-item-body">
+        <div class="list-item-title">Kevin Otieno</div>
+        <div class="list-item-subtitle">Grade 4B &middot; Moi Primary School</div>
+      </div>
+      <div class="list-item-trailing">
+        <span class="badge badge-success">Active</span>
+        <span class="list-chevron">&#x25B8;</span>
+      </div>
+    </div>
+
+    <div class="list-item clickable" data-child="st5">
+      <div class="avatar avatar-md">FN</div>
+      <div class="list-item-body">
+        <div class="list-item-title">Faith Nyambura</div>
+        <div class="list-item-subtitle">Grade 5B &middot; Moi Primary School</div>
+      </div>
+      <div class="list-item-trailing">
+        <span class="badge badge-success">Active</span>
+        <span class="list-chevron">&#x25B8;</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- recent activity -->
+  <div class="section-header">
+    <span class="section-title">Recent Activity</span>
+  </div>
+  <div class="list-stack">
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">James — English Comprehension</div>
+        <div class="list-item-subtitle">May 25, 2026 &middot; Score: 78%</div>
+      </div>
+      <span class="badge badge-success">Completed</span>
+    </div>
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">Kevin — Mathematics Fractions</div>
+        <div class="list-item-subtitle">May 15, 2026 &middot; Score: 62%</div>
+      </div>
+      <span class="badge badge-success">Completed</span>
+    </div>
+    <div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-title">Faith — Kiswahili Kusoma</div>
+        <div class="list-item-subtitle">May 18, 2026 &middot; Score: 74%</div>
+      </div>
+      <span class="badge badge-success">Completed</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // navigate to child progress on click
+    document.querySelectorAll('[data-child]').forEach(function(row) {
+      row.addEventListener('click', function() {
+        var childId = row.getAttribute('data-child');
+        // store selected child ID so progress page can use it
+        localStorage.setItem('voiceassess_selected_child', childId);
+        Router.navigate('parent/child');
+      });
+    });
+  })();
+</script>

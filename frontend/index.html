@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0D7C66">
+  <meta name="description" content="VoiceAssess — Voice-Assisted CBC Assessment Tool for Kenyan primary schools">
+  <title>VoiceAssess</title>
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+  <!-- Accessibility skip link -->
+  <a href="#page-content" class="skip-link">Skip to main content</a>
+
+  <div class="shell" id="app-shell">
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-user">
+        <div class="avatar avatar-md" id="sidebar-avatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebar-user-name">Not signed in</div>
+          <div class="sidebar-user-role" id="sidebar-user-role">Guest</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!-- Populated by router based on role -->
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn btn-ghost btn-block" id="logout-btn">Log out</button>
+      </div>
+    </aside>
+
+    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+
+      <header class="topbar" id="topbar">
+        <div class="topbar-left">
+          <!-- hamburger for mobile sidebar toggle -->
+          <button class="hamburger hide-desktop" id="hamburger-btn" aria-label="Open menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <!-- back button (shown on sub-pages via JS) -->
+          <button class="btn btn-icon hide-mobile" id="back-btn" aria-label="Go back" style="display:none;">
+            &larr;
+          </button>
+        </div>
+        <div class="topbar-center" id="topbar-title">VoiceAssess</div>
+        <div class="topbar-right">
+          <!-- avatar for quick profile access -->
+          <div class="avatar avatar-sm hide-mobile" id="topbar-avatar">?</div>
+        </div>
+      </header>
+
+      <main class="page-content" id="page-content">
+        <!-- Router loads page templates here -->
+        <div class="empty-state">
+          <div class="empty-state-icon">V</div>
+          <h4>Loading VoiceAssess...</h4>
+        </div>
+      </main>
+
+      <nav class="bottom-nav" id="bottom-nav">
+        <!-- Populated by router based on role -->
+      </nav>
+
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/mock-data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/router.js"></script>
+
+  <script>
+    /* ---- App Initialization ---- */
+    (function() {
+      'use strict';
+
+      // Start the router once the DOM is ready
+      document.addEventListener('DOMContentLoaded', function() {
+        Router.init();
+
+        // Wire up sidebar toggle
+        const hamburger = document.getElementById('hamburger-btn');
+        const sidebarEl = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+
+        if (hamburger && sidebarEl && overlay) {
+          hamburger.addEventListener('click', function() {
+            sidebarEl.classList.toggle('open');
+            overlay.classList.toggle('open');
+          });
+
+          // close sidebar when clicking overlay
+          overlay.addEventListener('click', function() {
+            sidebarEl.classList.remove('open');
+            overlay.classList.remove('open');
+          });
+        }
+
+        // Wire up logout
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', function() {
+            AuthStore.logout();
+            Router.navigate('login');
+          });
+        }
+      });
+
+      /* ---- Toast Helper (simple notification system) ---- */
+      window.showToast = function(message, type) {
+        type = type || 'info';
+        var container = document.getElementById('toast-container');
+        if (!container) return;
+
+        var toast = document.createElement('div');
+        toast.className = 'toast toast-' + type;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        // wait 4 seconds, then play the fade-out animation before removing from DOM
+        setTimeout(function() {
+          // play fadeIn keyframe in reverse to animate out
+          toast.style.animation = 'fadeIn 200ms ease reverse forwards';
+          // 200ms gives the reverse animation time to play before removal
+          setTimeout(function() {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+          }, 200);
+        }, 4000);
+      };
+
+      /* ---- Modal Helper ---- */
+      window.showModal = function(title, bodyHTML, footerHTML) {
+        // remove any existing modal
+        var existing = document.querySelector('.modal-overlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        // build the modal from template — close button and backdrop-click are wired below
+        overlay.innerHTML = `
+          <div class="modal">
+            <div class="modal-header">
+              <h3>${title}</h3>
+              <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">${bodyHTML}</div>
+            ${footerHTML ? '<div class="modal-footer">' + footerHTML + '</div>' : ''}
+          </div>
+        `;
+
+        // close handlers
+        overlay.querySelector('.modal-close').addEventListener('click', function() {
+          overlay.remove();
+        });
+        overlay.addEventListener('click', function(e) {
+          // close when clicking the dark backdrop (but not the modal card itself)
+          if (e.target === overlay) overlay.remove();
+        });
+
+        document.body.appendChild(overlay);
+        return overlay;
+      };
+    })();
+  </script>
+</body>
+</html>

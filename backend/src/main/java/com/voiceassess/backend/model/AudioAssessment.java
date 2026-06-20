@@ -6,10 +6,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * The hub of the entire assessment flow.
- * A teacher uploads an audio recording of a student speaking in class,
- * tied to a specific subject, classroom, and rubric. The file path and
- * curated context are stored here; the actual audio file lives on disk.
+ * Stores audio assessment metadata and file path.
  */
 @Entity
 @Table(name = "audio_assessments")
@@ -38,13 +35,13 @@ public class AudioAssessment {
     @Column(name = "date", nullable = false)
     private LocalDate date;
 
+    /** Teacher's curated prompt context — JSON with selected words/phrases for the AI */
     @Column(name = "curated_context", columnDefinition = "TEXT")
     private String curatedContext;
 
     @Column(name = "upload_timestamp", nullable = false)
     private LocalDateTime uploadTimestamp = LocalDateTime.now();
 
-    // "UPLOADED", "QUEUED", "TRANSCRIBING", "STAGED", "FINALIZED", "APPEALED"
     @Column(name = "status", nullable = false)
     private String status = "UPLOADED";
 

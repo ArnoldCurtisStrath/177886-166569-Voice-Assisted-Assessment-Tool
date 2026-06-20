@@ -7,7 +7,6 @@ import java.util.UUID;
 /**
  * Base class for all human actors in the system.
  * Uses SINGLE_TABLE inheritance — all subclasses store in one 'users' table.
- * Simple approach that fits a 3rd-year student project.
  */
 @Entity
 @Table(name = "users")
@@ -25,6 +24,7 @@ public abstract class User {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
+    /** BCrypt hash of the user's password */
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
