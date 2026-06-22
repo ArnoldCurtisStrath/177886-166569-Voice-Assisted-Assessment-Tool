@@ -49,6 +49,11 @@ public class AudioAssessment {
     @JoinColumn(name = "rubric_id", nullable = false)
     private KnecRubric rubric;
 
+    // term is nullable for now — auto-resolved in controller or set later
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "term_id")
+    private AcademicTerm term;
+
     public AudioAssessment() {}
 
     public UUID getAudioId() { return audioId; }
@@ -80,4 +85,7 @@ public class AudioAssessment {
 
     public KnecRubric getRubric() { return rubric; }
     public void setRubric(KnecRubric rubric) { this.rubric = rubric; }
+
+    public AcademicTerm getTerm() { return term; }
+    public void setTerm(AcademicTerm term) { this.term = term; }
 }

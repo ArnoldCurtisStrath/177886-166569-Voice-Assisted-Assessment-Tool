@@ -254,12 +254,28 @@
         date: dateInput.value,
         customInstructions: instructionsInput.value.trim()
       };
-      console.log('curation params:', params);
 
-      showToast('Assessment parameters saved.', 'success');
-      setTimeout(function() {
-        Router.navigate('teacher/record');
-      }, 500);
+      // disable the button while posting
+      var btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      API.post('/api/teacher/assessments', params)
+        .then(function(data) {
+          showToast('Assessment created. Ready to record.', 'success');
+          // store the new audioId so the recording page can use it
+          if (data.audioId) {
+            sessionStorage.setItem('currentAudioId', data.audioId);
+          }
+          setTimeout(function() {
+            Router.navigate('teacher/record');
+          }, 500);
+        })
+        .catch(function(err) {
+          showToast(err.message || 'Failed to create assessment.', 'error');
+          btn.disabled = false;
+          btn.innerHTML = 'Next: Set Up Recording &rarr;';
+        });
     });
 
     // kick off
