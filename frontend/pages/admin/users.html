@@ -21,9 +21,7 @@
   </div>
 
   <!-- User List -->
-  <div class="list-stack" id="user-list">
-    <!-- Populated by JS from API -->
-  </div>
+  <div class="list-stack" id="user-list"></div>
 
   <!-- Empty state -->
   <div class="empty-state" id="user-empty" style="display: none;">
@@ -39,12 +37,59 @@
   </div>
 </div>
 
-<!-- FAB for creating new user -->
+<!-- FAB -->
 <button class="fab" id="fab-create-user" title="Create new user">+</button>
+
+<!-- Create User Modal (built into the page, hidden by default) -->
+<div class="modal-overlay" id="create-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Create New User</h3>
+      <button class="modal-close" id="create-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <div class="form-group">
+          <label>Role</label>
+          <select id="create-role" class="input">
+            <option value="TEACHER">Teacher</option>
+            <option value="STUDENT">Student</option>
+            <option value="PARENT">Parent</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="create-fullname" class="input" placeholder="Full name" required>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="create-email" class="input" placeholder="Email address" required>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="create-password" class="input" placeholder="Min 6 characters" required>
+        </div>
+        <div class="form-group" id="create-phone-group" style="display:none;">
+          <label>Phone Number</label>
+          <input type="text" id="create-phone" class="input" placeholder="+254...">
+        </div>
+        <div class="form-group" id="create-dob-group" style="display:none;">
+          <label>Date of Birth</label>
+          <input type="date" id="create-dob" class="input">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" id="create-cancel">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="create-submit">Create User</button>
+    </div>
+  </div>
+</div>
 
 <script>
   (function() {
-    var users = []; // loaded from API
+    var users = [];
     var activeFilter = 'all';
     var searchQuery = '';
 
@@ -109,29 +154,30 @@
           );
         }).join('');
 
-        // click handler for detail
         listEl.querySelectorAll('.list-item').forEach(function(row) {
           row.addEventListener('click', function() {
             var uid = row.getAttribute('data-user-id');
             var u = users.find(function(x) { return x.userId === uid; });
             if (!u) return;
 
-            showModal(
-              u.fullName || 'User',
-              '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
-                '<div class="form-group"><label>Full Name</label><div class="text-sm">' + (u.fullName || 'N/A') + '</div></div>' +
-                '<div class="form-group"><label>Email</label><div class="text-sm">' + u.email + '</div></div>' +
-                '<div class="form-group"><label>Role</label><span class="badge ' + roleBadgeClass(u.role) + '">' + formatRole(u.role) + '</span></div>' +
-                '<div class="form-group"><label>Status</label><span class="status-dot ' + (u.isActive ? 'active' : 'inactive') + '"></span> ' + (u.isActive ? 'Active' : 'Inactive') + '</div>' +
-              '</div>',
-              '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>'
-            );
+            // use the global showModal for detail view
+            if (typeof showModal === 'function') {
+              showModal(
+                u.fullName || 'User',
+                '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
+                  '<div class="form-group"><label>Full Name</label><div class="text-sm">' + (u.fullName || 'N/A') + '</div></div>' +
+                  '<div class="form-group"><label>Email</label><div class="text-sm">' + u.email + '</div></div>' +
+                  '<div class="form-group"><label>Role</label><span class="badge ' + roleBadgeClass(u.role) + '">' + formatRole(u.role) + '</span></div>' +
+                  '<div class="form-group"><label>Status</label><span class="status-dot ' + (u.isActive ? 'active' : 'inactive') + '"></span> ' + (u.isActive ? 'Active' : 'Inactive') + '</div>' +
+                '</div>',
+                '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>'
+              );
+            }
           });
         });
       }
     }
 
-    // load users from the backend
     function loadUsers() {
       var loadingEl = document.getElementById('user-loading');
       var emptyEl = document.getElementById('user-empty');
@@ -146,7 +192,9 @@
         .catch(function(err) {
           users = [];
           renderUsers();
-          showToast('Failed to load users: ' + err.message, 'error');
+          if (typeof showToast === 'function') {
+            showToast('Failed to load users: ' + err.message, 'error');
+          }
         });
     }
 
@@ -169,84 +217,74 @@
       });
     }
 
-    // FAB — open create-user form
-    var fab = document.getElementById('fab-create-user');
-    if (fab) {
-      fab.addEventListener('click', function() {
-        openCreateUserModal();
-      });
+    // ---- Create User Modal Logic ----
+
+    var modal = document.getElementById('create-modal');
+    var roleSelect = document.getElementById('create-role');
+    var phoneGroup = document.getElementById('create-phone-group');
+    var dobGroup = document.getElementById('create-dob-group');
+
+    function updateCreateFields() {
+      var role = roleSelect.value;
+      phoneGroup.style.display = (role === 'PARENT') ? '' : 'none';
+      dobGroup.style.display = (role === 'STUDENT') ? '' : 'none';
     }
 
-    // visible Create User button at top
-    var createBtn = document.getElementById('btn-create-user');
-    if (createBtn) {
-      createBtn.addEventListener('click', function() {
-        openCreateUserModal();
-      });
+    if (roleSelect) {
+      roleSelect.addEventListener('change', updateCreateFields);
     }
 
-    // auto-open modal if coming from dashboard quick-action cards
-    var preSelectRole = localStorage.getItem('voiceassess_create_role');
-    if (preSelectRole) {
-      localStorage.removeItem('voiceassess_create_role');
-      openCreateUserModal(preSelectRole);
-    }
-
-    function openCreateUserModal(preSelect) {
-      var roleOptions = ['TEACHER', 'STUDENT', 'PARENT', 'ADMIN'];
-      var defaultRole = preSelect || 'TEACHER';
-
-      var bodyHTML = '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
-        '<div class="form-group">' +
-          '<label>Role</label>' +
-          '<select id="create-role" class="input">' +
-            roleOptions.map(function(r) { return '<option value="' + r + '"' + (r === defaultRole ? ' selected' : '') + '>' + formatRole(r) + '</option>'; }).join('') +
-          '</select>' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label>Full Name</label>' +
-          '<input type="text" id="create-fullname" class="input" placeholder="Full name" required>' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label>Email</label>' +
-          '<input type="email" id="create-email" class="input" placeholder="Email address" required>' +
-        '</div>' +
-        '<div class="form-group">' +
-          '<label>Password</label>' +
-          '<input type="password" id="create-password" class="input" placeholder="Min 6 characters" required>' +
-        '</div>' +
-        '<div class="form-group" id="create-phone-group" style="display:none;">' +
-          '<label>Phone Number</label>' +
-          '<input type="text" id="create-phone" class="input" placeholder="+254...">' +
-        '</div>' +
-        '<div class="form-group" id="create-dob-group" style="display:none;">' +
-          '<label>Date of Birth</label>' +
-          '<input type="date" id="create-dob" class="input">' +
-        '</div>' +
-      '</div>';
-
-      var footerHTML =
-        '<button class="btn btn-secondary btn-sm modal-close-btn">Cancel</button>' +
-        '<button class="btn btn-primary btn-sm" id="create-submit">Create User</button>';
-
-      var modal = showModal('Create New User', bodyHTML, footerHTML);
-
-      // show/hide role-specific fields
-      var roleSelect = document.getElementById('create-role');
-      var phoneGroup = document.getElementById('create-phone-group');
-      var dobGroup = document.getElementById('create-dob-group');
-
-      function updateFields() {
-        var role = roleSelect.value;
-        phoneGroup.style.display = (role === 'PARENT') ? '' : 'none';
-        dobGroup.style.display = (role === 'STUDENT') ? '' : 'none';
+    function openCreateForm(preSelectRole) {
+      if (!modal) return;
+      // pre-select role if given
+      if (preSelectRole && roleSelect) {
+        roleSelect.value = preSelectRole;
       }
+      updateCreateFields();
+      // clear inputs
+      var fullname = document.getElementById('create-fullname');
+      var email = document.getElementById('create-email');
+      var password = document.getElementById('create-password');
+      var phone = document.getElementById('create-phone');
+      var dob = document.getElementById('create-dob');
+      if (fullname) fullname.value = '';
+      if (email) email.value = '';
+      if (password) password.value = '';
+      if (phone) phone.value = '';
+      if (dob) dob.value = '';
+      modal.style.display = 'flex';
+    }
 
-      roleSelect.addEventListener('change', updateFields);
-      updateFields();
+    function closeCreateForm() {
+      if (modal) modal.style.display = 'none';
+    }
 
-      // submit handler
-      var submitBtn = document.getElementById('create-submit');
+    // close button
+    var closeBtn = document.getElementById('create-modal-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeCreateForm);
+
+    // backdrop click
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeCreateForm();
+      });
+    }
+
+    // cancel button
+    var cancelBtn = document.getElementById('create-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', closeCreateForm);
+
+    // FAB
+    var fab = document.getElementById('fab-create-user');
+    if (fab) fab.addEventListener('click', function() { openCreateForm(); });
+
+    // header button
+    var createBtn = document.getElementById('btn-create-user');
+    if (createBtn) createBtn.addEventListener('click', function() { openCreateForm(); });
+
+    // submit
+    var submitBtn = document.getElementById('create-submit');
+    if (submitBtn) {
       submitBtn.addEventListener('click', function() {
         var role = roleSelect.value;
         var fullName = document.getElementById('create-fullname').value.trim();
@@ -254,11 +292,11 @@
         var password = document.getElementById('create-password').value;
 
         if (!fullName || !email || !password) {
-          showToast('Please fill in all required fields.', 'error');
+          if (typeof showToast === 'function') showToast('Please fill in all required fields.', 'error');
           return;
         }
         if (password.length < 6) {
-          showToast('Password must be at least 6 characters.', 'error');
+          if (typeof showToast === 'function') showToast('Password must be at least 6 characters.', 'error');
           return;
         }
 
@@ -276,7 +314,6 @@
           payload.dateOfBirth = document.getElementById('create-dob').value;
         }
 
-        // use the seed school ID for now
         payload.schoolId = 'a1000000-0000-0000-0000-000000000001';
 
         submitBtn.disabled = true;
@@ -284,16 +321,25 @@
 
         API.post('/api/admin/users', payload)
           .then(function() {
-            if (modal) modal.remove();
-            showToast('User created successfully.', 'success');
+            closeCreateForm();
+            if (typeof showToast === 'function') showToast('User created successfully.', 'success');
             loadUsers();
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create User';
           })
           .catch(function(err) {
-            showToast('Failed to create user: ' + err.message, 'error');
+            if (typeof showToast === 'function') showToast('Failed to create user: ' + err.message, 'error');
             submitBtn.disabled = false;
             submitBtn.textContent = 'Create User';
           });
       });
+    }
+
+    // auto-open if coming from dashboard quick-action
+    var preSelectRole = localStorage.getItem('voiceassess_create_role');
+    if (preSelectRole) {
+      localStorage.removeItem('voiceassess_create_role');
+      openCreateForm(preSelectRole);
     }
 
     // initial load
