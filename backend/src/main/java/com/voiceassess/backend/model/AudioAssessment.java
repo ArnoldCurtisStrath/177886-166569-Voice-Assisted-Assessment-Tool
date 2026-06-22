@@ -32,6 +32,10 @@ public class AudioAssessment {
     @Column(name = "topic", nullable = false)
     private String topic;
 
+    /** Path to the uploaded audio file on disk */
+    @Column(name = "file_reference")
+    private String fileReference;
+
     @Column(name = "date", nullable = false)
     private LocalDate date;
 
@@ -70,6 +74,9 @@ public class AudioAssessment {
 
     public String getTopic() { return topic; }
     public void setTopic(String topic) { this.topic = topic; }
+
+    public String getFileReference() { return fileReference; }
+    public void setFileReference(String fileReference) { this.fileReference = fileReference; }
 
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }

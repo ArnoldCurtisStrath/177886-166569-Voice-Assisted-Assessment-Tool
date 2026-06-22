@@ -18,7 +18,6 @@
     transition: transform var(--transition-fast), background-color var(--transition-fast);
     margin-top: var(--space-4);
   " aria-label="Start recording">
-    <!-- microphone SVG icon -->
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
       <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -27,6 +26,27 @@
     </svg>
   </button>
   <span class="text-xs text-muted" id="mic-label">Tap to Start</span>
+
+  <!-- Control buttons (pause/resume/stop — shown during recording) -->
+  <div class="recording-controls" id="recording-controls" style="display: none;">
+    <button class="btn btn-secondary btn-sm" id="btn-pause">Pause</button>
+    <button class="btn btn-danger btn-sm" id="btn-stop-rec">Stop</button>
+  </div>
+
+  <!-- Paused controls (resume + stop) -->
+  <div class="recording-controls" id="paused-controls" style="display: none;">
+    <button class="btn btn-primary btn-sm" id="btn-resume">Resume</button>
+    <button class="btn btn-danger btn-sm" id="btn-stop-paused">Stop</button>
+  </div>
+
+  <!-- Review controls (shown after recording is stopped) -->
+  <div class="recording-controls" id="review-controls" style="display: none;">
+    <button class="btn btn-secondary btn-sm" id="btn-play">Play</button>
+    <button class="btn btn-ghost btn-sm" id="btn-re-record">Record Again</button>
+  </div>
+
+  <!-- Hidden audio element for playback -->
+  <audio id="audio-playback" style="display: none;" controls></audio>
 
   <!-- Waveform Visualization -->
   <div class="waveform" id="waveform" style="margin-top: var(--space-3);">
@@ -37,7 +57,10 @@
   <div class="mono" id="rec-timer" style="font-size: 1.75rem; font-weight: 700; color: var(--color-text);">00:00</div>
 
   <!-- Mic Status -->
-  <div class="text-xs" id="mic-status" style="color: var(--color-success);">&#9679; Microphone: Ready</div>
+  <div class="text-xs" id="mic-status" style="color: var(--color-success);">Microphone: Ready</div>
+
+  <!-- File name display (when file uploaded) -->
+  <div class="text-xs text-muted" id="file-name-display" style="display: none;"></div>
 
   <!-- Alternative upload -->
   <p style="margin-top: var(--space-2);">
@@ -48,7 +71,7 @@
   <!-- Upload Progress (hidden by default) -->
   <div id="upload-progress" style="display: none; width: 100%; margin-top: var(--space-3);">
     <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-1);">
-      <span class="text-xs text-secondary">Uploading...</span>
+      <span class="text-xs text-secondary" id="upload-status-text">Uploading...</span>
       <span class="text-xs text-secondary" id="upload-percent">0%</span>
     </div>
     <div class="progress-bar">
@@ -59,17 +82,27 @@
   <!-- Bottom Buttons -->
   <div style="display: flex; gap: var(--space-3); width: 100%; margin-top: auto; padding-top: var(--space-6);">
     <button class="btn btn-secondary btn-block" id="btn-cancel">Cancel</button>
-    <button class="btn btn-primary btn-block" id="btn-upload" disabled>Upload &amp; Process</button>
+    <button class="btn btn-primary btn-block" id="btn-upload" disabled>Upload &amp; Transcribe</button>
   </div>
 </div>
 
 <script>
   (function() {
-    var isRecording = false;
+    // state: 'idle' | 'recording' | 'paused' | 'stopped'
+    var state = 'idle';
+    var audioId = sessionStorage.getItem('currentAudioId');
+    var mediaRecorder = null;
+    var audioChunks = [];
+    var audioBlob = null;
+    var audioUrl = null;
+    var micStream = null;
+    var analyser = null;
     var timerInterval = null;
     var seconds = 0;
-    var hasRecording = false;
+    var hasFile = false;
+    var selectedFile = null;
 
+    // DOM refs
     var micBtn = document.getElementById('mic-btn');
     var micLabel = document.getElementById('mic-label');
     var timerEl = document.getElementById('rec-timer');
@@ -77,104 +110,230 @@
     var micStatus = document.getElementById('mic-status');
     var uploadBtn = document.getElementById('btn-upload');
     var waveformEl = document.getElementById('waveform');
+    var recControls = document.getElementById('recording-controls');
+    var pausedControls = document.getElementById('paused-controls');
+    var reviewControls = document.getElementById('review-controls');
+    var audioPlayback = document.getElementById('audio-playback');
+    var fileNameDisplay = document.getElementById('file-name-display');
 
-    // build 20 waveform bars (static until recording starts)
+    // build 20 waveform bars
     function buildWaveform() {
       if (!waveformEl) return;
       waveformEl.innerHTML = '';
       for (var i = 0; i < 20; i++) {
         var bar = document.createElement('div');
         bar.className = 'waveform-bar';
-        bar.style.height = '4px'; // flat when idle
+        bar.style.height = '4px';
         waveformEl.appendChild(bar);
       }
     }
     buildWaveform();
 
-    // animate waveform bars with random heights
-    var waveInterval = null;
-    function startWaveAnimation() {
-      if (waveInterval) return;
-      waveInterval = setInterval(function() {
-        var bars = waveformEl ? waveformEl.querySelectorAll('.waveform-bar') : [];
-        bars.forEach(function(bar) {
-          var h = Math.floor(Math.random() * 50) + 6; // 6-56px
-          bar.style.height = h + 'px';
-        });
-      }, 100);
-    }
-
-    function stopWaveAnimation() {
-      if (waveInterval) {
-        clearInterval(waveInterval);
-        waveInterval = null;
-      }
-      // reset bars to flat
-      var bars = waveformEl ? waveformEl.querySelectorAll('.waveform-bar') : [];
-      bars.forEach(function(bar) { bar.style.height = '4px'; });
-    }
-
-    // format seconds as MM:SS
+    // format MM:SS
     function formatTime(sec) {
       var m = Math.floor(sec / 60);
       var s = sec % 60;
       return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
     }
 
-    // toggle recording
-    micBtn.addEventListener('click', function() {
-      if (!isRecording) {
-        // start recording
-        isRecording = true;
-        hasRecording = true;
-        micBtn.style.backgroundColor = 'var(--color-error)';
-        micLabel.textContent = 'Tap to Stop';
-        statusBadge.textContent = 'RECORDING...';
-        statusBadge.className = 'badge badge-error';
-        micStatus.innerHTML = '&#9679; Microphone: Active';
-        micStatus.style.color = 'var(--color-error)';
-
-        // start timer
-        seconds = 0;
+    // start the timer display
+    function startTimer() {
+      seconds = 0;
+      timerEl.textContent = formatTime(seconds);
+      timerInterval = setInterval(function() {
+        seconds++;
         timerEl.textContent = formatTime(seconds);
-        timerInterval = setInterval(function() {
-          seconds++;
-          timerEl.textContent = formatTime(seconds);
-        }, 1000);
+        // warn at 4:30
+        if (seconds === 270) {
+          showToast('Recording limit approaching — 30 seconds remaining.', 'warning');
+        }
+        // auto-stop at 5:00
+        if (seconds >= 300) {
+          stopRecording();
+          showToast('Recording auto-stopped at 5 minutes.', 'info');
+        }
+      }, 1000);
+    }
 
-        // start waveform
-        startWaveAnimation();
+    function pauseTimer() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    }
 
-        // enable upload button
-        uploadBtn.disabled = false;
-      } else {
-        // stop recording
-        isRecording = false;
+    function resetTimer() {
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+      seconds = 0;
+      timerEl.textContent = formatTime(seconds);
+    }
+
+    // waveform animation from real mic data
+    var waveInterval = null;
+    function startWave() {
+      if (waveInterval) return;
+      waveInterval = setInterval(function() {
+        if (!analyser) return;
+        var dataArray = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(dataArray);
+        var bars = waveformEl ? waveformEl.querySelectorAll('.waveform-bar') : [];
+        // spread 20 bars across the frequency bins
+        var step = Math.floor(dataArray.length / 20);
+        bars.forEach(function(bar, i) {
+          var val = dataArray[i * step] || 0;
+          var h = Math.max(4, val / 3); // scale down, min 4px
+          if (h > 52) h = 52;
+          bar.style.height = h + 'px';
+        });
+      }, 80);
+    }
+
+    function stopWave() {
+      if (waveInterval) { clearInterval(waveInterval); waveInterval = null; }
+      var bars = waveformEl ? waveformEl.querySelectorAll('.waveform-bar') : [];
+      bars.forEach(function(bar) { bar.style.height = '4px'; });
+    }
+
+    // update UI to match current state
+    function setUI(newState) {
+      state = newState;
+
+      // reset button classes
+      micBtn.classList.remove('mic-recording', 'mic-paused');
+      recControls.style.display = 'none';
+      pausedControls.style.display = 'none';
+      reviewControls.style.display = 'none';
+      audioPlayback.style.display = 'none';
+
+      if (state === 'idle') {
         micBtn.style.backgroundColor = 'var(--color-accent)';
-        micLabel.textContent = 'Tap to Record Again';
+        micLabel.textContent = 'Tap to Start';
+        statusBadge.textContent = 'READY';
+        statusBadge.className = 'badge badge-neutral';
+        micStatus.textContent = 'Microphone: Ready';
+        micStatus.style.color = 'var(--color-success)';
+        resetTimer();
+        stopWave();
+        uploadBtn.disabled = !hasFile;
+      } else if (state === 'recording') {
+        micBtn.classList.add('mic-recording');
+        micLabel.textContent = 'Recording...';
+        statusBadge.textContent = 'RECORDING';
+        statusBadge.className = 'badge badge-error';
+        micStatus.textContent = 'Microphone: Active';
+        micStatus.style.color = 'var(--color-error)';
+        recControls.style.display = 'flex';
+        // start timer if not already running
+        if (!timerInterval) startTimer();
+        startWave();
+        uploadBtn.disabled = true;
+      } else if (state === 'paused') {
+        micBtn.classList.add('mic-paused');
+        micLabel.textContent = 'Paused';
+        statusBadge.textContent = 'PAUSED';
+        statusBadge.className = 'badge badge-warning';
+        micStatus.textContent = 'Microphone: Paused';
+        micStatus.style.color = 'var(--color-warning)';
+        pausedControls.style.display = 'flex';
+        pauseTimer();
+        stopWave();
+        uploadBtn.disabled = true;
+      } else if (state === 'stopped') {
+        micBtn.style.backgroundColor = 'var(--color-accent)';
+        micLabel.textContent = 'Review Recording';
         statusBadge.textContent = 'RECORDING COMPLETE';
         statusBadge.className = 'badge badge-success';
-        micStatus.innerHTML = '&#9679; Microphone: Stopped';
-        micStatus.style.color = 'var(--color-text-secondary)';
+        micStatus.textContent = 'Microphone: Stopped';
+        micStatus.style.color = 'var(--text-secondary)';
+        reviewControls.style.display = 'flex';
+        audioPlayback.style.display = 'block';
+        pauseTimer();
+        stopWave();
+        uploadBtn.disabled = false;
+        hasFile = true;
+      }
+    }
 
-        // stop timer
-        if (timerInterval) {
-          clearInterval(timerInterval);
-          timerInterval = null;
-        }
+    // actually start the MediaRecorder
+    function startRecording() {
+      if (!mediaRecorder || state === 'recording') return;
+      audioChunks = [];
+      mediaRecorder.start(100); // collect data every 100ms
+      setUI('recording');
+    }
 
-        // stop waveform
-        stopWaveAnimation();
+    // pause without stopping the stream
+    function pauseRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.pause();
+        setUI('paused');
+      }
+    }
+
+    // resume from pause
+    function resumeRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'paused') {
+        mediaRecorder.resume();
+        setUI('recording');
+      }
+    }
+
+    // finalize the recording
+    function stopRecording() {
+      if (mediaRecorder && (mediaRecorder.state === 'recording' || mediaRecorder.state === 'paused')) {
+        mediaRecorder.requestData(); // grab any remaining chunks
+        mediaRecorder.stop();
+      }
+      // the onstop handler will set state to 'stopped'
+    }
+
+    // mic button click — main toggle
+    micBtn.addEventListener('click', function() {
+      if (state === 'idle') {
+        startRecording();
+      } else if (state === 'recording') {
+        pauseRecording();
+      } else if (state === 'paused') {
+        resumeRecording();
       }
     });
 
-    // cancel button
-    document.getElementById('btn-cancel').addEventListener('click', function() {
-      if (isRecording) {
-        // stop first
-        micBtn.click();
+    // pause button
+    document.getElementById('btn-pause').addEventListener('click', pauseRecording);
+
+    // stop while recording
+    document.getElementById('btn-stop-rec').addEventListener('click', stopRecording);
+
+    // resume button
+    document.getElementById('btn-resume').addEventListener('click', resumeRecording);
+
+    // stop while paused
+    document.getElementById('btn-stop-paused').addEventListener('click', stopRecording);
+
+    // play back the recording
+    document.getElementById('btn-play').addEventListener('click', function() {
+      if (audioUrl && audioPlayback) {
+        audioPlayback.src = audioUrl;
+        audioPlayback.play().catch(function() {
+          showToast('Could not play audio.', 'error');
+        });
       }
-      // go back to curation
+    });
+
+    // re-record — discard current recording
+    document.getElementById('btn-re-record').addEventListener('click', function() {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      audioBlob = null;
+      audioUrl = null;
+      audioChunks = [];
+      hasFile = false;
+      selectedFile = null;
+      fileNameDisplay.style.display = 'none';
+      setUI('idle');
+    });
+
+    // cancel — go back to curation
+    document.getElementById('btn-cancel').addEventListener('click', function() {
+      if (state === 'recording' || state === 'paused') stopRecording();
+      if (micStream) micStream.getTracks().forEach(function(t) { t.stop(); });
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
       Router.navigate('teacher/curate');
     });
 
@@ -186,49 +345,157 @@
 
     document.getElementById('file-upload-input').addEventListener('change', function() {
       if (this.files && this.files.length > 0) {
-        hasRecording = true;
+        selectedFile = this.files[0];
+        hasFile = true;
         statusBadge.textContent = 'FILE SELECTED';
         statusBadge.className = 'badge badge-primary';
-        micStatus.textContent = 'File: ' + this.files[0].name;
+        fileNameDisplay.textContent = 'File: ' + selectedFile.name;
+        fileNameDisplay.style.display = 'block';
         uploadBtn.disabled = false;
       }
     });
 
-    // upload & process button — simulate upload progress
+    // upload & transcribe button
     uploadBtn.addEventListener('click', function() {
-      if (!hasRecording) return;
+      if (!audioId) {
+        showToast('No assessment found. Please curate first.', 'error');
+        return;
+      }
 
-      // disable buttons during upload
+      var formData = new FormData();
+      if (audioBlob) {
+        formData.append('file', audioBlob, 'recording.webm');
+      } else if (selectedFile) {
+        formData.append('file', selectedFile);
+      } else {
+        return;
+      }
+
+      // disable UI during upload
       uploadBtn.disabled = true;
       micBtn.style.pointerEvents = 'none';
-
       statusBadge.textContent = 'UPLOADING...';
       statusBadge.className = 'badge badge-warning';
 
       var progressEl = document.getElementById('upload-progress');
       var percentEl = document.getElementById('upload-percent');
       var barEl = document.getElementById('upload-bar');
-
+      var statusText = document.getElementById('upload-status-text');
       progressEl.style.display = 'block';
-      var progress = 0;
+      statusText.textContent = 'Uploading...';
 
-      var uploadInterval = setInterval(function() {
-        progress += Math.floor(Math.random() * 15) + 5;
-        if (progress > 100) progress = 100;
-        barEl.style.width = progress + '%';
-        percentEl.textContent = progress + '%';
-
-        if (progress >= 100) {
-          clearInterval(uploadInterval);
-          statusBadge.textContent = 'PROCESSING...';
+      API.uploadFormData('/api/teacher/assessments/' + audioId + '/upload', formData, function(pct) {
+        barEl.style.width = pct + '%';
+        percentEl.textContent = pct + '%';
+        if (pct >= 100) {
+          statusText.textContent = 'Transcribing...';
+          statusBadge.textContent = 'TRANSCRIBING...';
           statusBadge.className = 'badge badge-primary';
-          showToast('Assessment uploaded successfully! Check pending reviews.', 'success');
-          // navigate to review after short delay
-          setTimeout(function() {
-            Router.navigate('teacher/review');
-          }, 1500);
         }
-      }, 300);
+      }).then(function(data) {
+        statusBadge.textContent = 'COMPLETE';
+        statusBadge.className = 'badge badge-success';
+        barEl.style.width = '100%';
+        percentEl.textContent = '100%';
+
+        if (data.transcribed && data.transcriptSnippet) {
+          showToast('Transcription complete: "' + data.transcriptSnippet + '"', 'success');
+        } else {
+          showToast(data.message || 'Uploaded but transcription needs attention.', 'warning');
+        }
+
+        // navigate to review after a short delay
+        setTimeout(function() {
+          Router.navigate('teacher/review');
+        }, 2500);
+      }).catch(function(err) {
+        showToast(err.message || 'Upload failed. Please try again.', 'error');
+        uploadBtn.disabled = false;
+        micBtn.style.pointerEvents = 'auto';
+        progressEl.style.display = 'none';
+        statusBadge.textContent = 'RECORDING COMPLETE';
+        statusBadge.className = 'badge badge-success';
+      });
     });
+
+    // initialize — request mic access and set up MediaRecorder
+    function initMic() {
+      if (!audioId) {
+        statusBadge.textContent = 'NO ASSESSMENT';
+        statusBadge.className = 'badge badge-error';
+        micStatus.textContent = 'No assessment found. Go back and curate first.';
+        micStatus.style.color = 'var(--color-error)';
+        micBtn.disabled = true;
+        micBtn.style.opacity = '0.5';
+        uploadBtn.disabled = true;
+        return;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // browser doesn't support mic access
+        statusBadge.textContent = 'NO MIC';
+        statusBadge.className = 'badge badge-warning';
+        micStatus.textContent = 'Recording not supported. Upload a file instead.';
+        micStatus.style.color = 'var(--color-warning)';
+        micBtn.disabled = true;
+        micBtn.style.opacity = '0.5';
+        return;
+      }
+
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function(stream) {
+          micStream = stream;
+
+          // set up analyser for waveform
+          var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+          var source = audioCtx.createMediaStreamSource(stream);
+          source.connect(analyser);
+          // don't connect to destination — we don't want feedback
+
+          // determine supported mime type
+          var mimeType = 'audio/webm';
+          var types = ['audio/webm', 'audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'];
+          for (var i = 0; i < types.length; i++) {
+            if (MediaRecorder.isTypeSupported(types[i])) {
+              mimeType = types[i];
+              break;
+            }
+          }
+
+          mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+
+          mediaRecorder.ondataavailable = function(e) {
+            if (e.data && e.data.size > 0) audioChunks.push(e.data);
+          };
+
+          mediaRecorder.onstop = function() {
+            audioBlob = new Blob(audioChunks, { type: mimeType });
+            if (audioUrl) URL.revokeObjectURL(audioUrl);
+            audioUrl = URL.createObjectURL(audioBlob);
+            hasFile = true;
+            setUI('stopped');
+          };
+
+          mediaRecorder.onerror = function() {
+            showToast('Recording error. Please try again.', 'error');
+            setUI('idle');
+          };
+
+          micStatus.textContent = 'Microphone: Ready';
+          micStatus.style.color = 'var(--color-success)';
+        })
+        .catch(function(err) {
+          micStatus.textContent = 'Microphone access denied. Upload a file instead.';
+          micStatus.style.color = 'var(--color-warning)';
+          micBtn.disabled = true;
+          micBtn.style.opacity = '0.5';
+          statusBadge.textContent = 'NO ACCESS';
+          statusBadge.className = 'badge badge-warning';
+        });
+    }
+
+    initMic();
   })();
 </script>

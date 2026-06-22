@@ -2,11 +2,18 @@ package com.voiceassess.backend.controller;
 
 import com.voiceassess.backend.model.*;
 import com.voiceassess.backend.repository.*;
+import com.voiceassess.backend.service.TranscriptionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
@@ -20,14 +27,21 @@ public class TeacherController {
     private final ClassRoomRepository classRepo;
     private final SubjectRepository subjectRepo;
     private final KnecRubricRepository rubricRepo;
+    private final StagingAssessmentRepository stagingRepo;
+    private final PendingAudioJobRepository pendingJobRepo;
+    private final TranscriptionService transcriptionService;
 
+    // 10 deps — this controller handles the whole assessment pipeline
     public TeacherController(TeacherRepository teacherRepo,
                              TeacherClassAssignmentRepository tcaRepo,
                              AudioAssessmentRepository audioAssessmentRepo,
                              AcademicTermRepository termRepo,
                              ClassRoomRepository classRepo,
                              SubjectRepository subjectRepo,
-                             KnecRubricRepository rubricRepo) {
+                             KnecRubricRepository rubricRepo,
+                             StagingAssessmentRepository stagingRepo,
+                             PendingAudioJobRepository pendingJobRepo,
+                             TranscriptionService transcriptionService) {
         this.teacherRepo = teacherRepo;
         this.tcaRepo = tcaRepo;
         this.audioAssessmentRepo = audioAssessmentRepo;
@@ -35,6 +49,9 @@ public class TeacherController {
         this.classRepo = classRepo;
         this.subjectRepo = subjectRepo;
         this.rubricRepo = rubricRepo;
+        this.stagingRepo = stagingRepo;
+        this.pendingJobRepo = pendingJobRepo;
+        this.transcriptionService = transcriptionService;
     }
 
     @GetMapping("/stats")
@@ -128,6 +145,96 @@ public class TeacherController {
         resp.put("audioId", assessment.getAudioId().toString());
         resp.put("status", assessment.getStatus());
         resp.put("message", "Assessment created. You can now upload the recording.");
+        return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping("/assessments/{audioId}/upload")
+    public ResponseEntity<?> uploadAudio(@AuthenticationPrincipal User user,
+                                          @PathVariable UUID audioId,
+                                          @RequestParam("file") MultipartFile file) {
+        // find the assessment
+        var assessmentOpt = audioAssessmentRepo.findById(audioId);
+        if (assessmentOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Assessment not found"));
+        }
+        var assessment = assessmentOpt.get();
+
+        // check ownership — only the teacher who created it can upload
+        var teacherOpt = teacherRepo.findByUser(user);
+        if (teacherOpt.isEmpty() || !assessment.getTeacher().getTeacherId().equals(teacherOpt.get().getTeacherId())) {
+            return ResponseEntity.status(403).body(Map.of("error", "You don't own this assessment"));
+        }
+
+        // save the audio file locally
+        Path uploadDir = Path.of("uploads", "audio");
+        try {
+            Files.createDirectories(uploadDir);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Could not create upload directory"));
+        }
+
+        // figure out the extension from the original filename, default to webm
+        var originalName = file.getOriginalFilename();
+        var ext = ".webm";
+        if (originalName != null && originalName.contains(".")) {
+            ext = originalName.substring(originalName.lastIndexOf('.'));
+            // only allow safe extensions
+            if (!ext.matches("\\.[a-zA-Z0-9]+")) ext = ".webm";
+        }
+
+        var savedFile = uploadDir.resolve(audioId + ext).toFile();
+        try {
+            file.transferTo(savedFile);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to save audio file"));
+        }
+
+        assessment.setFileReference(savedFile.getPath());
+        assessment.setStatus("UPLOADED");
+        assessment.setUploadTimestamp(LocalDateTime.now());
+        audioAssessmentRepo.save(assessment);
+
+        // now transcribe via Groq
+        String transcript;
+        try {
+            transcript = transcriptionService.transcribe(savedFile);
+        } catch (Exception e) {
+            // transcription failed but the file was saved — return partial success
+            var resp = new LinkedHashMap<String, Object>();
+            resp.put("message", "Audio uploaded but transcription failed: " + e.getMessage());
+            resp.put("audioId", assessment.getAudioId().toString());
+            resp.put("status", "UPLOADED");
+            resp.put("transcribed", false);
+            return ResponseEntity.status(207).body(resp);
+        }
+
+        // store the transcript in a staging assessment for teacher review
+        var staging = new StagingAssessment();
+        staging.setAudioAssessment(assessment);
+        staging.setRubric(assessment.getRubric());
+        staging.setTranscriptSnippet(transcript);
+        staging.setStatus("PENDING_REVIEW");
+        staging = stagingRepo.save(staging);
+
+        // log the async job as completed
+        var job = new PendingAudioJob();
+        job.setAudioAssessment(assessment);
+        job.setJobType("TRANSCRIPTION");
+        job.setStatus("COMPLETED");
+        job.setCompletedAt(LocalDateTime.now());
+        pendingJobRepo.save(job);
+
+        // update assessment status
+        assessment.setStatus("TRANSCRIBED");
+        audioAssessmentRepo.save(assessment);
+
+        var resp = new LinkedHashMap<String, Object>();
+        resp.put("message", "Uploaded and transcribed");
+        resp.put("audioId", assessment.getAudioId().toString());
+        resp.put("status", "TRANSCRIBED");
+        resp.put("transcribed", true);
+        resp.put("stagingId", staging.getStagingId().toString());
+        resp.put("transcriptSnippet", transcript.length() > 200 ? transcript.substring(0, 200) + "..." : transcript);
         return ResponseEntity.ok(resp);
     }
 }

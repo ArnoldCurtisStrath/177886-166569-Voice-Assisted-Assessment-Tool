@@ -55,6 +55,47 @@ var API = {
 
   del(path) {
     return this.request('DELETE', path);
+  },
+
+  /**
+   * Multipart upload with progress callback.
+   * Uses XHR because fetch doesn't support upload progress yet.
+   */
+  uploadFormData(path, formData, onProgress) {
+    var self = this;
+    return new Promise(function(resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', self.BASE + path);
+      if (window.AuthStore && AuthStore.token) {
+        xhr.setRequestHeader('Authorization', 'Bearer ' + AuthStore.token);
+      }
+
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText));
+          } catch (e) {
+            resolve({ message: 'Upload complete' });
+          }
+        } else {
+          var data;
+          try { data = JSON.parse(xhr.responseText); } catch (e) { data = {}; }
+          reject(new Error(data.error || ('Upload failed with status ' + xhr.status)));
+        }
+      };
+
+      xhr.onerror = function() {
+        reject(new Error('Network error during upload'));
+      };
+
+      xhr.send(formData);
+    });
   }
 };
 

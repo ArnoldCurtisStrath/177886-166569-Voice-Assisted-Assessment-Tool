@@ -510,6 +510,37 @@ textarea.input {
   transform: scale(0.95);
 }
 
+/* ---- recording controls ---- */
+
+.recording-controls {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+/* pulse glow for the mic button when recording */
+@keyframes micGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5); }
+  50%      { box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); }
+}
+
+.mic-recording {
+  animation: micGlow 1s ease infinite;
+  background-color: var(--color-error) !important;
+}
+
+/* slower pulse when paused */
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(243, 156, 18, 0); }
+}
+
+.mic-paused {
+  animation: micPulse 1.5s ease infinite;
+  background-color: var(--color-warning) !important;
+}
+
 /* ---- skip link (accessibility) ---- */
 
 .skip-link {
