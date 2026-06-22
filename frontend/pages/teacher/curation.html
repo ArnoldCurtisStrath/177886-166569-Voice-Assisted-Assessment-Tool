@@ -11,43 +11,30 @@
       <label for="cur-class">Class</label>
       <select id="cur-class" class="select" required>
         <option value="">Select a class...</option>
-        <option value="c1">Grade 4B</option>
-        <option value="c2">Grade 5A</option>
-        <option value="c3">Grade 4C</option>
       </select>
     </div>
 
-    <!-- Subject (filtered by class) -->
+    <!-- Subject -->
     <div class="form-group">
       <label for="cur-subject">Subject</label>
-      <select id="cur-subject" class="select" required>
-        <option value="">Select a subject...</option>
-        <option value="sub1">English Language</option>
-        <option value="sub2">Kiswahili</option>
-        <option value="sub3">Mathematics</option>
+      <select id="cur-subject" class="select" required disabled>
+        <option value="">Select a class first...</option>
       </select>
     </div>
 
     <!-- Strand -->
     <div class="form-group">
       <label for="cur-strand">Strand</label>
-      <select id="cur-strand" class="select" required>
-        <option value="">Select a strand...</option>
-        <option value="listening">Listening &amp; Speaking</option>
-        <option value="reading">Reading</option>
-        <option value="grammar">Grammar</option>
-        <option value="writing">Writing</option>
+      <select id="cur-strand" class="select" required disabled>
+        <option value="">Select a subject first...</option>
       </select>
     </div>
 
     <!-- Sub-strand -->
     <div class="form-group">
       <label for="cur-substrand">Sub-strand</label>
-      <select id="cur-substrand" class="select" required>
-        <option value="">Select a sub-strand...</option>
-        <option value="comprehension">Comprehension</option>
-        <option value="oral-presentation">Oral Presentation</option>
-        <option value="pronunciation">Pronunciation</option>
+      <select id="cur-substrand" class="select" required disabled>
+        <option value="">Select a strand first...</option>
       </select>
     </div>
 
@@ -55,18 +42,18 @@
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
       <div class="form-group">
         <label for="cur-topic">Topic</label>
-        <input type="text" id="cur-topic" class="input" placeholder="Storytelling" value="Storytelling">
+        <input type="text" id="cur-topic" class="input" placeholder="e.g. Storytelling">
       </div>
       <div class="form-group">
         <label for="cur-date">Date</label>
-        <input type="date" id="cur-date" class="input" value="2026-05-26">
+        <input type="date" id="cur-date" class="input">
       </div>
     </div>
 
     <!-- Custom Instructions -->
     <div class="form-group">
       <label for="cur-instructions">Custom Instructions</label>
-      <textarea id="cur-instructions" class="input" placeholder="Any special instructions for the assessment..." rows="3">Focus on pronunciation and fluency. Ask students to retell the main events in order.</textarea>
+      <textarea id="cur-instructions" class="input" placeholder="Any special instructions for the assessment..." rows="3"></textarea>
     </div>
 
     <!-- Submit -->
@@ -81,26 +68,201 @@
     var form = document.getElementById('curation-form');
     if (!form) return;
 
+    var classSelect = document.getElementById('cur-class');
+    var subjectSelect = document.getElementById('cur-subject');
+    var strandSelect = document.getElementById('cur-strand');
+    var subStrandSelect = document.getElementById('cur-substrand');
+    var topicInput = document.getElementById('cur-topic');
+    var dateInput = document.getElementById('cur-date');
+    var instructionsInput = document.getElementById('cur-instructions');
+
+    // set default date to today
+    if (dateInput && !dateInput.value) {
+      var today = new Date();
+      dateInput.value = today.toISOString().split('T')[0];
+    }
+
+    // rubric tree loaded from API — kept here for filtering
+    var rubricData = [];
+
+    // -- load classes from API
+
+    function loadClasses() {
+      API.get('/api/teacher/classes')
+        .then(function(classes) {
+          classSelect.innerHTML = '<option value="">Select a class...</option>';
+          classes.forEach(function(c) {
+            var opt = document.createElement('option');
+            opt.value = c.classId;
+            opt.textContent = c.displayName;
+            classSelect.appendChild(opt);
+          });
+          // enable subject picker once classes are loaded
+          classSelect.addEventListener('change', onClassChange);
+          if (classes.length > 0) {
+            // auto-select first class and trigger subject load
+            classSelect.value = classes[0].classId;
+            onClassChange();
+          }
+        })
+        .catch(function(err) {
+          console.error('Failed to load classes:', err);
+          showToast('Could not load classes. Check your connection.', 'error');
+        });
+    }
+
+    function onClassChange() {
+      if (!classSelect.value) {
+        subjectSelect.innerHTML = '<option value="">Select a class first...</option>';
+        subjectSelect.disabled = true;
+        clearStrands();
+        return;
+      }
+      subjectSelect.disabled = false;
+      loadRubrics();
+    }
+
+    // -- load rubrics from API
+
+    function loadRubrics() {
+      // get grade level from the selected class display name (e.g. "Grade 4B")
+      var clsText = classSelect.options[classSelect.selectedIndex].textContent;
+      var gradeMatch = clsText.match(/Grade\s+(\d+)/i);
+      var gradeLevel = gradeMatch ? parseInt(gradeMatch[1]) : 4;
+
+      subjectSelect.innerHTML = '<option value="">Loading...</option>';
+      subjectSelect.disabled = true;
+      clearStrands();
+
+      API.get('/api/teacher/rubrics?gradeLevel=' + gradeLevel)
+        .then(function(data) {
+          rubricData = data;
+          populateSubjects();
+        })
+        .catch(function(err) {
+          console.error('Failed to load rubrics:', err);
+          subjectSelect.innerHTML = '<option value="">Failed to load subjects</option>';
+          showToast('Could not load subjects. Please try again.', 'error');
+        });
+    }
+
+    function populateSubjects() {
+      subjectSelect.innerHTML = '<option value="">Select a subject...</option>';
+      subjectSelect.disabled = false;
+
+      rubricData.forEach(function(sub, idx) {
+        var opt = document.createElement('option');
+        opt.value = idx; // index into rubricData array
+        opt.textContent = sub.subjectName;
+        subjectSelect.appendChild(opt);
+      });
+
+      // auto-select first subject
+      if (rubricData.length > 0) {
+        subjectSelect.value = '0';
+        onSubjectChange();
+      }
+
+      subjectSelect.addEventListener('change', onSubjectChange);
+    }
+
+    function onSubjectChange() {
+      var idx = parseInt(subjectSelect.value);
+      if (isNaN(idx) || !rubricData[idx]) {
+        strandSelect.innerHTML = '<option value="">Select a subject first...</option>';
+        strandSelect.disabled = true;
+        clearSubStrands();
+        return;
+      }
+
+      var strands = rubricData[idx].strands;
+      strandSelect.innerHTML = '<option value="">Select a strand...</option>';
+      strandSelect.disabled = false;
+
+      strands.forEach(function(s, si) {
+        var opt = document.createElement('option');
+        opt.value = si;
+        opt.textContent = s.strand;
+        strandSelect.appendChild(opt);
+      });
+
+      strandSelect.addEventListener('change', onStrandChange);
+      clearSubStrands();
+    }
+
+    function onStrandChange() {
+      var subIdx = parseInt(subjectSelect.value);
+      var strIdx = parseInt(strandSelect.value);
+
+      if (isNaN(subIdx) || isNaN(strIdx) || !rubricData[subIdx]) {
+        clearSubStrands();
+        return;
+      }
+
+      var subStrands = rubricData[subIdx].strands[strIdx].subStrands;
+      subStrandSelect.innerHTML = '<option value="">Select a sub-strand...</option>';
+      subStrandSelect.disabled = false;
+
+      subStrands.forEach(function(ss, ssi) {
+        var opt = document.createElement('option');
+        opt.value = ssi;
+        opt.textContent = ss.subStrand;
+        opt.dataset.rubricId = ss.rubricId;
+        subStrandSelect.appendChild(opt);
+      });
+    }
+
+    function clearStrands() {
+      strandSelect.innerHTML = '<option value="">Select a subject first...</option>';
+      strandSelect.disabled = true;
+      clearSubStrands();
+    }
+
+    function clearSubStrands() {
+      subStrandSelect.innerHTML = '<option value="">Select a strand first...</option>';
+      subStrandSelect.disabled = true;
+    }
+
+    // -- form submit
+
     form.addEventListener('submit', function(e) {
       e.preventDefault();
 
-      // quick validation — all selects required
       var selects = form.querySelectorAll('select[required]');
       var valid = true;
       selects.forEach(function(sel) {
         if (!sel.value) valid = false;
       });
 
-      if (!valid) {
+      if (!valid || !topicInput.value.trim()) {
         showToast('Please fill in all required fields.', 'error');
         return;
       }
 
-      // success — navigate to recording page
+      // grab the selected rubricId from the sub-strand option
+      var selectedOpt = subStrandSelect.options[subStrandSelect.selectedIndex];
+      var rubricId = selectedOpt ? selectedOpt.dataset.rubricId : null;
+
+      var subIdx = parseInt(subjectSelect.value);
+      var subjectId = rubricData[subIdx] ? rubricData[subIdx].subjectId : null;
+
+      var params = {
+        classId: classSelect.value,
+        subjectId: subjectId,
+        rubricId: rubricId,
+        topic: topicInput.value.trim(),
+        date: dateInput.value,
+        customInstructions: instructionsInput.value.trim()
+      };
+      console.log('curation params:', params);
+
       showToast('Assessment parameters saved.', 'success');
       setTimeout(function() {
         Router.navigate('teacher/record');
       }, 500);
     });
+
+    // kick off
+    loadClasses();
   })();
 </script>
