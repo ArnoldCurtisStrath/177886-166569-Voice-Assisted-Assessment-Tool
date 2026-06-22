@@ -225,7 +225,7 @@ public class TeacherController {
         }
 
         var savedPath = uploadDir.resolve(audioId + ext);
-        Files.copy(file.getInputStream(), savedPath);
+        Files.copy(file.getInputStream(), savedPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
         assessment.setFileReference(savedPath.toString());
         assessment.setStatus("UPLOADED");
