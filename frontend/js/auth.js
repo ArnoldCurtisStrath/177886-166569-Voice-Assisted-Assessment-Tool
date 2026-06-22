@@ -1,4 +1,4 @@
-const AuthStore = {
+var AuthStore = {
   // current state
   user: null,
   token: null,
@@ -6,14 +6,13 @@ const AuthStore = {
 
   /**
    * Try to restore a previous session from localStorage.
-   * Call this once when the app loads.
    */
   init() {
-    const saved = localStorage.getItem('voiceassess_auth');
+    var saved = localStorage.getItem('voiceassess_auth');
     if (!saved) return;
 
     try {
-      const parsed = JSON.parse(saved);
+      var parsed = JSON.parse(saved);
       if (parsed.user && parsed.token) {
         this.user = parsed.user;
         this.token = parsed.token;
@@ -26,42 +25,30 @@ const AuthStore = {
   },
 
   /**
-   * Authenticate against mock user list.
-   * In production, this would POST to /api/auth/login.
+   * Authenticate against the backend API.
    */
   login(email, password) {
-    const users = window.mockData ? window.mockData.users : [];
-    const found = users.find(u =>
-      u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
+    return API.post('/api/auth/login', {
+      email: email,
+      password: password
+    }).then(function(data) {
+      // data = { token, userId, fullName, email, role }
+      var user = {
+        id: data.userId,
+        fullName: data.fullName,
+        email: data.email,
+        role: data.role
+      };
 
-    if (!found) {
-      return Promise.reject(new Error('Invalid email or password.'));
-    }
+      AuthStore.user = user;
+      AuthStore.token = data.token;
+      AuthStore.isLoggedIn = true;
 
-    if (!found.isActive) {
-      return Promise.reject(new Error('This account has been deactivated. Contact your school administrator.'));
-    }
+      // persist to localStorage
+      localStorage.setItem('voiceassess_auth', JSON.stringify({ user: user, token: data.token }));
 
-    // build the auth payload
-    const user = {
-      id: found.id,
-      fullName: found.fullName,
-      email: found.email,
-      role: found.role
-    };
-
-    // fake token for development
-    const token = 'dev-token-' + found.role.toLowerCase() + '-' + Date.now();
-
-    this.user = user;
-    this.token = token;
-    this.isLoggedIn = true;
-
-    // persist to localStorage
-    localStorage.setItem('voiceassess_auth', JSON.stringify({ user, token }));
-
-    return Promise.resolve(user);
+      return user;
+    });
   },
 
   /**
@@ -84,13 +71,12 @@ const AuthStore = {
 
   /**
    * Check if the current user is authorized for a given role.
-   * Admin can access everything. Other roles are restricted.
+   * Admin can access everything.
    */
   isAuthorized(requiredRole) {
     if (!this.isLoggedIn || !this.user) return false;
     // admin can see everything
     if (this.user.role === 'ADMIN') return true;
-    // otherwise, must match the required role
     return this.user.role === requiredRole;
   },
 
@@ -99,7 +85,7 @@ const AuthStore = {
    */
   getDashboardRoute() {
     if (!this.user) return '#login';
-    const map = {
+    var map = {
       'ADMIN': '#admin',
       'TEACHER': '#teacher',
       'PARENT': '#parent',

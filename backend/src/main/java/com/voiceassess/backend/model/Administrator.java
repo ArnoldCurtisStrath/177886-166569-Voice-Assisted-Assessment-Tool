@@ -1,42 +1,57 @@
 package com.voiceassess.backend.model;
 
 import jakarta.persistence.*;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.UUID;
 
 /**
- * School admin — the super-user who sets up the workspace.
- * Owns a set of Capabilities for fine-grained RBAC.
+ * Admin profile — separate table linked to users via user_id FK.
+ * Capabilities stored as JSONB string (lazy, no parsing yet).
  */
 @Entity
-@DiscriminatorValue("ADMINISTRATOR")
-public class Administrator extends User {
+@Table(name = "administrators")
+public class Administrator {
 
-    @Column(name = "registration_number")
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "admin_id")
+    private UUID adminId;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    private User user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "school_id", nullable = false)
+    private School school;
+
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
+
+    @Column(name = "registration_number", nullable = false, unique = true)
     private String registrationNumber;
 
-    @Column(name = "contact_email")
+    @Column(name = "contact_email", nullable = false)
     private String contactEmail;
 
     @Column(name = "contact_phone")
     private String contactPhone;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "school_id")
-    private School school;
+    @Column(name = "capability_array", columnDefinition = "jsonb", nullable = false)
+    private String capabilityArray = "[]";
 
-    // RBAC: admin holds zero or more capability flags
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "administrator_capabilities",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "capability_id")
-    )
-    private Set<Capability> capabilities = new HashSet<>();
+    public Administrator() {}
 
-    public Administrator() {
-        super();
-    }
+    public UUID getAdminId() { return adminId; }
+    public void setAdminId(UUID adminId) { this.adminId = adminId; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
+    public School getSchool() { return school; }
+    public void setSchool(School school) { this.school = school; }
+
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
 
     public String getRegistrationNumber() { return registrationNumber; }
     public void setRegistrationNumber(String registrationNumber) { this.registrationNumber = registrationNumber; }
@@ -47,9 +62,6 @@ public class Administrator extends User {
     public String getContactPhone() { return contactPhone; }
     public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
 
-    public School getSchool() { return school; }
-    public void setSchool(School school) { this.school = school; }
-
-    public Set<Capability> getCapabilities() { return capabilities; }
-    public void setCapabilities(Set<Capability> capabilities) { this.capabilities = capabilities; }
+    public String getCapabilityArray() { return capabilityArray; }
+    public void setCapabilityArray(String capabilityArray) { this.capabilityArray = capabilityArray; }
 }

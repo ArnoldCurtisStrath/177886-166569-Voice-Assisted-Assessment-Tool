@@ -2,7 +2,7 @@
 <div class="animate-fade-in">
   <div class="section-header">
     <span class="section-title">User Management</span>
-    <span class="badge badge-primary" id="user-count-badge">10</span>
+    <span class="badge badge-primary" id="user-count-badge">0</span>
   </div>
 
   <!-- Tabs -->
@@ -21,14 +21,20 @@
 
   <!-- User List -->
   <div class="list-stack" id="user-list">
-    <!-- Populated by JS from mock data -->
+    <!-- Populated by JS from API -->
   </div>
 
-  <!-- Empty state (hidden by default) -->
+  <!-- Empty state -->
   <div class="empty-state" id="user-empty" style="display: none;">
     <div class="empty-state-icon">#</div>
     <h4>No users found</h4>
     <p>Try adjusting your search or filters.</p>
+  </div>
+
+  <!-- Loading state -->
+  <div class="empty-state" id="user-loading">
+    <div class="empty-state-icon">~</div>
+    <h4>Loading users...</h4>
   </div>
 </div>
 
@@ -37,21 +43,19 @@
 
 <script>
   (function() {
-    var users = window.mockData ? window.mockData.users : [];
+    var users = []; // loaded from API
     var activeFilter = 'all';
     var searchQuery = '';
 
-    // format role for display
     function formatRole(role) {
       return role.charAt(0) + role.slice(1).toLowerCase();
     }
 
-    // get initials from name
     function getInitials(name) {
+      if (!name) return '??';
       return name.split(' ').map(function(n) { return n.charAt(0); }).join('').slice(0, 2).toUpperCase();
     }
 
-    // badge variant per role
     function roleBadgeClass(role) {
       if (role === 'ADMIN') return 'badge-primary';
       if (role === 'TEACHER') return 'badge-success';
@@ -59,21 +63,24 @@
       return 'badge-neutral';
     }
 
-    // render user list based on filter + search
     function renderUsers() {
       var filtered = users.filter(function(u) {
         if (activeFilter !== 'all' && u.role !== activeFilter) return false;
         if (searchQuery) {
           var q = searchQuery.toLowerCase();
-          return u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+          var name = (u.fullName || '').toLowerCase();
+          var email = (u.email || '').toLowerCase();
+          return name.includes(q) || email.includes(q);
         }
         return true;
       });
 
       var listEl = document.getElementById('user-list');
       var emptyEl = document.getElementById('user-empty');
+      var loadingEl = document.getElementById('user-loading');
       var countBadge = document.getElementById('user-count-badge');
 
+      if (loadingEl) loadingEl.style.display = 'none';
       if (countBadge) countBadge.textContent = filtered.length;
 
       if (filtered.length === 0) {
@@ -86,44 +93,60 @@
 
       if (listEl) {
         listEl.innerHTML = filtered.map(function(u) {
-          return `
-            <div class="list-item clickable" data-user-id="${u.id}">
-              <div class="avatar avatar-md">${getInitials(u.fullName)}</div>
-              <div class="list-item-body">
-                <div class="list-item-title">${u.fullName}</div>
-                <div class="list-item-subtitle">${u.email}</div>
-              </div>
-              <div class="list-item-trailing">
-                <span class="status-dot ${u.isActive ? 'active' : 'inactive'}" title="${u.isActive ? 'Active' : 'Inactive'}"></span>
-                <span class="badge ${roleBadgeClass(u.role)}">${formatRole(u.role)}</span>
-              </div>
-            </div>
-          `;
+          return (
+            '<div class="list-item clickable" data-user-id="' + u.userId + '">' +
+              '<div class="avatar avatar-md">' + getInitials(u.fullName) + '</div>' +
+              '<div class="list-item-body">' +
+                '<div class="list-item-title">' + (u.fullName || 'Unknown') + '</div>' +
+                '<div class="list-item-subtitle">' + u.email + '</div>' +
+              '</div>' +
+              '<div class="list-item-trailing">' +
+                '<span class="status-dot ' + (u.isActive ? 'active' : 'inactive') + '" title="' + (u.isActive ? 'Active' : 'Inactive') + '"></span>' +
+                '<span class="badge ' + roleBadgeClass(u.role) + '">' + formatRole(u.role) + '</span>' +
+              '</div>' +
+            '</div>'
+          );
         }).join('');
 
-        // click handler for each user row
+        // click handler for detail
         listEl.querySelectorAll('.list-item').forEach(function(row) {
           row.addEventListener('click', function() {
-            var userId = row.getAttribute('data-user-id');
-            var user = users.find(function(u) { return u.id === userId; });
-            if (!user) return;
+            var uid = row.getAttribute('data-user-id');
+            var u = users.find(function(x) { return x.userId === uid; });
+            if (!u) return;
 
-            // show a detail modal
             showModal(
-              user.fullName,
+              u.fullName || 'User',
               '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
-                '<div class="form-group"><label>Full Name</label><div class="text-sm">' + user.fullName + '</div></div>' +
-                '<div class="form-group"><label>Email</label><div class="text-sm">' + user.email + '</div></div>' +
-                '<div class="form-group"><label>Role</label><span class="badge ' + roleBadgeClass(user.role) + '">' + formatRole(user.role) + '</span></div>' +
-                '<div class="form-group"><label>Status</label><span class="status-dot ' + (user.isActive ? 'active' : 'inactive') + '"></span> ' + (user.isActive ? 'Active' : 'Inactive') + '</div>' +
+                '<div class="form-group"><label>Full Name</label><div class="text-sm">' + (u.fullName || 'N/A') + '</div></div>' +
+                '<div class="form-group"><label>Email</label><div class="text-sm">' + u.email + '</div></div>' +
+                '<div class="form-group"><label>Role</label><span class="badge ' + roleBadgeClass(u.role) + '">' + formatRole(u.role) + '</span></div>' +
+                '<div class="form-group"><label>Status</label><span class="status-dot ' + (u.isActive ? 'active' : 'inactive') + '"></span> ' + (u.isActive ? 'Active' : 'Inactive') + '</div>' +
               '</div>',
-              '<button class="btn btn-secondary btn-sm">Edit</button>' +
-              '<button class="btn btn-danger btn-sm">' + (user.isActive ? 'Deactivate' : 'Reactivate') + '</button>' +
               '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>'
             );
           });
         });
       }
+    }
+
+    // load users from the backend
+    function loadUsers() {
+      var loadingEl = document.getElementById('user-loading');
+      var emptyEl = document.getElementById('user-empty');
+      if (loadingEl) loadingEl.style.display = '';
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      API.get('/api/admin/users')
+        .then(function(data) {
+          users = data || [];
+          renderUsers();
+        })
+        .catch(function(err) {
+          users = [];
+          renderUsers();
+          showToast('Failed to load users: ' + err.message, 'error');
+        });
     }
 
     // tab filter
@@ -145,15 +168,118 @@
       });
     }
 
-    // FAB
+    // FAB — open create-user form
     var fab = document.getElementById('fab-create-user');
     if (fab) {
       fab.addEventListener('click', function() {
-        showToast('User creation form coming soon.', 'info');
+        openCreateUserModal();
       });
     }
 
-    // initial render
-    renderUsers();
+    function openCreateUserModal() {
+      var roleOptions = ['TEACHER', 'STUDENT', 'PARENT', 'ADMIN'];
+
+      var bodyHTML = '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
+        '<div class="form-group">' +
+          '<label>Role</label>' +
+          '<select id="create-role" class="input">' +
+            roleOptions.map(function(r) { return '<option value="' + r + '">' + formatRole(r) + '</option>'; }).join('') +
+          '</select>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>Full Name</label>' +
+          '<input type="text" id="create-fullname" class="input" placeholder="Full name" required>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>Email</label>' +
+          '<input type="email" id="create-email" class="input" placeholder="Email address" required>' +
+        '</div>' +
+        '<div class="form-group">' +
+          '<label>Password</label>' +
+          '<input type="password" id="create-password" class="input" placeholder="Min 6 characters" required>' +
+        '</div>' +
+        '<div class="form-group" id="create-phone-group" style="display:none;">' +
+          '<label>Phone Number</label>' +
+          '<input type="text" id="create-phone" class="input" placeholder="+254...">' +
+        '</div>' +
+        '<div class="form-group" id="create-dob-group" style="display:none;">' +
+          '<label>Date of Birth</label>' +
+          '<input type="date" id="create-dob" class="input">' +
+        '</div>' +
+      '</div>';
+
+      var footerHTML =
+        '<button class="btn btn-secondary btn-sm modal-close-btn">Cancel</button>' +
+        '<button class="btn btn-primary btn-sm" id="create-submit">Create User</button>';
+
+      var modal = showModal('Create New User', bodyHTML, footerHTML);
+
+      // show/hide role-specific fields
+      var roleSelect = document.getElementById('create-role');
+      var phoneGroup = document.getElementById('create-phone-group');
+      var dobGroup = document.getElementById('create-dob-group');
+
+      function updateFields() {
+        var role = roleSelect.value;
+        phoneGroup.style.display = (role === 'PARENT') ? '' : 'none';
+        dobGroup.style.display = (role === 'STUDENT') ? '' : 'none';
+      }
+
+      roleSelect.addEventListener('change', updateFields);
+      updateFields();
+
+      // submit handler
+      var submitBtn = document.getElementById('create-submit');
+      submitBtn.addEventListener('click', function() {
+        var role = roleSelect.value;
+        var fullName = document.getElementById('create-fullname').value.trim();
+        var email = document.getElementById('create-email').value.trim();
+        var password = document.getElementById('create-password').value;
+
+        if (!fullName || !email || !password) {
+          showToast('Please fill in all required fields.', 'error');
+          return;
+        }
+        if (password.length < 6) {
+          showToast('Password must be at least 6 characters.', 'error');
+          return;
+        }
+
+        var payload = {
+          email: email,
+          password: password,
+          role: role,
+          fullName: fullName
+        };
+
+        if (role === 'PARENT') {
+          payload.phoneNumber = document.getElementById('create-phone').value.trim();
+        }
+        if (role === 'STUDENT') {
+          payload.dateOfBirth = document.getElementById('create-dob').value;
+        }
+
+        // use the seed school ID for now
+        payload.schoolId = 'a1000000-0000-0000-0000-000000000001';
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating...';
+
+        API.post('/api/admin/users', payload)
+          .then(function() {
+            if (modal) modal.remove();
+            showToast('User created successfully.', 'success');
+            loadUsers();
+          })
+          .catch(function(err) {
+            showToast('Failed to create user: ' + err.message, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create User';
+          });
+      });
+    }
+
+    // initial load
+    loadUsers();
   })();
 </script>

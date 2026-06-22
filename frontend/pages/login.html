@@ -5,19 +5,11 @@
     <p class="text-sm text-secondary">Voice-Assisted CBC Assessment</p>
   </div>
 
-  <!-- Role Selector -->
-  <div style="display: flex; justify-content: center; gap: var(--space-1); margin-bottom: var(--space-6);">
-    <button class="tab tab-active" data-role="TEACHER" id="role-teacher">Teacher</button>
-    <button class="tab" data-role="ADMIN" id="role-admin">Admin</button>
-    <button class="tab" data-role="PARENT" id="role-parent">Parent</button>
-    <button class="tab" data-role="STUDENT" id="role-student">Student</button>
-  </div>
-
   <!-- Login Form -->
   <form id="login-form" style="display: flex; flex-direction: column; gap: var(--space-4);">
     <div class="form-group">
       <label for="login-email">Email address</label>
-      <input type="email" id="login-email" class="input" placeholder="erika.lusiola@moiprimary.ac.ke" autocomplete="email" required>
+      <input type="email" id="login-email" class="input" placeholder="admin@strathmore.ac.ke" autocomplete="email" required>
     </div>
 
     <div class="form-group">
@@ -31,26 +23,13 @@
   </form>
 
   <p style="text-align: center; margin-top: var(--space-4);">
-    <a href="#" class="text-sm text-muted">Forgot password?</a>
+    <span class="text-xs text-muted">Seed admin: admin@strathmore.ac.ke / password123</span>
   </p>
 </div>
 
 <script>
   // Login page logic
   (function() {
-    var selectedRole = 'TEACHER';
-    var tabs = document.querySelectorAll('[data-role]');
-
-    // Role tab switching
-    tabs.forEach(function(tab) {
-      tab.addEventListener('click', function() {
-        tabs.forEach(function(t) { t.classList.remove('tab-active'); });
-        tab.classList.add('tab-active');
-        selectedRole = tab.getAttribute('data-role');
-      });
-    });
-
-    // Form submission
     var form = document.getElementById('login-form');
     if (form) {
       form.addEventListener('submit', function(e) {

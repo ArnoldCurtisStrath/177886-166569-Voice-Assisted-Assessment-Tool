@@ -17,7 +17,7 @@ public class TeacherClassAssignment {
     @Column(name = "assignment_id")
     private UUID assignmentId;
 
-    @Column(name = "assigned_date", nullable = false)
+    @Column(name = "assigned_at", nullable = false)
     private LocalDateTime assignedDate = LocalDateTime.now();
 
     @ManyToOne(fetch = FetchType.LAZY)

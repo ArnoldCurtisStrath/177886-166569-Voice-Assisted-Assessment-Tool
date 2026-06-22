@@ -2,51 +2,49 @@ package com.voiceassess.backend.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.UUID;
 
 /**
- * Student — the learner being assessed.
- * Has date of birth and age (denormalized for quick access).
- * Linked to one parent/guardian.
+ * Student profile — separate table linked to users via user_id FK.
+ * Parent relationship is M:N via student_parents junction table.
  */
 @Entity
-@DiscriminatorValue("STUDENT")
-public class Student extends User {
+@Table(name = "students")
+public class Student {
 
-    @Column(name = "date_of_birth")
-    private LocalDate dateOfBirth;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "student_id")
+    private UUID studentId;
 
-    /** Denormalized from dateOfBirth — avoids joins on dashboard queries */
-    @Column(name = "age")
-    private Integer age;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    private Parent parent;
+    @JoinColumn(name = "school_id", nullable = false)
+    private School school;
 
-    // M:N — a student can be enrolled in multiple classrooms
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "student_class_enrollments",
-        joinColumns = @JoinColumn(name = "student_id"),
-        inverseJoinColumns = @JoinColumn(name = "class_id")
-    )
-    private Set<ClassRoom> enrolledClasses = new HashSet<>();
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
 
-    public Student() {
-        super();
-    }
+    @Column(name = "date_of_birth", nullable = false)
+    private LocalDate dateOfBirth;
+
+    public Student() {}
+
+    public UUID getStudentId() { return studentId; }
+    public void setStudentId(UUID studentId) { this.studentId = studentId; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
+    public School getSchool() { return school; }
+    public void setSchool(School school) { this.school = school; }
+
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
 
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
-
-    public Integer getAge() { return age; }
-    public void setAge(Integer age) { this.age = age; }
-
-    public Parent getParent() { return parent; }
-    public void setParent(Parent parent) { this.parent = parent; }
-
-    public Set<ClassRoom> getEnrolledClasses() { return enrolledClasses; }
-    public void setEnrolledClasses(Set<ClassRoom> enrolledClasses) { this.enrolledClasses = enrolledClasses; }
 }

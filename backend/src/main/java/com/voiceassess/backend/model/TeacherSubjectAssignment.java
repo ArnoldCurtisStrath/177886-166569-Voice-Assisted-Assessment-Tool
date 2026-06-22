@@ -18,7 +18,7 @@ public class TeacherSubjectAssignment {
     private UUID assignmentId;
 
     /** When this teacher-subject assignment was created — used for term scheduling */
-    @Column(name = "assigned_date", nullable = false)
+    @Column(name = "assigned_at", nullable = false)
     private LocalDateTime assignedDate = LocalDateTime.now();
 
     @ManyToOne(fetch = FetchType.LAZY)

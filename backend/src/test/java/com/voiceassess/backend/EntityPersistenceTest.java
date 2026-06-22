@@ -8,16 +8,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Quick smoke test to confirm the entity model persists correctly.
- * Saves a School + Admin and verifies they come back out.
+ * Uses the separate-table approach (User + profile tables, no inheritance).
  */
 @SpringBootTest
-@Transactional // rolls back after each test so the DB stays clean
+@Transactional
 class EntityPersistenceTest {
 
     @Autowired
@@ -26,71 +25,97 @@ class EntityPersistenceTest {
     @Autowired
     private UserRepository userRepo;
 
+    @Autowired
+    private AdministratorRepository adminRepo;
+
+    @Autowired
+    private TeacherRepository teacherRepo;
+
+    @Autowired
+    private ParentRepository parentRepo;
+
+    @Autowired
+    private StudentRepository studentRepo;
+
     @Test
     void shouldSaveAndRetrieveSchoolAndAdministrator() {
-        // Arrange: create a school
+        // create a school
         var school = new School("KNEC-00123", "Nairobi Primary School");
         school = schoolRepo.save(school);
 
-        // Act: fetch it back
+        // fetch it back
         var found = schoolRepo.findById(school.getSchoolId());
         assertTrue(found.isPresent());
         assertEquals("Nairobi Primary School", found.get().getSchoolName());
 
-        // Arrange: create an admin linked to the school
+        // create a user (auth row)
+        var user = new User("jane@school.edu", "hashed-password-here", User.Role.ADMIN);
+        user = userRepo.save(user);
+
+        // create the admin profile linked to the user
         var admin = new Administrator();
-        admin.setFullName("Jane Admin");
-        admin.setEmail("jane@school.edu");
-        admin.setPasswordHash("hashed-password-here");
+        admin.setUser(user);
         admin.setSchool(school);
+        admin.setFullName("Jane Admin");
         admin.setRegistrationNumber("REG-001");
         admin.setContactEmail("admin@school.edu");
         admin.setContactPhone("+254712345678");
-        admin = userRepo.save(admin);
+        admin.setCapabilityArray("[]");
+        admin = adminRepo.save(admin);
 
-        // Act: fetch the admin back by email
-        Optional<User> userOpt = userRepo.findByEmail("jane@school.edu");
+        // fetch user back by email
+        var userOpt = userRepo.findByEmail("jane@school.edu");
         assertTrue(userOpt.isPresent());
-        assertTrue(userOpt.get() instanceof Administrator);
+        assertEquals(User.Role.ADMIN, userOpt.get().getRole());
 
-        var fetchedAdmin = (Administrator) userOpt.get();
-        assertEquals("Jane Admin", fetchedAdmin.getFullName());
-        assertEquals("REG-001", fetchedAdmin.getRegistrationNumber());
-        assertNotNull(fetchedAdmin.getSchool());
-        assertEquals("KNEC-00123", fetchedAdmin.getSchool().getKnecCode());
+        // fetch admin by user
+        var adminOpt = adminRepo.findByUser(user);
+        assertTrue(adminOpt.isPresent());
+        assertEquals("Jane Admin", adminOpt.get().getFullName());
+        assertEquals("REG-001", adminOpt.get().getRegistrationNumber());
+        assertNotNull(adminOpt.get().getSchool());
+        assertEquals("KNEC-00123", adminOpt.get().getSchool().getKnecCode());
     }
 
     @Test
-    void shouldSaveTeacherAndStudent() {
-        // Create school first
+    void shouldSaveTeacherParentAndStudent() {
         var school = schoolRepo.save(new School("KNEC-00456", "Mombasa Junior School"));
 
-        // Create a parent
+        // parent
+        var parentUser = new User("mary@guardian.com", "hashed", User.Role.PARENT);
+        parentUser = userRepo.save(parentUser);
+
         var parent = new Parent();
+        parent.setUser(parentUser);
         parent.setFullName("Mary Parent");
-        parent.setEmail("mary@guardian.com");
-        parent.setPasswordHash("hashed");
         parent.setPhoneNumber("+254723456789");
-        parent = userRepo.save(parent);
+        parentRepo.save(parent);
 
-        // Create a teacher
+        // teacher
+        var teacherUser = new User("john@school.edu", "hashed", User.Role.TEACHER);
+        teacherUser = userRepo.save(teacherUser);
+
         var teacher = new Teacher();
+        teacher.setUser(teacherUser);
+        teacher.setSchool(school);
         teacher.setFullName("John Teacher");
-        teacher.setEmail("john@school.edu");
-        teacher.setPasswordHash("hashed");
-        teacher = userRepo.save(teacher);
+        teacherRepo.save(teacher);
 
-        // Create a student linked to the parent
+        // student
+        var studentUser = new User("alice@school.edu", "hashed", User.Role.STUDENT);
+        studentUser = userRepo.save(studentUser);
+
         var student = new Student();
+        student.setUser(studentUser);
+        student.setSchool(school);
         student.setFullName("Alice Student");
-        student.setEmail("alice@school.edu");
-        student.setPasswordHash("hashed");
         student.setDateOfBirth(LocalDate.of(2015, 6, 15));
-        student.setAge(11);
-        student.setParent(parent);
-        student = userRepo.save(student);
+        studentRepo.save(student);
 
-        // Verify all three saved
+        // verify counts
         assertEquals(3, userRepo.findByIsActiveTrue().size());
+        assertEquals(1, parentRepo.count());
+        assertEquals(1, teacherRepo.count());
+        assertEquals(1, studentRepo.count());
     }
 }

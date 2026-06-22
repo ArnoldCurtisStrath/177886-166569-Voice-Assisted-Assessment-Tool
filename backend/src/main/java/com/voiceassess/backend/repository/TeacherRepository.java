@@ -1,15 +1,13 @@
 package com.voiceassess.backend.repository;
 
+import com.voiceassess.backend.model.Teacher;
 import com.voiceassess.backend.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, UUID> {
-    Optional<User> findByEmail(String email);
-    List<User> findByIsActiveTrue();
-    List<User> findByIsActiveFalse();
+public interface TeacherRepository extends JpaRepository<Teacher, UUID> {
+    Optional<Teacher> findByUser(User user);
 }

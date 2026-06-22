@@ -89,17 +89,12 @@ const Router = {
       const html = await this._fetchTemplate(route.file);
       container.innerHTML = html;
 
-      // innerHTML doesn't execute <script> tags — we need to do it manually
-      // find all scripts in the loaded content and re-create them so they run
-      const scripts = container.querySelectorAll('script');
-      scripts.forEach(function(oldScript) {
-        var newScript = document.createElement('script');
-        // copy over attributes (type, src, etc.)
-        Array.from(oldScript.attributes).forEach(function(attr) {
-          newScript.setAttribute(attr.name, attr.value);
-        });
-        newScript.textContent = oldScript.textContent;
-        oldScript.parentNode.replaceChild(newScript, oldScript);
+      // innerHTML doesn't execute <script> tags — eval each one manually
+      var scripts = container.querySelectorAll('script');
+      scripts.forEach(function(s) {
+        if (s.textContent) {
+          try { eval(s.textContent); } catch (e) { console.error('Page script error:', e); }
+        }
       });
 
       // fade in the new content

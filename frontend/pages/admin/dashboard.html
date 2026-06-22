@@ -2,25 +2,25 @@
 <div class="animate-fade-in">
   <!-- Welcome -->
   <h2 style="margin-bottom: var(--space-1);" id="admin-greeting">Hello, Administrator</h2>
-  <p class="text-sm text-secondary" style="margin-bottom: var(--space-6);">Moi Primary School — Nairobi</p>
+  <p class="text-sm text-secondary" style="margin-bottom: var(--space-6);" id="admin-school">School</p>
 
   <!-- Stats Row -->
   <div class="stat-row" style="margin-bottom: var(--space-6);">
     <div class="stat-card accent-bg">
-      <div class="stat-value" id="stat-teachers">2</div>
+      <div class="stat-value" id="stat-teachers">-</div>
       <div class="stat-label">Teachers</div>
     </div>
     <div class="stat-card accent-bg">
-      <div class="stat-value" id="stat-students">5</div>
+      <div class="stat-value" id="stat-students">-</div>
       <div class="stat-label">Students</div>
     </div>
     <div class="stat-card accent-bg">
-      <div class="stat-value" id="stat-classes">4</div>
-      <div class="stat-label">Classes</div>
+      <div class="stat-value" id="stat-parents">-</div>
+      <div class="stat-label">Parents</div>
     </div>
     <div class="stat-card accent-bg">
-      <div class="stat-value" id="stat-assessments">12</div>
-      <div class="stat-label">Assessments</div>
+      <div class="stat-value" id="stat-admins">-</div>
+      <div class="stat-label">Admins</div>
     </div>
   </div>
 
@@ -52,7 +52,7 @@
     <a href="#admin/terms" class="card card-hover">
       <div class="quick-icon" style="color: var(--color-success);">T</div>
       <div class="list-item-title">Set Active Term</div>
-      <div class="text-xs text-muted">Current: Term 2, 2026</div>
+      <div class="text-xs text-muted">Current: Term 1, 2026</div>
     </a>
     <a href="#admin/compliance" class="card card-hover">
       <div class="quick-icon" style="color: var(--color-success);">%</div>
@@ -61,7 +61,7 @@
     </a>
   </div>
 
-  <!-- Recent Activity -->
+  <!-- Recent Activity (static for now) -->
   <div class="section-header">
     <span class="section-title">Recent Activity</span>
     <a href="#admin/compliance" class="section-action">View all</a>
@@ -91,24 +91,30 @@
   </div>
 </div>
 
-<!-- wire up stats from mock data -->
 <script>
   (function() {
-    if (!window.mockData) return;
-    var s = mockData.stats.admin;
-    var setVal = function(id, val) {
-      var el = document.getElementById(id);
-      if (el) el.textContent = val;
-    };
-    setVal('stat-teachers', s.totalTeachers);
-    setVal('stat-students', s.totalStudents);
-    setVal('stat-classes', s.activeClasses);
-    setVal('stat-assessments', s.assessmentsThisTerm);
-
-    // update greeting with admin name
+    // update greeting and school from auth store
     if (AuthStore.user) {
       var greet = document.getElementById('admin-greeting');
       if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName.split(' ')[0];
+      var schoolEl = document.getElementById('admin-school');
+      if (schoolEl) schoolEl.textContent = 'Strathmore Primary';
     }
+
+    // load stats from backend
+    API.get('/api/admin/stats')
+      .then(function(s) {
+        var setVal = function(id, val) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = val;
+        };
+        setVal('stat-teachers', s.totalTeachers);
+        setVal('stat-students', s.totalStudents);
+        setVal('stat-parents', s.totalParents);
+        setVal('stat-admins', s.totalAdmins);
+      })
+      .catch(function() {
+        // if stats fail, just show dashes (already there)
+      });
   })();
 </script>
