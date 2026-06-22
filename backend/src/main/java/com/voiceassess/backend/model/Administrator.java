@@ -36,7 +36,7 @@ public class Administrator {
     @Column(name = "contact_phone")
     private String contactPhone;
 
-    @Column(name = "capability_array", columnDefinition = "jsonb", nullable = false)
+    @Column(name = "capability_array", columnDefinition = "text", nullable = false)
     private String capabilityArray = "[]";
 
     public Administrator() {}
