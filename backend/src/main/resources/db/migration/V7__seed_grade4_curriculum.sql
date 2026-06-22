@@ -3,6 +3,9 @@
 -- Sources: 2024 PWPER rationalized curriculum designs (KICD)
 -- All rubrics use the standard KNEC 4-level rating scale
 
+-- widen rating_scale — the full 4-level KNEC scale is ~90 chars, V1 had VARCHAR(50)
+ALTER TABLE knec_rubrics ALTER COLUMN rating_scale TYPE VARCHAR(150);
+
 -- fix the existing English subject name to match official KICD naming
 UPDATE subjects SET subject_name = 'English Language'
 WHERE subject_id = 'f1000000-0000-0000-0000-000000000002';
