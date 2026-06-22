@@ -406,6 +406,12 @@ textarea.input {
   color: #1A5276;
 }
 
+.toast-warning {
+  background-color: #FEF3E0;
+  border: 1px solid var(--color-warning);
+  color: #7D6608;
+}
+
 .toast-container {
   display: flex;
   position: fixed;
