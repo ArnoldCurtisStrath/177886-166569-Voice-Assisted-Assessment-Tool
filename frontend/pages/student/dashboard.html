@@ -95,7 +95,7 @@
       link.addEventListener('click', function(e) {
         e.preventDefault();
         // find a relevant feedback from mock data
-        var fb = window.mockData && window.mockData.feedback ? window.mockData.feedback[0] : null;
+        var fb = null; // loaded from API when assessment pipeline is connected
         showModal('Assessment Feedback',
           '<p class="text-sm" style="line-height:1.6;">' + (fb ? fb.text : 'Feedback not yet available.') + '</p>',
           '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>'

@@ -29,12 +29,12 @@
     <span class="section-title">Quick Actions</span>
   </div>
   <div class="grid-2" style="margin-bottom: var(--space-6);">
-    <a href="#admin/users" class="card card-hover">
+    <a href="#" class="card card-hover" id="quick-create-teacher">
       <div class="quick-icon" style="color: var(--color-primary);">+</div>
       <div class="list-item-title">Create Teacher</div>
       <div class="text-xs text-muted">Add a new teaching staff profile</div>
     </a>
-    <a href="#admin/users" class="card card-hover">
+    <a href="#" class="card card-hover" id="quick-create-student">
       <div class="quick-icon" style="color: var(--color-primary);">+</div>
       <div class="list-item-title">Create Student</div>
       <div class="text-xs text-muted">Register a new student</div>
@@ -99,6 +99,25 @@
       if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName.split(' ')[0];
       var schoolEl = document.getElementById('admin-school');
       if (schoolEl) schoolEl.textContent = 'Strathmore Primary';
+    }
+
+    // quick-action cards: set flag so users page auto-opens create modal
+    var createTeacher = document.getElementById('quick-create-teacher');
+    var createStudent = document.getElementById('quick-create-student');
+
+    if (createTeacher) {
+      createTeacher.addEventListener('click', function(e) {
+        e.preventDefault();
+        localStorage.setItem('voiceassess_create_role', 'TEACHER');
+        Router.navigate('admin/users');
+      });
+    }
+    if (createStudent) {
+      createStudent.addEventListener('click', function(e) {
+        e.preventDefault();
+        localStorage.setItem('voiceassess_create_role', 'STUDENT');
+        Router.navigate('admin/users');
+      });
     }
 
     // load stats from backend

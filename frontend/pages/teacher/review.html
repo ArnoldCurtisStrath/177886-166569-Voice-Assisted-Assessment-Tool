@@ -27,7 +27,7 @@
 
 <script>
   (function() {
-    var reviews = window.mockData ? window.mockData.reviews : [];
+    var reviews = []; // loaded from API when assessment pipeline is connected
     var activeFilter = 'all';
 
     function renderReviews() {

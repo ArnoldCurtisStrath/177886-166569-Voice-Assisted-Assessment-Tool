@@ -8,84 +8,88 @@
     Select a child to view their progress.
   </p>
 
-  <!-- Children List -->
+  <!-- Children List (from API) -->
   <div class="list-stack" id="children-list" style="margin-bottom: var(--space-6);">
-    <div class="list-item clickable" data-child="st1">
-      <div class="avatar avatar-md">JM</div>
-      <div class="list-item-body">
-        <div class="list-item-title">James Mutua</div>
-        <div class="list-item-subtitle">Grade 4B &middot; Moi Primary School</div>
-      </div>
-      <div class="list-item-trailing">
-        <span class="badge badge-success">Active</span>
-        <span class="list-chevron">&#x25B8;</span>
-      </div>
-    </div>
-
-    <div class="list-item clickable" data-child="st3">
-      <div class="avatar avatar-md">KO</div>
-      <div class="list-item-body">
-        <div class="list-item-title">Kevin Otieno</div>
-        <div class="list-item-subtitle">Grade 4B &middot; Moi Primary School</div>
-      </div>
-      <div class="list-item-trailing">
-        <span class="badge badge-success">Active</span>
-        <span class="list-chevron">&#x25B8;</span>
-      </div>
-    </div>
-
-    <div class="list-item clickable" data-child="st5">
-      <div class="avatar avatar-md">FN</div>
-      <div class="list-item-body">
-        <div class="list-item-title">Faith Nyambura</div>
-        <div class="list-item-subtitle">Grade 5B &middot; Moi Primary School</div>
-      </div>
-      <div class="list-item-trailing">
-        <span class="badge badge-success">Active</span>
-        <span class="list-chevron">&#x25B8;</span>
-      </div>
-    </div>
+    <!-- Populated by JS -->
   </div>
 
-  <!-- recent activity -->
+  <!-- Empty state -->
+  <div class="empty-state" id="children-empty" style="display:none;">
+    <div class="empty-state-icon">#</div>
+    <h4>No children linked</h4>
+    <p>Ask your school administrator to link your children to your account.</p>
+  </div>
+
+  <!-- Loading -->
+  <div class="empty-state" id="children-loading">
+    <div class="empty-state-icon">~</div>
+    <h4>Loading...</h4>
+  </div>
+
+  <!-- Recent Activity (static for now — will be assessment data later) -->
   <div class="section-header">
     <span class="section-title">Recent Activity</span>
   </div>
-  <div class="list-stack">
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">James — English Comprehension</div>
-        <div class="list-item-subtitle">May 25, 2026 &middot; Score: 78%</div>
-      </div>
-      <span class="badge badge-success">Completed</span>
-    </div>
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">Kevin — Mathematics Fractions</div>
-        <div class="list-item-subtitle">May 15, 2026 &middot; Score: 62%</div>
-      </div>
-      <span class="badge badge-success">Completed</span>
-    </div>
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">Faith — Kiswahili Kusoma</div>
-        <div class="list-item-subtitle">May 18, 2026 &middot; Score: 74%</div>
-      </div>
-      <span class="badge badge-success">Completed</span>
-    </div>
+  <div class="empty-state">
+    <div class="empty-state-icon">-</div>
+    <h4>No activity yet</h4>
+    <p>Recent assessments will appear here.</p>
   </div>
 </div>
 
 <script>
   (function() {
-    // navigate to child progress on click
-    document.querySelectorAll('[data-child]').forEach(function(row) {
-      row.addEventListener('click', function() {
-        var childId = row.getAttribute('data-child');
-        // store selected child ID so progress page can use it
-        localStorage.setItem('voiceassess_selected_child', childId);
-        Router.navigate('parent/child');
+    function getInitials(name) {
+      if (!name) return '??';
+      return name.split(' ').map(function(n) { return n.charAt(0); }).join('').slice(0, 2).toUpperCase();
+    }
+
+    API.get('/api/parent/children')
+      .then(function(children) {
+        var listEl = document.getElementById('children-list');
+        var emptyEl = document.getElementById('children-empty');
+        var loadingEl = document.getElementById('children-loading');
+        if (loadingEl) loadingEl.style.display = 'none';
+
+        if (!children || children.length === 0) {
+          if (listEl) listEl.innerHTML = '';
+          if (emptyEl) emptyEl.style.display = '';
+          return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        if (listEl) {
+          listEl.innerHTML = children.map(function(c) {
+            return '<div class="list-item clickable" data-child="' + c.studentId + '">' +
+              '<div class="avatar avatar-md">' + getInitials(c.fullName) + '</div>' +
+              '<div class="list-item-body">' +
+                '<div class="list-item-title">' + c.fullName + '</div>' +
+                '<div class="list-item-subtitle">Grade ' + c.gradeLevel + c.streamName + ' &middot; ' + c.schoolName + '</div>' +
+              '</div>' +
+              '<div class="list-item-trailing">' +
+                '<span class="badge badge-success">Active</span>' +
+                '<span class="list-chevron">&#x25B8;</span>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+
+          // click handler
+          listEl.querySelectorAll('.list-item').forEach(function(row) {
+            row.addEventListener('click', function() {
+              var childId = row.getAttribute('data-child');
+              localStorage.setItem('voiceassess_selected_child', childId);
+              Router.navigate('parent/child');
+            });
+          });
+        }
+      })
+      .catch(function() {
+        var loadingEl = document.getElementById('children-loading');
+        var emptyEl = document.getElementById('children-empty');
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = '';
+        document.getElementById('children-list').innerHTML = '';
       });
-    });
   })();
 </script>

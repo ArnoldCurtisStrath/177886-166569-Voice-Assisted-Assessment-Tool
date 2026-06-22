@@ -3,6 +3,7 @@
   <div class="section-header">
     <span class="section-title">User Management</span>
     <span class="badge badge-primary" id="user-count-badge">0</span>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;" id="btn-create-user">+ Create User</button>
   </div>
 
   <!-- Tabs -->
@@ -176,14 +177,30 @@
       });
     }
 
-    function openCreateUserModal() {
+    // visible Create User button at top
+    var createBtn = document.getElementById('btn-create-user');
+    if (createBtn) {
+      createBtn.addEventListener('click', function() {
+        openCreateUserModal();
+      });
+    }
+
+    // auto-open modal if coming from dashboard quick-action cards
+    var preSelectRole = localStorage.getItem('voiceassess_create_role');
+    if (preSelectRole) {
+      localStorage.removeItem('voiceassess_create_role');
+      openCreateUserModal(preSelectRole);
+    }
+
+    function openCreateUserModal(preSelect) {
       var roleOptions = ['TEACHER', 'STUDENT', 'PARENT', 'ADMIN'];
+      var defaultRole = preSelect || 'TEACHER';
 
       var bodyHTML = '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
         '<div class="form-group">' +
           '<label>Role</label>' +
           '<select id="create-role" class="input">' +
-            roleOptions.map(function(r) { return '<option value="' + r + '">' + formatRole(r) + '</option>'; }).join('') +
+            roleOptions.map(function(r) { return '<option value="' + r + '"' + (r === defaultRole ? ' selected' : '') + '>' + formatRole(r) + '</option>'; }).join('') +
           '</select>' +
         '</div>' +
         '<div class="form-group">' +
