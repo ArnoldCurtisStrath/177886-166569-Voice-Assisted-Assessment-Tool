@@ -7,9 +7,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -156,15 +159,43 @@ public class TeacherController {
     @PostMapping("/assessments/{audioId}/upload")
     public ResponseEntity<?> uploadAudio(@AuthenticationPrincipal User user,
                                           @PathVariable UUID audioId,
-                                          @RequestParam("file") MultipartFile file) {
+                                          @RequestParam(value = "file", required = false) MultipartFile file) {
+        System.err.println("[uploadAudio] ENTERED — audioId=" + audioId + " file=" + (file != null ? file.getOriginalFilename() : "NULL"));
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.status(400).body(Map.of("error", "No audio file received. The 'file' field is required."));
+        }
         try {
             return doUploadAudio(user, audioId, file);
         } catch (Exception e) {
+            var sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            System.err.println("[uploadAudio] EXCEPTION: " + sw);
             log.error("Upload failed for audioId={}: {}", audioId, e.getMessage(), e);
             return ResponseEntity.status(500).body(Map.of(
                 "error", "Internal error: " + e.getMessage()
             ));
         }
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<?> handleMultipartException(MultipartException e) {
+        System.err.println("[uploadAudio] MULTIPART EXCEPTION: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(400).body(Map.of("error", "Invalid file upload: " + e.getMessage()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<?> handleMissingParam(MissingServletRequestParameterException e) {
+        System.err.println("[uploadAudio] MISSING PARAM: " + e.getMessage());
+        return ResponseEntity.status(400).body(Map.of("error", "Missing parameter: " + e.getParameterName()));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleAll(Exception e) {
+        var sw = new StringWriter();
+        e.printStackTrace(new PrintWriter(sw));
+        System.err.println("[TeacherController] UNHANDLED EXCEPTION: " + sw);
+        return ResponseEntity.status(500).body(Map.of("error", "Server error: " + e.getMessage()));
     }
 
     private ResponseEntity<?> doUploadAudio(User user, UUID audioId, MultipartFile file) throws IOException {
@@ -175,37 +206,28 @@ public class TeacherController {
         }
         var assessment = assessmentOpt.get();
 
-        // check ownership — only the teacher who created it can upload
+        // check ownership
         var teacherOpt = teacherRepo.findByUser(user);
         if (teacherOpt.isEmpty() || !assessment.getTeacher().getTeacherId().equals(teacherOpt.get().getTeacherId())) {
             return ResponseEntity.status(403).body(Map.of("error", "You don't own this assessment"));
         }
 
-        // save the audio file locally
-        Path uploadDir = Path.of("uploads", "audio");
-        try {
-            Files.createDirectories(uploadDir);
-        } catch (IOException e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Could not create upload directory"));
-        }
+        // save to system temp dir — avoids working-directory issues
+        var uploadDir = Path.of(System.getProperty("java.io.tmpdir"), "voiceassess", "audio");
+        Files.createDirectories(uploadDir);
 
-        // figure out the extension from the original filename, default to webm
+        // figure out extension
         var originalName = file.getOriginalFilename();
         var ext = ".webm";
         if (originalName != null && originalName.contains(".")) {
             ext = originalName.substring(originalName.lastIndexOf('.'));
-            // only allow safe extensions
             if (!ext.matches("\\.[a-zA-Z0-9]+")) ext = ".webm";
         }
 
-        var savedFile = uploadDir.resolve(audioId + ext).toFile();
-        try {
-            file.transferTo(savedFile);
-        } catch (IOException e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Failed to save audio file"));
-        }
+        var savedPath = uploadDir.resolve(audioId + ext);
+        Files.copy(file.getInputStream(), savedPath);
 
-        assessment.setFileReference(savedFile.getPath());
+        assessment.setFileReference(savedPath.toString());
         assessment.setStatus("UPLOADED");
         assessment.setUploadTimestamp(LocalDateTime.now());
         audioAssessmentRepo.save(assessment);
@@ -213,9 +235,8 @@ public class TeacherController {
         // now transcribe via Groq
         String transcript;
         try {
-            transcript = transcriptionService.transcribe(savedFile);
+            transcript = transcriptionService.transcribe(savedPath.toFile());
         } catch (Exception e) {
-            // transcription failed but the file was saved — return partial success
             var resp = new LinkedHashMap<String, Object>();
             resp.put("message", "Audio uploaded but transcription failed: " + e.getMessage());
             resp.put("audioId", assessment.getAudioId().toString());
@@ -227,7 +248,7 @@ public class TeacherController {
             return ResponseEntity.status(207).body(resp);
         }
 
-        // store the transcript in a staging assessment for teacher review
+        // store transcript in staging
         var staging = new StagingAssessment();
         staging.setAudioAssessment(assessment);
         staging.setRubric(assessment.getRubric());
@@ -235,7 +256,6 @@ public class TeacherController {
         staging.setStatus("PENDING_REVIEW");
         staging = stagingRepo.save(staging);
 
-        // log the async job as completed
         var job = new PendingAudioJob();
         job.setAudioAssessment(assessment);
         job.setJobType("TRANSCRIPTION");
@@ -243,7 +263,6 @@ public class TeacherController {
         job.setCompletedAt(LocalDateTime.now());
         pendingJobRepo.save(job);
 
-        // update assessment status
         assessment.setStatus("TRANSCRIBED");
         audioAssessmentRepo.save(assessment);
 
