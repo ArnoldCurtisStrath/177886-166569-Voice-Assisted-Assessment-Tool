@@ -398,16 +398,26 @@
         barEl.style.width = '100%';
         percentEl.textContent = '100%';
 
+        // store the result so the transcription page can display it
+        sessionStorage.setItem('transcriptionResult', JSON.stringify({
+          transcript: data.transcript || '',
+          topic: data.topic || '',
+          subject: data.subject || '',
+          className: data.className || '',
+          status: data.status || 'UPLOADED',
+          message: data.message || ''
+        }));
+
         if (data.transcribed && data.transcriptSnippet) {
-          showToast('Transcription complete: "' + data.transcriptSnippet + '"', 'success');
+          showToast('Transcription complete!', 'success');
         } else {
-          showToast(data.message || 'Uploaded but transcription needs attention.', 'warning');
+          showToast(data.message || 'Uploaded. Transcription needs attention.', 'warning');
         }
 
-        // navigate to review after a short delay
+        // navigate to transcription page to show the result
         setTimeout(function() {
-          Router.navigate('teacher/review');
-        }, 2500);
+          Router.navigate('teacher/transcription');
+        }, 1500);
       }).catch(function(err) {
         showToast(err.message || 'Upload failed. Please try again.', 'error');
         uploadBtn.disabled = false;

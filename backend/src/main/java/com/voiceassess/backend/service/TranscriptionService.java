@@ -2,7 +2,6 @@ package com.voiceassess.backend.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -43,7 +42,6 @@ public class TranscriptionService {
         var response = restClient.post()
             .uri(GROQ_TRANSCRIPTION_URL)
             .header("Authorization", "Bearer " + apiKey)
-            .contentType(MediaType.MULTIPART_FORM_DATA)
             .body(bodyBuilder.build())
             .retrieve()
             .body(Map.class);

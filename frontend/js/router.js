@@ -8,6 +8,7 @@ const Router = {
     'teacher/curate': { title: 'New Assessment',role: 'TEACHER',file: 'pages/teacher/curation.html' },
     'teacher/record':{ title: 'Assessment Audio',role:'TEACHER',file: 'pages/teacher/recording.html' },
     'teacher/review':{ title: 'Pending Reviews',role: 'TEACHER',file: 'pages/teacher/review.html' },
+    'teacher/transcription':{ title: 'Transcription',role:'TEACHER',file: 'pages/teacher/transcription.html' },
     'parent':       { title: 'My Children',     role: 'PARENT', file: 'pages/parent/dashboard.html' },
     'parent/child': { title: 'Student Progress',role: 'PARENT', file: 'pages/parent/child-progress.html' },
     'student':      { title: 'My Progress',     role: 'STUDENT',file: 'pages/student/dashboard.html' }

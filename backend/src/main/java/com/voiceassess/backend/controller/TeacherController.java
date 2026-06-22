@@ -16,9 +16,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/teacher")
 public class TeacherController {
+
+    private static final Logger log = LoggerFactory.getLogger(TeacherController.class);
 
     private final TeacherRepository teacherRepo;
     private final TeacherClassAssignmentRepository tcaRepo;
@@ -152,6 +157,17 @@ public class TeacherController {
     public ResponseEntity<?> uploadAudio(@AuthenticationPrincipal User user,
                                           @PathVariable UUID audioId,
                                           @RequestParam("file") MultipartFile file) {
+        try {
+            return doUploadAudio(user, audioId, file);
+        } catch (Exception e) {
+            log.error("Upload failed for audioId={}: {}", audioId, e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                "error", "Internal error: " + e.getMessage()
+            ));
+        }
+    }
+
+    private ResponseEntity<?> doUploadAudio(User user, UUID audioId, MultipartFile file) throws IOException {
         // find the assessment
         var assessmentOpt = audioAssessmentRepo.findById(audioId);
         if (assessmentOpt.isEmpty()) {
@@ -205,6 +221,9 @@ public class TeacherController {
             resp.put("audioId", assessment.getAudioId().toString());
             resp.put("status", "UPLOADED");
             resp.put("transcribed", false);
+            resp.put("topic", assessment.getTopic());
+            resp.put("subject", assessment.getSubject().getSubjectName());
+            resp.put("className", "Grade " + assessment.getClassRoom().getGradeLevel() + assessment.getClassRoom().getStreamName());
             return ResponseEntity.status(207).body(resp);
         }
 
@@ -234,7 +253,11 @@ public class TeacherController {
         resp.put("status", "TRANSCRIBED");
         resp.put("transcribed", true);
         resp.put("stagingId", staging.getStagingId().toString());
+        resp.put("transcript", transcript);
         resp.put("transcriptSnippet", transcript.length() > 200 ? transcript.substring(0, 200) + "..." : transcript);
+        resp.put("topic", assessment.getTopic());
+        resp.put("subject", assessment.getSubject().getSubjectName());
+        resp.put("className", "Grade " + assessment.getClassRoom().getGradeLevel() + assessment.getClassRoom().getStreamName());
         return ResponseEntity.ok(resp);
     }
 }

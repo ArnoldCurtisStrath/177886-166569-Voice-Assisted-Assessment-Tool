@@ -1,0 +1,94 @@
+<!-- VoiceAssess — Transcription Result -->
+<div class="animate-fade-in" style="display: flex; flex-direction: column; gap: var(--space-4);">
+  <div style="display: flex; align-items: center; gap: var(--space-3);">
+    <span class="badge badge-success" id="transc-status">TRANSCRIBED</span>
+  </div>
+
+  <h2 style="margin: 0;">Transcription Result</h2>
+
+  <!-- Assessment info -->
+  <div class="card" style="display: flex; flex-direction: column; gap: var(--space-2);">
+    <div style="display: flex; justify-content: space-between;">
+      <span class="text-xs text-muted">Topic</span>
+      <span class="text-sm font-semibold" id="transc-topic">—</span>
+    </div>
+    <div style="display: flex; justify-content: space-between;">
+      <span class="text-xs text-muted">Subject</span>
+      <span class="text-sm font-semibold" id="transc-subject">—</span>
+    </div>
+    <div style="display: flex; justify-content: space-between;">
+      <span class="text-xs text-muted">Class</span>
+      <span class="text-sm font-semibold" id="transc-class">—</span>
+    </div>
+    <div style="display: flex; justify-content: space-between;">
+      <span class="text-xs text-muted">Duration</span>
+      <span class="text-sm font-semibold mono" id="transc-duration">—</span>
+    </div>
+  </div>
+
+  <!-- Transcript text -->
+  <div class="card" style="display: flex; flex-direction: column; gap: var(--space-2);">
+    <span class="text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.5px;">Transcript</span>
+    <div id="transc-text" style="
+      font-size: var(--text-base);
+      line-height: 1.7;
+      color: var(--color-text);
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: var(--space-1);
+    ">Loading transcript...</div>
+  </div>
+
+  <!-- Action buttons -->
+  <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4);">
+    <button class="btn btn-secondary btn-block" id="btn-new-assessment">New Assessment</button>
+    <button class="btn btn-primary btn-block" id="btn-go-review">Review &amp; Finalize</button>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var dataStr = sessionStorage.getItem('transcriptionResult');
+    if (!dataStr) {
+      document.getElementById('transc-text').textContent = 'No transcription data found. The upload may have failed or you navigated here directly.';
+      document.getElementById('transc-status').textContent = 'NO DATA';
+      document.getElementById('transc-status').className = 'badge badge-warning';
+      return;
+    }
+
+    var data;
+    try { data = JSON.parse(dataStr); } catch (e) {
+      document.getElementById('transc-text').textContent = 'Could not parse transcription data.';
+      return;
+    }
+
+    // populate the card
+    document.getElementById('transc-topic').textContent = data.topic || '—';
+    document.getElementById('transc-subject').textContent = data.subject || '—';
+    document.getElementById('transc-class').textContent = data.className || '—';
+    document.getElementById('transc-duration').textContent = data.duration || '—';
+
+    // show the transcript
+    if (data.transcript) {
+      document.getElementById('transc-text').textContent = data.transcript;
+      document.getElementById('transc-status').textContent = 'TRANSCRIBED';
+      document.getElementById('transc-status').className = 'badge badge-success';
+    } else {
+      document.getElementById('transc-text').textContent = data.message || 'Transcription not available.';
+      document.getElementById('transc-status').textContent = 'PENDING';
+      document.getElementById('transc-status').className = 'badge badge-warning';
+    }
+
+    // buttons
+    document.getElementById('btn-new-assessment').addEventListener('click', function() {
+      sessionStorage.removeItem('currentAudioId');
+      sessionStorage.removeItem('transcriptionResult');
+      Router.navigate('teacher/curate');
+    });
+
+    document.getElementById('btn-go-review').addEventListener('click', function() {
+      Router.navigate('teacher/review');
+    });
+  })();
+</script>
