@@ -88,9 +88,22 @@ const Router = {
     try {
       const html = await this._fetchTemplate(route.file);
       container.innerHTML = html;
+
+      // innerHTML doesn't execute <script> tags — we need to do it manually
+      // find all scripts in the loaded content and re-create them so they run
+      const scripts = container.querySelectorAll('script');
+      scripts.forEach(function(oldScript) {
+        var newScript = document.createElement('script');
+        // copy over attributes (type, src, etc.)
+        Array.from(oldScript.attributes).forEach(function(attr) {
+          newScript.setAttribute(attr.name, attr.value);
+        });
+        newScript.textContent = oldScript.textContent;
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+      });
+
       // fade in the new content
       container.classList.add('animate-fade-in');
-      // 300ms matches the CSS transition duration — remove class after animation completes
       setTimeout(() => container.classList.remove('animate-fade-in'), 300);
 
       // update navigation active states
