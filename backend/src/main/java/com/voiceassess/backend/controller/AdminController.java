@@ -346,8 +346,9 @@ public class AdminController {
     // -- RUBRICS --
 
     @GetMapping("/rubrics")
-    public ResponseEntity<?> listRubrics() {
-        return ResponseEntity.ok(adminService.getAllRubrics());
+    public ResponseEntity<?> listRubrics(@AuthenticationPrincipal User user) {
+        var schoolId = resolveSchoolId(user);
+        return ResponseEntity.ok(adminService.getAllRubrics(schoolId));
     }
 
     @PostMapping("/rubrics")

@@ -82,8 +82,8 @@ public class TranscriptionService {
         appendField(fields, boundary, "model", "whisper-large-v3");
         appendField(fields, boundary, "temperature", "0");
         appendField(fields, boundary, "response_format", "verbose_json");
-        // closing boundary
-        fields.append("--").append(boundary).append("--\r\n");
+        // closing boundary — leading \r\n terminates the last field
+        fields.append("\r\n--").append(boundary).append("--\r\n");
         var fieldsBytes = fields.toString().getBytes();
 
         // combine: header + file bytes + fields
@@ -95,8 +95,8 @@ public class TranscriptionService {
     }
 
     private void appendField(StringBuilder sb, String boundary, String name, String value) {
-        sb.append("--").append(boundary).append("\r\n");
+        sb.append("\r\n--").append(boundary).append("\r\n");
         sb.append("Content-Disposition: form-data; name=\"").append(name).append("\"\r\n\r\n");
-        sb.append(value).append("\r\n");
+        sb.append(value);
     }
 }

@@ -431,8 +431,8 @@ public class AdminService {
     }
 
     // -- RUBRICS --
-    public List<Map<String, Object>> getAllRubrics() {
-        var rubrics = rubricRepo.findAll();
+    public List<Map<String, Object>> getAllRubrics(UUID schoolId) {
+        var rubrics = rubricRepo.findBySchoolId(schoolId);
         var result = new ArrayList<Map<String, Object>>();
         for (var r : rubrics) {
             result.add(rubricToMap(r));
@@ -586,15 +586,22 @@ public class AdminService {
 
         long totalClasses = school != null ? classRepo.findBySchool(school).size() : 0;
         long totalSubjects = school != null ? subjectRepo.findBySchool(school).size() : 0;
-        long totalRubrics = rubricRepo.count();
-        long totalTeachers = teacherRepo.count();
-        long totalAssessments = audioRepo.count();
+        long totalRubrics = rubricRepo.findBySchoolId(schoolId).size();
+        long totalTeachers = school != null ? teacherRepo.findBySchool(school).size() : 0;
 
-        // assessments by subject — we just count via the findAll
+        // count only assessments belonging to this school (via teacher.school)
         var allAssessments = audioRepo.findAll();
+        long totalAssessments = 0;
         Map<String, Long> bySubject = new LinkedHashMap<>();
         long filteredCount = 0;
         for (var a : allAssessments) {
+            // school filter: assessment's teacher must belong to this school
+            if (a.getTeacher() == null || a.getTeacher().getSchool() == null
+                    || !a.getTeacher().getSchool().getSchoolId().equals(schoolId)) {
+                continue;
+            }
+            totalAssessments++;
+
             // filter by grade level if requested
             if (gradeLevel != null && a.getClassRoom().getGradeLevel() != gradeLevel) {
                 continue;
@@ -611,9 +618,13 @@ public class AdminService {
             bySubjectList.add(m);
         }
 
-        // assessments by status
+        // assessments by status (school-filtered)
         Map<String, Long> byStatus = new LinkedHashMap<>();
         for (var a : allAssessments) {
+            if (a.getTeacher() == null || a.getTeacher().getSchool() == null
+                    || !a.getTeacher().getSchool().getSchoolId().equals(schoolId)) {
+                continue;
+            }
             if (gradeLevel != null && a.getClassRoom().getGradeLevel() != gradeLevel) {
                 continue;
             }

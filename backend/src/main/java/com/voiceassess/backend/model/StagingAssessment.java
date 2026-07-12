@@ -21,7 +21,11 @@ public class StagingAssessment {
     @Column(name = "transcript_snippet", columnDefinition = "TEXT")
     private String transcriptSnippet;
 
-    /** Raw JSON response from the AI gateway — parsed into structured feedback */
+    /** The complete transcript text — stored for audit/review */
+    @Column(name = "full_transcript", columnDefinition = "TEXT")
+    private String fullTranscript;
+
+    /** Raw JSON response from the AI gateway */
     @Column(name = "parsed_json_payload", columnDefinition = "TEXT")
     private String parsedJsonPayload;
 
@@ -50,6 +54,9 @@ public class StagingAssessment {
 
     public String getTranscriptSnippet() { return transcriptSnippet; }
     public void setTranscriptSnippet(String transcriptSnippet) { this.transcriptSnippet = transcriptSnippet; }
+
+    public String getFullTranscript() { return fullTranscript; }
+    public void setFullTranscript(String fullTranscript) { this.fullTranscript = fullTranscript; }
 
     public String getParsedJsonPayload() { return parsedJsonPayload; }
     public void setParsedJsonPayload(String parsedJsonPayload) { this.parsedJsonPayload = parsedJsonPayload; }

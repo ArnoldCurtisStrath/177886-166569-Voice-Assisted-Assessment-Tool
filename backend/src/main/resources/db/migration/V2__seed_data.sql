@@ -56,15 +56,11 @@ VALUES ('e1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-0000000
 -- ── 7. Subjects ───────────────────────────────────────────────────────────
 INSERT INTO subjects (subject_id, subject_name, grade_level)
 VALUES
-    ('f1000000-0000-0000-0000-000000000001', 'Mathematics', 4),
     ('f1000000-0000-0000-0000-000000000002', 'English', 4);
 
 -- ── 8. KNEC Rubrics ───────────────────────────────────────────────────────
 INSERT INTO knec_rubrics (rubric_id, subject_id, competency_desc, strand, sub_strand, rating_scale)
 VALUES
-    ('a2010000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000001',
-     'Able to count numbers 1 to 100 fluently', 'Numbers', 'Whole Numbers',
-     'Below / Approaching / Meeting / Exceeding'),
     ('a2020000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000002',
      'Can read a short passage aloud with correct pronunciation', 'Reading', 'Oral Reading',
      'Below / Approaching / Meeting / Exceeding');
@@ -78,5 +74,4 @@ VALUES ('c2000000-0000-0000-0000-000000000001', 'e1000000-0000-0000-0000-0000000
 
 INSERT INTO teacher_subject_assignments (teacher_id, subject_id)
 VALUES
-    ('c2000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000001'),
     ('c2000000-0000-0000-0000-000000000001', 'f1000000-0000-0000-0000-000000000002');

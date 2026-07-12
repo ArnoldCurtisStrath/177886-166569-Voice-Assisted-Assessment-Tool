@@ -31,8 +31,11 @@ public class AssessmentAppeal {
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "audio_id", nullable = false, unique = true)
+    @Column(name = "resolution_note", columnDefinition = "TEXT")
+    private String resolutionNote;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "audio_id", nullable = false)
     private AudioAssessment audioAssessment;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -59,6 +62,9 @@ public class AssessmentAppeal {
 
     public LocalDateTime getResolvedAt() { return resolvedAt; }
     public void setResolvedAt(LocalDateTime resolvedAt) { this.resolvedAt = resolvedAt; }
+
+    public String getResolutionNote() { return resolutionNote; }
+    public void setResolutionNote(String resolutionNote) { this.resolutionNote = resolutionNote; }
 
     public AudioAssessment getAudioAssessment() { return audioAssessment; }
     public void setAudioAssessment(AudioAssessment audioAssessment) { this.audioAssessment = audioAssessment; }

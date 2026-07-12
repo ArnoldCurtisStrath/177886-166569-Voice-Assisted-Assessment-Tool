@@ -38,6 +38,7 @@ class UserCrudTest {
         var parentReq = new UserService.CreateUserRequest();
         parentReq.email = "parent@test.com"; parentReq.password = "password123";
         parentReq.role = "PARENT"; parentReq.fullName = "Test Parent";
+        parentReq.schoolId = school.getSchoolId().toString();
         parentReq.phoneNumber = "+254700000000";
         var parentResult = userService.createUser(parentReq);
         parentUserId = UUID.fromString((String) parentResult.get("userId"));

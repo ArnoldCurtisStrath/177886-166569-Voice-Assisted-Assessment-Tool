@@ -4,8 +4,7 @@ import jakarta.persistence.*;
 import java.util.UUID;
 
 /**
- * A CBC subject (e.g. "Mathematics", "English", "Environmental Activities").
- * Tied to a grade level and offered by a school.
+ * A CBC subject for a given grade level, offered by a school.
  */
 @Entity
 @Table(name = "subjects")

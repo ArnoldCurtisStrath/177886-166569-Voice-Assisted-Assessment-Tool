@@ -6,7 +6,7 @@ import java.util.UUID;
 /**
  * KNEC-defined rubric for CBC assessment.
  * Maps a competency description to a strand/sub-strand with a rating scale.
- * Each rubric belongs to a subject (e.g. "Numbers" strand under Mathematics).
+ * Each rubric belongs to a subject with a strand and sub-strand.
  */
 @Entity
 @Table(name = "knec_rubrics")

@@ -22,6 +22,10 @@ public class Parent {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "school_id", nullable = false)
+    private School school;
+
     @Column(name = "phone_number")
     private String phoneNumber;
 
@@ -35,6 +39,9 @@ public class Parent {
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+
+    public School getSchool() { return school; }
+    public void setSchool(School school) { this.school = school; }
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }

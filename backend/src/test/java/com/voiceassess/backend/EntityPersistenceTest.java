@@ -87,6 +87,7 @@ class EntityPersistenceTest {
 
         var parent = new Parent();
         parent.setUser(parentUser);
+        parent.setSchool(school);
         parent.setFullName("Mary Parent");
         parent.setPhoneNumber("+254723456789");
         parentRepo.save(parent);

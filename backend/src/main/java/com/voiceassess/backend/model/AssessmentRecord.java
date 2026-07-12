@@ -9,7 +9,8 @@ import java.util.UUID;
  * A single audio assessment can yield multiple records (one per student).
  */
 @Entity
-@Table(name = "assessment_records")
+@Table(name = "assessment_records",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"audio_id", "student_id", "rubric_id"}))
 public class AssessmentRecord {
 
     @Id
@@ -19,6 +20,18 @@ public class AssessmentRecord {
 
     @Column(name = "score", nullable = false)
     private float score;
+
+    // the KNEC rating level from the LLM — "Below Expectations" / "Approaching" / "Meeting" / "Exceeding"
+    @Column(name = "rating_level")
+    private String ratingLevel;
+
+    // how confident the AI was — "high", "medium", or "low"
+    @Column(name = "confidence")
+    private String confidence;
+
+    // verbatim quote from the transcript that supports the rating
+    @Column(name = "evidence", columnDefinition = "TEXT")
+    private String evidence;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "audio_id", nullable = false)
@@ -48,4 +61,13 @@ public class AssessmentRecord {
 
     public KnecRubric getRubric() { return rubric; }
     public void setRubric(KnecRubric rubric) { this.rubric = rubric; }
+
+    public String getRatingLevel() { return ratingLevel; }
+    public void setRatingLevel(String ratingLevel) { this.ratingLevel = ratingLevel; }
+
+    public String getConfidence() { return confidence; }
+    public void setConfidence(String confidence) { this.confidence = confidence; }
+
+    public String getEvidence() { return evidence; }
+    public void setEvidence(String evidence) { this.evidence = evidence; }
 }
