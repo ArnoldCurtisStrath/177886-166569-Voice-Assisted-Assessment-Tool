@@ -40,18 +40,18 @@
 <!-- FAB -->
 <button class="fab" id="fab-create-user" title="Create new user">+</button>
 
-<!-- Create User Modal (built into the page, hidden by default) -->
-<div class="modal-overlay" id="create-modal" style="display:none;">
-  <div class="modal">
+<!-- Create / Edit User Modal -->
+<div class="modal-overlay" id="user-modal" style="display:none;">
+  <div class="modal" style="max-width:480px;">
     <div class="modal-header">
-      <h3>Create New User</h3>
-      <button class="modal-close" id="create-modal-close">&times;</button>
+      <h3 id="user-modal-title">Create User</h3>
+      <button class="modal-close" id="user-modal-close">&times;</button>
     </div>
     <div class="modal-body">
       <div style="display:flex;flex-direction:column;gap:var(--space-3);">
         <div class="form-group">
           <label>Role</label>
-          <select id="create-role" class="input">
+          <select id="user-role" class="input">
             <option value="TEACHER">Teacher</option>
             <option value="STUDENT">Student</option>
             <option value="PARENT">Parent</option>
@@ -60,29 +60,104 @@
         </div>
         <div class="form-group">
           <label>Full Name</label>
-          <input type="text" id="create-fullname" class="input" placeholder="Full name" required>
+          <input type="text" id="user-fullname" class="input" placeholder="Full name" required>
         </div>
         <div class="form-group">
           <label>Email</label>
-          <input type="email" id="create-email" class="input" placeholder="Email address" required>
+          <input type="email" id="user-email" class="input" placeholder="Email address" required>
         </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="create-password" class="input" placeholder="Min 6 characters" required>
+        <div class="form-group" id="user-password-group">
+          <label id="user-password-label">Password</label>
+          <input type="password" id="user-password" class="input" placeholder="Min 6 characters">
         </div>
-        <div class="form-group" id="create-phone-group" style="display:none;">
+        <div class="form-group" id="user-active-group" style="display:none;">
+          <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;">
+            <input type="checkbox" id="user-active" checked>
+            Active account
+          </label>
+        </div>
+        <div class="form-group" id="user-phone-group" style="display:none;">
           <label>Phone Number</label>
-          <input type="text" id="create-phone" class="input" placeholder="+254...">
+          <input type="text" id="user-phone" class="input" placeholder="+254...">
         </div>
-        <div class="form-group" id="create-dob-group" style="display:none;">
+        <div class="form-group" id="user-dob-group" style="display:none;">
           <label>Date of Birth</label>
-          <input type="date" id="create-dob" class="input">
+          <input type="date" id="user-dob" class="input">
+        </div>
+        <div class="form-group" id="user-class-group" style="display:none;">
+          <label>Assign to Class (optional)</label>
+          <select id="user-class" class="input">
+            <option value="">-- None --</option>
+          </select>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary btn-sm" id="create-cancel">Cancel</button>
-      <button class="btn btn-primary btn-sm" id="create-submit">Create User</button>
+      <button class="btn btn-secondary btn-sm" id="user-modal-cancel">Cancel</button>
+      <button class="btn btn-ghost btn-sm" id="user-manage-children" style="display:none;">Manage Children</button>
+      <button class="btn btn-ghost btn-sm" id="user-manage-subjects" style="display:none;">Manage Subjects</button>
+      <button class="btn btn-danger btn-sm" id="user-modal-delete" style="display:none;">Delete</button>
+      <button class="btn btn-primary btn-sm" id="user-modal-submit">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Children Modal -->
+<div class="modal-overlay" id="children-modal" style="display:none;">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 id="children-modal-title">Manage Children</h3>
+      <button class="modal-close" id="children-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- linked children -->
+      <div style="margin-bottom:var(--space-4);">
+        <h4 style="font-size:var(--text-sm);color:var(--text-muted);margin-bottom:var(--space-2);">Linked Students</h4>
+        <div id="linked-children-list" style="display:flex;flex-direction:column;gap:var(--space-2);">
+          <p style="color:var(--text-muted);">None yet</p>
+        </div>
+      </div>
+
+      <!-- available to link -->
+      <div>
+        <h4 style="font-size:var(--text-sm);color:var(--text-muted);margin-bottom:var(--space-2);">Available Students</h4>
+        <input type="text" id="children-search" class="input" placeholder="Search students..." style="margin-bottom:var(--space-2);">
+        <div id="available-children-list" style="display:flex;flex-direction:column;gap:var(--space-2);max-height:240px;overflow-y:auto;">
+          <p style="color:var(--text-muted);">Loading...</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" id="children-modal-done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Subjects Modal (for teachers) -->
+<div class="modal-overlay" id="subjects-modal" style="display:none;">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <h3 id="subjects-modal-title">Manage Subjects</h3>
+      <button class="modal-close" id="subjects-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:var(--space-4);">
+        <h4 style="font-size:var(--text-sm);color:var(--text-muted);margin-bottom:var(--space-2);">Assigned Subjects</h4>
+        <div id="assigned-subjects-list" style="display:flex;flex-direction:column;gap:var(--space-2);">
+          <p style="color:var(--text-muted);">Loading...</p>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size:var(--text-sm);color:var(--text-muted);margin-bottom:var(--space-2);">Available Subjects</h4>
+        <input type="text" id="subjects-search" class="input" placeholder="Search subjects..." style="margin-bottom:var(--space-2);">
+        <div id="available-subjects-list" style="display:flex;flex-direction:column;gap:var(--space-2);max-height:240px;overflow-y:auto;">
+          <p style="color:var(--text-muted);">Loading...</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" id="subjects-modal-done">Done</button>
     </div>
   </div>
 </div>
@@ -92,6 +167,8 @@
     var users = [];
     var activeFilter = 'all';
     var searchQuery = '';
+    var editingId = null;
+    var linkingParentId = null;
 
     function formatRole(role) {
       return role.charAt(0) + role.slice(1).toLowerCase();
@@ -159,20 +236,7 @@
             var uid = row.getAttribute('data-user-id');
             var u = users.find(function(x) { return x.userId === uid; });
             if (!u) return;
-
-            // use the global showModal for detail view
-            if (typeof showModal === 'function') {
-              showModal(
-                u.fullName || 'User',
-                '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
-                  '<div class="form-group"><label>Full Name</label><div class="text-sm">' + (u.fullName || 'N/A') + '</div></div>' +
-                  '<div class="form-group"><label>Email</label><div class="text-sm">' + u.email + '</div></div>' +
-                  '<div class="form-group"><label>Role</label><span class="badge ' + roleBadgeClass(u.role) + '">' + formatRole(u.role) + '</span></div>' +
-                  '<div class="form-group"><label>Status</label><span class="status-dot ' + (u.isActive ? 'active' : 'inactive') + '"></span> ' + (u.isActive ? 'Active' : 'Inactive') + '</div>' +
-                '</div>',
-                '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>'
-              );
-            }
+            openEditForm(u);
           });
         });
       }
@@ -208,7 +272,7 @@
       });
     });
 
-    // search input
+    // search
     var searchInput = document.getElementById('user-search');
     if (searchInput) {
       searchInput.addEventListener('input', function() {
@@ -217,132 +281,489 @@
       });
     }
 
-    // ---- Create User Modal Logic ----
+    // --- User Modal Logic ---
 
-    var modal = document.getElementById('create-modal');
-    var roleSelect = document.getElementById('create-role');
-    var phoneGroup = document.getElementById('create-phone-group');
-    var dobGroup = document.getElementById('create-dob-group');
+    function updateFormFields() {
+      var role = document.getElementById('user-role').value;
+      var isEditing = editingId !== null;
 
-    function updateCreateFields() {
-      var role = roleSelect.value;
-      phoneGroup.style.display = (role === 'PARENT') ? '' : 'none';
-      dobGroup.style.display = (role === 'STUDENT') ? '' : 'none';
-    }
+      document.getElementById('user-phone-group').style.display = (role === 'PARENT') ? '' : 'none';
+      document.getElementById('user-dob-group').style.display = (role === 'STUDENT') ? '' : 'none';
+      document.getElementById('user-class-group').style.display = (!isEditing && (role === 'STUDENT' || role === 'TEACHER')) ? '' : 'none';
+      document.getElementById('user-password-group').style.display = isEditing ? '' : '';
+      document.getElementById('user-active-group').style.display = isEditing ? '' : 'none';
 
-    if (roleSelect) {
-      roleSelect.addEventListener('change', updateCreateFields);
+      if (isEditing) {
+        document.getElementById('user-password-label').textContent = 'New Password (leave blank to keep current)';
+        document.getElementById('user-password').placeholder = 'Leave blank to keep current';
+        document.getElementById('user-password').required = false;
+      } else {
+        document.getElementById('user-password-label').textContent = 'Password';
+        document.getElementById('user-password').placeholder = 'Min 6 characters';
+        document.getElementById('user-password').required = true;
+      }
+
+      var mcBtn = document.getElementById('user-manage-children');
+      if (mcBtn) mcBtn.style.display = (isEditing && role === 'PARENT') ? '' : 'none';
+
+      var msBtn = document.getElementById('user-manage-subjects');
+      if (msBtn) msBtn.style.display = (isEditing && role === 'TEACHER') ? '' : 'none';
     }
 
     function openCreateForm(preSelectRole) {
-      if (!modal) return;
-      // pre-select role if given
-      if (preSelectRole && roleSelect) {
-        roleSelect.value = preSelectRole;
-      }
-      updateCreateFields();
-      // clear inputs
-      var fullname = document.getElementById('create-fullname');
-      var email = document.getElementById('create-email');
-      var password = document.getElementById('create-password');
-      var phone = document.getElementById('create-phone');
-      var dob = document.getElementById('create-dob');
-      if (fullname) fullname.value = '';
-      if (email) email.value = '';
-      if (password) password.value = '';
-      if (phone) phone.value = '';
-      if (dob) dob.value = '';
-      modal.style.display = 'flex';
+      editingId = null;
+      document.getElementById('user-modal-title').textContent = 'Create User';
+      document.getElementById('user-modal-submit').textContent = 'Create User';
+      document.getElementById('user-modal-delete').style.display = 'none';
+
+      var roleSelect = document.getElementById('user-role');
+      roleSelect.disabled = false;
+      if (preSelectRole) roleSelect.value = preSelectRole;
+
+      document.getElementById('user-fullname').value = '';
+      document.getElementById('user-email').value = '';
+      document.getElementById('user-password').value = '';
+      document.getElementById('user-phone').value = '';
+      document.getElementById('user-dob').value = '';
+      document.getElementById('user-active').checked = true;
+
+      var classSelect = document.getElementById('user-class');
+      if (classSelect) { classSelect.value = ''; classSelect.innerHTML = '<option value="">Loading...</option>'; }
+
+      updateFormFields();
+
+      API.get('/api/admin/classes')
+        .then(function(data) {
+          if (classSelect) {
+            classSelect.innerHTML = '<option value="">-- None --</option>';
+            (data || []).forEach(function(c) {
+              var opt = document.createElement('option');
+              opt.value = c.classId;
+              opt.textContent = c.displayName + ' (' + (c.studentCount || 0) + ' students)';
+              classSelect.appendChild(opt);
+            });
+          }
+        })
+        .catch(function() {
+          if (classSelect) classSelect.innerHTML = '<option value="">-- None --</option>';
+        });
+
+      document.getElementById('user-modal').style.display = 'flex';
     }
 
-    function closeCreateForm() {
-      if (modal) modal.style.display = 'none';
+    function openEditForm(u) {
+      editingId = u.userId;
+
+      document.getElementById('user-modal-title').textContent = 'Edit User';
+      document.getElementById('user-modal-submit').textContent = 'Save Changes';
+      document.getElementById('user-modal-delete').style.display = '';
+
+      var roleSelect = document.getElementById('user-role');
+      roleSelect.value = u.role;
+      roleSelect.disabled = true;
+
+      document.getElementById('user-fullname').value = u.fullName || '';
+      document.getElementById('user-email').value = u.email || '';
+      document.getElementById('user-password').value = '';
+      document.getElementById('user-active').checked = u.isActive;
+      document.getElementById('user-phone').value = u.phoneNumber || '';
+      document.getElementById('user-dob').value = u.dateOfBirth || '';
+
+      updateFormFields();
+      document.getElementById('user-modal').style.display = 'flex';
     }
 
-    // close button
-    var closeBtn = document.getElementById('create-modal-close');
-    if (closeBtn) closeBtn.addEventListener('click', closeCreateForm);
-
-    // backdrop click
-    if (modal) {
-      modal.addEventListener('click', function(e) {
-        if (e.target === modal) closeCreateForm();
-      });
+    function closeUserModal() {
+      document.getElementById('user-modal').style.display = 'none';
+      editingId = null;
+      var roleSelect = document.getElementById('user-role');
+      if (roleSelect) roleSelect.disabled = false;
     }
 
-    // cancel button
-    var cancelBtn = document.getElementById('create-cancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', closeCreateForm);
+    document.getElementById('user-modal-close').addEventListener('click', closeUserModal);
+    document.getElementById('user-modal-cancel').addEventListener('click', closeUserModal);
+    document.getElementById('user-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeUserModal();
+    });
 
-    // FAB
-    var fab = document.getElementById('fab-create-user');
-    if (fab) fab.addEventListener('click', function() { openCreateForm(); });
+    document.getElementById('user-role').addEventListener('change', function() {
+      if (!editingId) updateFormFields();
+    });
 
-    // header button
-    var createBtn = document.getElementById('btn-create-user');
-    if (createBtn) createBtn.addEventListener('click', function() { openCreateForm(); });
+    document.getElementById('fab-create-user').addEventListener('click', function() { openCreateForm(); });
+    document.getElementById('btn-create-user').addEventListener('click', function() { openCreateForm(); });
 
     // submit
-    var submitBtn = document.getElementById('create-submit');
-    if (submitBtn) {
-      submitBtn.addEventListener('click', function() {
-        var role = roleSelect.value;
-        var fullName = document.getElementById('create-fullname').value.trim();
-        var email = document.getElementById('create-email').value.trim();
-        var password = document.getElementById('create-password').value;
+    document.getElementById('user-modal-submit').addEventListener('click', function() {
+      var role = document.getElementById('user-role').value;
+      var fullName = document.getElementById('user-fullname').value.trim();
+      var email = document.getElementById('user-email').value.trim();
+      var password = document.getElementById('user-password').value;
 
-        if (!fullName || !email || !password) {
-          if (typeof showToast === 'function') showToast('Please fill in all required fields.', 'error');
-          return;
-        }
-        if (password.length < 6) {
-          if (typeof showToast === 'function') showToast('Password must be at least 6 characters.', 'error');
-          return;
-        }
+      if (!fullName || !email) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+      }
 
+      var isEditing = editingId !== null;
+
+      if (!isEditing && (!password || password.length < 6)) {
+        showToast('Password must be at least 6 characters.', 'error');
+        return;
+      }
+
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = isEditing ? 'Saving...' : 'Creating...';
+
+      if (isEditing) {
+        var payload = { email: email, fullName: fullName };
+        payload.isActive = document.getElementById('user-active').checked;
+        if (password && password.length > 0) payload.password = password;
+        if (role === 'PARENT') payload.phoneNumber = document.getElementById('user-phone').value.trim();
+        if (role === 'STUDENT') payload.dateOfBirth = document.getElementById('user-dob').value;
+
+        API.put('/api/admin/users/' + editingId, payload)
+          .then(function() {
+            closeUserModal();
+            showToast('User updated', 'success');
+            loadUsers();
+          })
+          .catch(function(err) {
+            showToast('Failed: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Save Changes';
+          });
+      } else {
         var payload = {
-          email: email,
-          password: password,
-          role: role,
-          fullName: fullName
+          email: email, password: password, role: role, fullName: fullName
         };
-
-        if (role === 'PARENT') {
-          payload.phoneNumber = document.getElementById('create-phone').value.trim();
-        }
+        payload.schoolId = (AuthStore.user && AuthStore.user.schoolId) || 'a1000000-0000-0000-0000-000000000001';
+        if (role === 'PARENT') payload.phoneNumber = document.getElementById('user-phone').value.trim();
         if (role === 'STUDENT') {
-          payload.dateOfBirth = document.getElementById('create-dob').value;
+          payload.dateOfBirth = document.getElementById('user-dob').value;
         }
-
-        payload.schoolId = 'a1000000-0000-0000-0000-000000000001';
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Creating...';
+        if (role === 'STUDENT' || role === 'TEACHER') {
+          var classSelect = document.getElementById('user-class');
+          if (classSelect && classSelect.value) payload.classId = classSelect.value;
+        }
 
         API.post('/api/admin/users', payload)
           .then(function() {
-            closeCreateForm();
-            if (typeof showToast === 'function') showToast('User created successfully.', 'success');
+            closeUserModal();
+            showToast('User created', 'success');
             loadUsers();
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Create User';
           })
           .catch(function(err) {
-            if (typeof showToast === 'function') showToast('Failed to create user: ' + err.message, 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Create User';
+            showToast('Failed: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Create User';
           });
-      });
+      }
+    });
+
+    // delete
+    document.getElementById('user-modal-delete').addEventListener('click', function() {
+      if (!editingId) return;
+      if (!confirm('Delete this user? This cannot be undone.')) return;
+
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+
+      API.del('/api/admin/users/' + editingId)
+        .then(function() {
+          closeUserModal();
+          showToast('User deleted', 'success');
+          loadUsers();
+        })
+        .catch(function(err) {
+          showToast('Failed to delete: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Delete';
+        });
+    });
+
+    // --- Parent-Student Linking ---
+
+    function openChildrenModal(parentId, parentName) {
+      linkingParentId = parentId;
+      document.getElementById('children-modal-title').textContent = 'Manage Children — ' + parentName;
+      document.getElementById('children-modal').style.display = 'flex';
+      document.getElementById('children-search').value = '';
+      loadLinkedChildren(parentId);
+      loadAvailableChildren(parentId, '');
     }
 
-    // auto-open if coming from dashboard quick-action
+    function loadLinkedChildren(parentId) {
+      var listEl = document.getElementById('linked-children-list');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
+
+      API.get('/api/admin/parents/' + parentId + '/students')
+        .then(function(data) {
+          if (!data || data.length === 0) {
+            listEl.innerHTML = '<p style="color:var(--text-muted);">No students linked yet.</p>';
+            return;
+          }
+          listEl.innerHTML = data.map(function(s) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
+              '<div><strong>' + s.fullName + '</strong></div>' +
+              '<button class="btn btn-danger btn-sm unlink-btn" data-sid="' + s.studentId + '">Unlink</button>' +
+            '</div>';
+          }).join('');
+
+          listEl.querySelectorAll('.unlink-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var sid = btn.getAttribute('data-sid');
+              unlinkStudent(parentId, sid);
+            });
+          });
+        })
+        .catch(function() {
+          listEl.innerHTML = '<p style="color:var(--text-muted);">Failed to load.</p>';
+        });
+    }
+
+    function loadAvailableChildren(parentId, search) {
+      var listEl = document.getElementById('available-children-list');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
+
+      var schoolId = (AuthStore.user && AuthStore.user.schoolId) || 'a1000000-0000-0000-0000-000000000001';
+      API.get('/api/admin/parents/' + parentId + '/available-students?schoolId=' + schoolId)
+        .then(function(data) {
+          if (!data || data.length === 0) {
+            listEl.innerHTML = '<p style="color:var(--text-muted);">No available students.</p>';
+            return;
+          }
+
+          var filtered = data;
+          if (search) {
+            var q = search.toLowerCase();
+            filtered = data.filter(function(s) { return (s.fullName || '').toLowerCase().includes(q); });
+          }
+
+          if (filtered.length === 0) {
+            listEl.innerHTML = '<p style="color:var(--text-muted);">No matches.</p>';
+            return;
+          }
+
+          listEl.innerHTML = filtered.map(function(s) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
+              '<div><strong>' + s.fullName + '</strong></div>' +
+              '<button class="btn btn-primary btn-sm link-btn" data-sid="' + s.studentId + '">Link</button>' +
+            '</div>';
+          }).join('');
+
+          listEl.querySelectorAll('.link-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var sid = btn.getAttribute('data-sid');
+              linkStudent(parentId, sid);
+            });
+          });
+        })
+        .catch(function() {
+          listEl.innerHTML = '<p style="color:var(--text-muted);">Failed to load.</p>';
+        });
+    }
+
+    function linkStudent(parentId, studentId) {
+      API.post('/api/admin/parents/' + parentId + '/link-student/' + studentId)
+        .then(function() {
+          showToast('Student linked', 'success');
+          loadLinkedChildren(parentId);
+          loadAvailableChildren(parentId, document.getElementById('children-search').value);
+        })
+        .catch(function(err) {
+          showToast('Failed: ' + err.message, 'error');
+        });
+    }
+
+    function unlinkStudent(parentId, studentId) {
+      if (!confirm('Remove this student from the parent?')) return;
+      API.del('/api/admin/parents/' + parentId + '/unlink-student/' + studentId)
+        .then(function() {
+          showToast('Student unlinked', 'success');
+          loadLinkedChildren(parentId);
+          loadAvailableChildren(parentId, document.getElementById('children-search').value);
+        })
+        .catch(function(err) {
+          showToast('Failed: ' + err.message, 'error');
+        });
+    }
+
+    // children modal search
+    document.getElementById('children-search').addEventListener('input', function() {
+      if (linkingParentId) {
+        loadAvailableChildren(linkingParentId, this.value);
+      }
+    });
+
+    // children modal close
+    function closeChildrenModal() {
+      document.getElementById('children-modal').style.display = 'none';
+      linkingParentId = null;
+    }
+
+    document.getElementById('children-modal-close').addEventListener('click', closeChildrenModal);
+    document.getElementById('children-modal-done').addEventListener('click', closeChildrenModal);
+    document.getElementById('children-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeChildrenModal();
+    });
+
+    // manage children button in user modal
+    document.getElementById('user-manage-children').addEventListener('click', function() {
+      if (!editingId) return;
+      var u = users.find(function(x) { return x.userId === editingId; });
+      if (!u || !u.parentId) return;
+      openChildrenModal(u.parentId, u.fullName);
+    });
+
+    // --- Teacher-Subject Management ---
+
+    var managingTeacherId = null;
+
+    function openSubjectsModal(teacherId, teacherName) {
+      managingTeacherId = teacherId;
+      document.getElementById('subjects-modal-title').textContent = 'Manage Subjects — ' + teacherName;
+      document.getElementById('subjects-modal').style.display = 'flex';
+      document.getElementById('subjects-search').value = '';
+      loadAssignedSubjects(teacherId);
+      loadAvailableSubjects(teacherId, '');
+    }
+
+    function loadAssignedSubjects(teacherId) {
+      var listEl = document.getElementById('assigned-subjects-list');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
+
+      API.get('/api/admin/teachers/' + teacherId + '/subjects')
+        .then(function(data) {
+          if (!data || data.length === 0) {
+            listEl.innerHTML = '<p style="color:var(--text-muted);">No subjects assigned.</p>';
+            return;
+          }
+          listEl.innerHTML = data.map(function(s) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
+              '<div><strong>' + s.subjectName + '</strong><br><span style="font-size:var(--text-xs);color:var(--text-muted);">Grade ' + s.gradeLevel + '</span></div>' +
+              '<button class="btn btn-danger btn-sm remove-subject-btn" data-sid="' + s.subjectId + '">Remove</button>' +
+            '</div>';
+          }).join('');
+
+          listEl.querySelectorAll('.remove-subject-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var sid = btn.getAttribute('data-sid');
+              removeSubject(teacherId, sid);
+            });
+          });
+        })
+        .catch(function() {
+          listEl.innerHTML = '<p style="color:var(--text-muted);">Failed to load.</p>';
+        });
+    }
+
+    function loadAvailableSubjects(teacherId, search) {
+      var listEl = document.getElementById('available-subjects-list');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
+
+      API.get('/api/admin/teachers/' + teacherId + '/available-subjects')
+        .then(function(data) {
+          if (!data || data.length === 0) {
+            listEl.innerHTML = '<p style="color:var(--text-muted);">No available subjects.</p>';
+            return;
+          }
+
+          var filtered = data;
+          if (search) {
+            var q = search.toLowerCase();
+            filtered = data.filter(function(s) { return (s.subjectName || '').toLowerCase().includes(q); });
+          }
+
+          if (filtered.length === 0) {
+            listEl.innerHTML = '<p style="color:var(--text-muted);">No matches.</p>';
+            return;
+          }
+
+          listEl.innerHTML = filtered.map(function(s) {
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
+              '<div><strong>' + s.subjectName + '</strong><br><span style="font-size:var(--text-xs);color:var(--text-muted);">Grade ' + s.gradeLevel + '</span></div>' +
+              '<button class="btn btn-primary btn-sm assign-subject-btn" data-sid="' + s.subjectId + '">Assign</button>' +
+            '</div>';
+          }).join('');
+
+          listEl.querySelectorAll('.assign-subject-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+              var sid = btn.getAttribute('data-sid');
+              assignSubject(teacherId, sid);
+            });
+          });
+        })
+        .catch(function() {
+          listEl.innerHTML = '<p style="color:var(--text-muted);">Failed to load.</p>';
+        });
+    }
+
+    function assignSubject(teacherId, subjectId) {
+      API.post('/api/admin/teachers/' + teacherId + '/subjects', { subjectId: subjectId })
+        .then(function() {
+          showToast('Subject assigned', 'success');
+          loadAssignedSubjects(teacherId);
+          loadAvailableSubjects(teacherId, document.getElementById('subjects-search').value);
+        })
+        .catch(function(err) {
+          showToast('Failed: ' + err.message, 'error');
+        });
+    }
+
+    function removeSubject(teacherId, subjectId) {
+      if (!confirm('Remove this subject from the teacher?')) return;
+      API.del('/api/admin/teachers/' + teacherId + '/subjects/' + subjectId)
+        .then(function() {
+          showToast('Subject removed', 'success');
+          loadAssignedSubjects(teacherId);
+          loadAvailableSubjects(teacherId, document.getElementById('subjects-search').value);
+        })
+        .catch(function(err) {
+          showToast('Failed: ' + err.message, 'error');
+        });
+    }
+
+    // subjects modal search
+    document.getElementById('subjects-search').addEventListener('input', function() {
+      if (managingTeacherId) {
+        loadAvailableSubjects(managingTeacherId, this.value);
+      }
+    });
+
+    // subjects modal close
+    function closeSubjectsModal() {
+      document.getElementById('subjects-modal').style.display = 'none';
+      managingTeacherId = null;
+    }
+
+    document.getElementById('subjects-modal-close').addEventListener('click', closeSubjectsModal);
+    document.getElementById('subjects-modal-done').addEventListener('click', closeSubjectsModal);
+    document.getElementById('subjects-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeSubjectsModal();
+    });
+
+    // manage subjects button in user modal
+    document.getElementById('user-manage-subjects').addEventListener('click', function() {
+      if (!editingId) return;
+      var u = users.find(function(x) { return x.userId === editingId; });
+      if (!u || !u.teacherId) return;
+      openSubjectsModal(u.teacherId, u.fullName);
+    });
+
+    // auto-open create from dashboard quick-action
     var preSelectRole = localStorage.getItem('voiceassess_create_role');
     if (preSelectRole) {
       localStorage.removeItem('voiceassess_create_role');
       openCreateForm(preSelectRole);
     }
 
-    // initial load
     loadUsers();
   })();
 </script>

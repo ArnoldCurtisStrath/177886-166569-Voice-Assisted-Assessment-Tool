@@ -9,7 +9,7 @@
   <form id="login-form" style="display: flex; flex-direction: column; gap: var(--space-4);">
     <div class="form-group">
       <label for="login-email">Email address</label>
-      <input type="email" id="login-email" class="input" placeholder="admin@strathmore.ac.ke" autocomplete="email" required>
+      <input type="email" id="login-email" class="input" placeholder="Enter your email" autocomplete="email" required>
     </div>
 
     <div class="form-group">
@@ -22,8 +22,16 @@
     <button type="submit" class="btn btn-primary btn-block btn-lg" id="login-submit">Log In</button>
   </form>
 
+  <div style="display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-4);">
+    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color); margin: 0;">
+    <span class="text-xs text-muted" style="flex-shrink: 0; padding: 0 var(--space-1);">or</span>
+    <hr style="flex: 1; border: none; border-top: 1px solid var(--border-color); margin: 0;">
+  </div>
+
+  <button type="button" class="btn btn-secondary btn-block" id="register-btn" style="margin-top: var(--space-3);">Register your school</button>
+
   <p style="text-align: center; margin-top: var(--space-4);">
-    <span class="text-xs text-muted">Seed admin: admin@strathmore.ac.ke / password123</span>
+    <span class="text-xs text-muted">Contact your school administrator for login credentials.</span>
   </p>
 </div>
 
@@ -63,6 +71,14 @@
             submitBtn.disabled = false;
             submitBtn.textContent = 'Log In';
           });
+      });
+    }
+
+    // register button — use router for navigation
+    var regBtn = document.getElementById('register-btn');
+    if (regBtn) {
+      regBtn.addEventListener('click', function() {
+        Router.navigate('register');
       });
     }
   })();

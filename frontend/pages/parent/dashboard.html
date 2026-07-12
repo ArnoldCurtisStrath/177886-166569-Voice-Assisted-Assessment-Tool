@@ -26,11 +26,12 @@
     <h4>Loading...</h4>
   </div>
 
-  <!-- Recent Activity (static for now — will be assessment data later) -->
+  <!-- Recent Activity -->
   <div class="section-header">
     <span class="section-title">Recent Activity</span>
   </div>
-  <div class="empty-state">
+  <div id="recent-activity"></div>
+  <div class="empty-state" id="activity-empty" style="display:none;">
     <div class="empty-state-icon">-</div>
     <h4>No activity yet</h4>
     <p>Recent assessments will appear here.</p>
@@ -83,6 +84,9 @@
             });
           });
         }
+
+        // load recent activity across all children
+        loadRecentActivity(children);
       })
       .catch(function() {
         var loadingEl = document.getElementById('children-loading');
@@ -91,5 +95,113 @@
         if (emptyEl) emptyEl.style.display = '';
         document.getElementById('children-list').innerHTML = '';
       });
+
+    function loadRecentActivity(children) {
+      if (!children || children.length === 0) return;
+
+      var allRecent = [];
+      var loaded = 0;
+
+          children.forEach(function(child) {
+        API.get('/api/parent/children/' + child.studentId + '/progress')
+          .then(function(data) {
+            var recents = data.recentAssessments || [];
+            for (var i = 0; i < recents.length; i++) {
+              recents[i].studentName = child.fullName;
+              recents[i].childId = child.studentId;
+              recents[i].recordId = recents[i].recordId || '';
+              recents[i].subjectName = recents[i].subjectName || '';
+              recents[i].topic = recents[i].topic || '';
+              recents[i].date = recents[i].date || '';
+              recents[i].score = recents[i].score || 0;
+              recents[i].ratingLevel = recents[i].ratingLevel || '';
+              allRecent.push(recents[i]);
+            }
+            loaded++;
+            if (loaded === children.length) {
+              renderRecentActivity(allRecent);
+            }
+          })
+          .catch(function() { loaded++; });
+      });
+    }
+
+    function renderRecentActivity(items) {
+      var listEl = document.getElementById('recent-activity');
+      var emptyEl = document.getElementById('activity-empty');
+      if (!items || items.length === 0) {
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      // sort by date desc, take top 5
+      items.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+      items = items.slice(0, 5);
+
+      listEl.innerHTML = '<div class="list-stack">' + items.map(function(a) {
+        return '<div class="list-item clickable" data-record-id="' + (a.recordId || '') + '" data-child-id="' + (a.childId || '') + '">' +
+          '<div class="list-item-body">' +
+            '<div class="list-item-title">' + a.studentName + ' — ' + a.subjectName + '</div>' +
+            '<div class="list-item-subtitle">' + a.topic + ' &middot; ' + a.date + ' &middot; ' + a.ratingLevel + '</div>' +
+          '</div>' +
+          '<span style="font-weight:600;">' + ((a.score || 0) / 4.0 * 100).toFixed(0) + '%</span>' +
+        '</div>';
+      }).join('') + '</div>';
+
+      // wire clicks to show detail
+      listEl.querySelectorAll('.list-item.clickable').forEach(function(row) {
+        row.addEventListener('click', function() {
+          var rid = row.getAttribute('data-record-id');
+          var cid = row.getAttribute('data-child-id');
+          if (rid && cid) showAssessmentDetail(cid, rid);
+        });
+      });
+    }
+
+    function showAssessmentDetail(childId, recordId) {
+      API.get('/api/parent/children/' + childId + '/assessments/' + recordId)
+        .then(function(data) {
+          var scorePct = ((data.score || 0) / 4.0 * 100).toFixed(0);
+          var confColor = '#ccc';
+          var conf = (data.confidence || '').toLowerCase();
+          if (conf === 'high') confColor = 'var(--color-success)';
+          else if (conf === 'medium') confColor = 'var(--color-warning)';
+          else if (conf === 'low') confColor = 'var(--color-error)';
+
+          var bodyHtml = '<div style="max-height:55vh;overflow-y:auto;">';
+          bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
+          bodyHtml += '<strong>' + data.subjectName + '</strong> &middot; ' + data.topic + '<br>';
+          bodyHtml += 'Student: ' + data.studentName + '<br>';
+          bodyHtml += 'Date: ' + data.date + '<br>';
+          bodyHtml += '</div>';
+
+          bodyHtml += '<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3);">';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:2rem;font-weight:700;">' + scorePct + '%</div><div class="text-xs text-muted">Score</div></div>';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;">' + (data.ratingLevel || '-') + '</div><div class="text-xs text-muted">Rating</div></div>';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;color:' + confColor + ';">' + (data.confidence || '-') + '</div><div class="text-xs text-muted">AI Confidence</div></div>';
+          bodyHtml += '</div>';
+
+          if (data.evidence) {
+            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-2);font-style:italic;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">"' + data.evidence + '"</div>';
+          }
+
+          if (data.feedback && data.feedback !== 'No feedback available.') {
+            bodyHtml += '<div style="margin-bottom:var(--space-2);"><div class="text-sm" style="font-weight:600;margin-bottom:var(--space-1);">Teacher Feedback</div>';
+            bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + data.feedback + '</div></div>';
+          }
+
+          if (data.rubricDesc) {
+            bodyHtml += '<div class="text-xs text-muted" style="margin-top:var(--space-2);border-top:1px solid var(--color-border);padding-top:var(--space-2);">';
+            bodyHtml += '<strong>Rubric:</strong> ' + data.rubricDesc + '<br>';
+            bodyHtml += '<strong>Scale:</strong> ' + (data.ratingScale || '');
+            bodyHtml += '</div>';
+          }
+
+          bodyHtml += '</div>';
+          showModal(data.subjectName + ' — ' + data.studentName, bodyHtml, '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>');
+        })
+        .catch(function() { showToast('Failed to load assessment detail.', 'error'); });
+    }
   })();
 </script>

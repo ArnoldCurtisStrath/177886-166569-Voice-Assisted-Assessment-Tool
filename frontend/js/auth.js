@@ -32,12 +32,13 @@ var AuthStore = {
       email: email,
       password: password
     }).then(function(data) {
-      // data = { token, userId, fullName, email, role }
+      // data = { token, userId, fullName, email, role, schoolId }
       var user = {
         id: data.userId,
         fullName: data.fullName,
         email: data.email,
-        role: data.role
+        role: data.role,
+        schoolId: data.schoolId || null
       };
 
       AuthStore.user = user;

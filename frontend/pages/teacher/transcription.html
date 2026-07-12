@@ -40,6 +40,38 @@
     ">Loading transcript...</div>
   </div>
 
+  <!-- AI Assessment result (only shown if available) -->
+  <div class="card" id="ai-card" style="display: none; flex-direction: column; gap: var(--space-2);">
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: var(--space-2);">
+        <span class="text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.5px;">AI Assessment Result</span>
+        <span class="badge badge-success" id="ai-badge">AI ASSESSED</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btn-copy-json" style="font-size: var(--text-xs);">Copy JSON</button>
+    </div>
+    <pre id="ai-json" style="
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      line-height: 1.5;
+      color: var(--color-text);
+      white-space: pre-wrap;
+      max-height: 500px;
+      overflow-y: auto;
+      padding: var(--space-3);
+      background: var(--color-bg-subtle);
+      border-radius: var(--radius-sm);
+      margin: 0;
+    "></pre>
+  </div>
+
+  <!-- AI Error (shown if LLM call failed) -->
+  <div class="card" id="ai-error-card" style="display: none; background: var(--color-warning-bg); border-left: 3px solid var(--color-warning);">
+    <div style="display: flex; align-items: flex-start; gap: var(--space-2);">
+      <span style="color: var(--color-warning); font-weight: bold;">Warning:</span>
+      <span id="ai-error-msg" style="color: var(--color-text); font-size: var(--text-sm);"></span>
+    </div>
+  </div>
+
   <!-- Action buttons -->
   <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4);">
     <button class="btn btn-secondary btn-block" id="btn-new-assessment">New Assessment</button>
@@ -79,6 +111,29 @@
       document.getElementById('transc-status').textContent = 'PENDING';
       document.getElementById('transc-status').className = 'badge badge-warning';
     }
+
+    // AI assessment display
+    if (data.aiAssessed && data.aiAssessment) {
+      var aiCard = document.getElementById('ai-card');
+      aiCard.style.display = 'flex';
+      document.getElementById('ai-json').textContent = JSON.stringify(data.aiAssessment, null, 2);
+    }
+
+    if (data.aiError) {
+      var errCard = document.getElementById('ai-error-card');
+      errCard.style.display = 'block';
+      document.getElementById('ai-error-msg').textContent = data.aiError;
+    }
+
+    // copy JSON button
+    document.getElementById('btn-copy-json').addEventListener('click', function() {
+      var jsonText = document.getElementById('ai-json').textContent;
+      navigator.clipboard.writeText(jsonText).then(function() {
+        showToast('JSON copied to clipboard', 'success');
+      }).catch(function() {
+        showToast('Failed to copy', 'error');
+      });
+    });
 
     // buttons
     document.getElementById('btn-new-assessment').addEventListener('click', function() {

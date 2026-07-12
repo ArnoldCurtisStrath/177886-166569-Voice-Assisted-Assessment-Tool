@@ -6,6 +6,9 @@
   </div>
 
   <form id="register-form" style="display: flex; flex-direction: column; gap: var(--space-4);">
+    <!-- School section -->
+    <p style="font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">School Details</p>
+
     <div class="form-group">
       <label for="reg-school-name">School Name</label>
       <input type="text" id="reg-school-name" class="input" placeholder="e.g. Strathmore Primary School" required>
@@ -16,6 +19,9 @@
       <input type="text" id="reg-knec-code" class="input" placeholder="e.g. ST-001" required>
       <span class="text-xs text-muted" style="margin-top: 2px;">Your school's unique KNEC examination centre code</span>
     </div>
+
+    <!-- Admin section -->
+    <p style="font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); margin: 0; text-transform: uppercase; letter-spacing: 0.5px; margin-top: var(--space-2);">Administrator Account</p>
 
     <div class="form-group">
       <label for="reg-fullname">Your Full Name</label>
@@ -43,7 +49,7 @@
   </form>
 
   <p style="text-align: center; margin-top: var(--space-4);">
-    <a href="#login" style="font-size: var(--text-sm); color: var(--color-primary);">Already registered? Log in</a>
+    <button type="button" class="btn btn-ghost btn-sm" id="back-to-login">Already registered? Log in</button>
   </p>
 </div>
 
@@ -92,7 +98,6 @@
 
       API.post('/api/auth/register', payload)
         .then(function(data) {
-          // data = { token, userId, fullName, email, role, schoolId, schoolName, knecCode }
           var user = {
             id: data.userId,
             fullName: data.fullName,
@@ -115,5 +120,13 @@
           submitBtn.textContent = 'Register School';
         });
     });
+
+    // back to login
+    var backBtn = document.getElementById('back-to-login');
+    if (backBtn) {
+      backBtn.addEventListener('click', function() {
+        Router.navigate('login');
+      });
+    }
   })();
 </script>

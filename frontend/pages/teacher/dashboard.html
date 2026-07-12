@@ -10,7 +10,7 @@
       <div class="stat-value" id="stat-my-classes">-</div>
       <div class="stat-label">Classes</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" id="stat-pending-card" style="cursor:pointer;">
       <div class="stat-value" id="stat-pending">-</div>
       <div class="stat-label">Pending</div>
     </div>
@@ -18,6 +18,14 @@
       <div class="stat-value" id="stat-reviewed">-</div>
       <div class="stat-label">Reviewed</div>
     </div>
+  </div>
+
+  <!-- My Subjects -->
+  <div class="section-header">
+    <span class="section-title">My Subjects</span>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-5);" id="teacher-subjects">
+    <span class="text-xs text-muted">Loading...</span>
   </div>
 
   <!-- My Classes -->
@@ -58,8 +66,33 @@
         sv('stat-my-classes', s.totalClasses);
         sv('stat-pending', s.pendingReviews);
         sv('stat-reviewed', s.reviewedCount);
+
+        // update active term
+        if (s.activeTermName) {
+          var termEl = document.getElementById('teacher-term');
+          if (termEl) termEl.textContent = s.activeTermName;
+        }
       })
-      .catch(function() {});
+      .catch(function() { showToast('Could not load stats.', 'error'); });
+
+    // load subjects
+    API.get('/api/teacher/subjects')
+      .then(function(subjects) {
+        var el = document.getElementById('teacher-subjects');
+        if (!el) return;
+        if (!subjects || subjects.length === 0) {
+          el.innerHTML = '<span class="text-xs text-muted">No subjects assigned</span>';
+          return;
+        }
+        el.innerHTML = subjects.map(function(s) {
+          return '<span class="badge badge-primary" style="font-size:var(--text-xs);">' +
+            s.subjectName + ' (G' + s.gradeLevel + ')</span>';
+        }).join('');
+      })
+      .catch(function() {
+        var el = document.getElementById('teacher-subjects');
+        if (el) el.innerHTML = '<span class="text-xs text-muted">Could not load subjects</span>';
+      });
 
     // load classes
     API.get('/api/teacher/classes')
@@ -86,14 +119,24 @@
             '</div>';
           }).join('');
 
-          // click handler
+          // click handler — navigate to class grid
           listEl.querySelectorAll('.list-item').forEach(function(row) {
             row.addEventListener('click', function() {
-              showToast('Class grid coming soon.', 'info');
+              var cid = row.getAttribute('data-class-id');
+              localStorage.setItem('voiceassess_selected_class', cid);
+              Router.navigate('teacher/class');
             });
           });
         }
       })
-      .catch(function() {});
+      .catch(function() { showToast('Could not load classes.', 'error'); });
+
+    // navigate to review page when clicking pending stat
+    var pendingCard = document.getElementById('stat-pending-card');
+    if (pendingCard) {
+      pendingCard.addEventListener('click', function() {
+        Router.navigate('teacher/review');
+      });
+    }
   })();
 </script>

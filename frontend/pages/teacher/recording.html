@@ -363,9 +363,16 @@
       }
 
       var formData = new FormData();
+      var currentBlob = null;
+      var currentFileName = 'recording.webm';
+
       if (audioBlob) {
-        formData.append('file', audioBlob, 'recording.webm');
+        currentBlob = audioBlob;
+        currentFileName = 'recording.webm';
+        formData.append('file', audioBlob, currentFileName);
       } else if (selectedFile) {
+        currentBlob = selectedFile;
+        currentFileName = selectedFile.name || 'uploaded-file';
         formData.append('file', selectedFile);
       } else {
         return;
@@ -384,7 +391,40 @@
       progressEl.style.display = 'block';
       statusText.textContent = 'Uploading...';
 
-      API.uploadFormData('/api/teacher/assessments/' + audioId + '/upload', formData, function(pct) {
+      // save to offline queue first, then attempt upload
+      var queueId = null;
+      OfflineQueue.enqueue(currentBlob, audioId, currentFileName)
+        .then(function(id) {
+          queueId = id;
+          return doUpload(formData, progressEl, percentEl, barEl, statusText);
+        })
+        .then(function(data) {
+          // success — mark as completed
+          if (queueId) OfflineQueue.updateStatus(queueId, 'completed');
+          handleUploadSuccess(data);
+        })
+        .catch(function(err) {
+          // failure — mark as failed for retry
+          if (queueId) {
+            OfflineQueue.updateStatus(queueId, 'failed').then(function() {
+              OfflineQueue.removeCompleted(); // cleanup old completed items
+            });
+            showToast('Recording saved offline — will retry when connection returns.', 'warning');
+            updatePendingBadge();
+          } else {
+            showToast(err.message || 'Upload failed. Please try again.', 'error');
+          }
+          uploadBtn.disabled = false;
+          micBtn.style.pointerEvents = 'auto';
+          progressEl.style.display = 'none';
+          statusBadge.textContent = 'RECORDING COMPLETE';
+          statusBadge.className = 'badge badge-success';
+        });
+    });
+
+    // the actual upload call — returns a promise
+    function doUpload(formData, progressEl, percentEl, barEl, statusText) {
+      return API.uploadFormData('/api/teacher/assessments/' + audioId + '/upload', formData, function(pct) {
         barEl.style.width = pct + '%';
         percentEl.textContent = pct + '%';
         if (pct >= 100) {
@@ -392,41 +432,50 @@
           statusBadge.textContent = 'TRANSCRIBING...';
           statusBadge.className = 'badge badge-primary';
         }
-      }).then(function(data) {
-        statusBadge.textContent = 'COMPLETE';
-        statusBadge.className = 'badge badge-success';
-        barEl.style.width = '100%';
-        percentEl.textContent = '100%';
-
-        // store the result so the transcription page can display it
-        sessionStorage.setItem('transcriptionResult', JSON.stringify({
-          transcript: data.transcript || '',
-          topic: data.topic || '',
-          subject: data.subject || '',
-          className: data.className || '',
-          status: data.status || 'UPLOADED',
-          message: data.message || ''
-        }));
-
-        if (data.transcribed && data.transcriptSnippet) {
-          showToast('Transcription complete!', 'success');
-        } else {
-          showToast(data.message || 'Uploaded. Transcription needs attention.', 'warning');
-        }
-
-        // navigate to transcription page to show the result
-        setTimeout(function() {
-          Router.navigate('teacher/transcription');
-        }, 1500);
-      }).catch(function(err) {
-        showToast(err.message || 'Upload failed. Please try again.', 'error');
-        uploadBtn.disabled = false;
-        micBtn.style.pointerEvents = 'auto';
-        progressEl.style.display = 'none';
-        statusBadge.textContent = 'RECORDING COMPLETE';
-        statusBadge.className = 'badge badge-success';
       });
-    });
+    }
+
+    function handleUploadSuccess(data) {
+      var barEl = document.getElementById('upload-bar');
+      var percentEl = document.getElementById('upload-percent');
+
+      statusBadge.textContent = 'COMPLETE';
+      statusBadge.className = 'badge badge-success';
+      if (barEl) barEl.style.width = '100%';
+      if (percentEl) percentEl.textContent = '100%';
+
+      // store the result so the transcription page can display it
+      sessionStorage.setItem('transcriptionResult', JSON.stringify({
+        transcript: data.transcript || '',
+        topic: data.topic || '',
+        subject: data.subject || '',
+        className: data.className || '',
+        status: data.status || 'UPLOADED',
+        message: data.message || '',
+        audioId: data.audioId || '',
+        stagingId: data.stagingId || '',
+        aiAssessed: data.aiAssessed || false,
+        aiAssessment: data.aiAssessment || null,
+        aiError: data.aiError || null
+      }));
+
+      if (data.transcribed && data.transcriptSnippet) {
+        showToast('Transcription complete!', 'success');
+      } else {
+        showToast(data.message || 'Uploaded. Transcription needs attention.', 'warning');
+      }
+
+      if (data.aiAssessed) {
+        showToast('AI assessment complete!', 'success');
+      } else if (data.aiError) {
+        showToast('AI assessment skipped: ' + data.aiError, 'warning');
+      }
+
+      // navigate to transcription page to show the result
+      setTimeout(function() {
+        Router.navigate('teacher/transcription');
+      }, 1500);
+    }
 
     // initialize — request mic access and set up MediaRecorder
     function initMic() {
@@ -505,6 +554,91 @@
           statusBadge.className = 'badge badge-warning';
         });
     }
+
+    // update the pending badge near the status area
+    function updatePendingBadge() {
+      OfflineQueue.pendingCount().then(function(count) {
+        var existing = document.getElementById('pending-badge');
+        if (count === 0) {
+          if (existing) existing.style.display = 'none';
+          return;
+        }
+        if (existing) {
+          existing.textContent = count + ' pending uploads';
+          existing.style.display = '';
+        } else {
+          var badge = document.createElement('span');
+          badge.id = 'pending-badge';
+          badge.className = 'badge badge-warning';
+          badge.textContent = count + ' pending uploads';
+          badge.style.cssText = 'margin-top:var(--space-2);cursor:pointer;';
+          badge.title = 'Click to retry pending uploads';
+          badge.addEventListener('click', retryPendingUploads);
+          var statusEl = document.getElementById('rec-status-badge');
+          if (statusEl && statusEl.parentNode) {
+            statusEl.parentNode.appendChild(badge);
+          }
+        }
+      });
+    }
+
+    // retry all queued/failed uploads
+    function retryPendingUploads() {
+      OfflineQueue.getPending().then(function(items) {
+        if (items.length === 0) {
+          showToast('No pending uploads', 'info');
+          return;
+        }
+
+        showToast('Retrying ' + items.length + ' upload(s)...', 'info');
+        items.forEach(function(item, index) {
+          // exponential backoff between retries: 1s, 3s, 9s
+          var delay = Math.pow(3, Math.min(item.retryCount || 0, 2)) * 1000;
+
+          if (item.retryCount >= 3) {
+            // give up after 3 retries
+            showToast('Upload ' + item.fileName + ' failed after 3 retries', 'error');
+            return;
+          }
+
+          setTimeout(function() {
+            // reconstruct blob and form data
+            var blob = new Blob([item.blobData], { type: item.mimeType });
+            var fd = new FormData();
+            fd.append('file', blob, item.fileName);
+
+            OfflineQueue.updateStatus(item.id, 'uploading');
+
+            API.uploadFormData('/api/teacher/assessments/' + item.assessmentId + '/upload', fd)
+              .then(function() {
+                OfflineQueue.updateStatus(item.id, 'completed');
+                OfflineQueue.removeCompleted();
+                updatePendingBadge();
+                showToast('Uploaded: ' + item.fileName, 'success');
+              })
+              .catch(function(err) {
+                OfflineQueue.incrementRetry(item.id).then(function() {
+                  OfflineQueue.updateStatus(item.id, 'failed');
+                });
+                updatePendingBadge();
+              });
+          }, delay * (index + 1));
+        });
+      });
+    }
+
+    // listen for browser coming back online
+    window.addEventListener('online', function() {
+      showToast('Back online — retrying pending uploads...', 'info');
+      retryPendingUploads();
+    });
+
+    // init the offline queue and check for pending items on load
+    OfflineQueue.init().then(function() {
+      updatePendingBadge();
+    }).catch(function() {
+      // IndexedDB unavailable — queue won't work, uploads go direct
+    });
 
     initMic();
   })();

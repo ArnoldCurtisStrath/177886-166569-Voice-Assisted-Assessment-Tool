@@ -1,141 +1,266 @@
 <!-- VoiceAssess — Student Dashboard -->
 <div class="animate-fade-in">
-  <!-- Greeting -->
-  <div style="margin-bottom: var(--space-5);">
-    <h2 style="font-size: var(--text-lg);" id="student-greeting">Hello, Ethan</h2>
-    <p class="text-xs text-muted">Grade 5B &middot; Moi Primary School</p>
-  </div>
+  <h2 style="font-size: var(--text-lg); margin-bottom: var(--space-1);" id="student-greeting">Hello</h2>
+  <p class="text-xs text-muted" style="margin-bottom: var(--space-5);" id="student-school">Loading...</p>
 
-  <!-- Stats -->
   <div class="stat-row" style="margin-bottom: var(--space-6);">
-    <div class="stat-card accent-bg">
-      <div class="stat-value" id="stat-total">5</div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total">-</div>
       <div class="stat-label">Assessments</div>
     </div>
-    <div class="stat-card accent-bg">
-      <div class="stat-value" id="stat-avg">78%</div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-avg">-</div>
       <div class="stat-label">Average</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-value" id="stat-appeals" style="color: var(--color-warning);">0</div>
+    <div class="stat-card" id="stat-appeal-card" style="cursor:pointer;">
+      <div class="stat-value" id="stat-appeals">-</div>
       <div class="stat-label">Appeals</div>
     </div>
   </div>
 
-  <!-- Recent Assessments -->
   <div class="section-header">
     <span class="section-title">My Assessments</span>
   </div>
-  <div class="list-stack" style="margin-bottom: var(--space-6);">
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">English — Comprehension</div>
-        <div class="list-item-subtitle">May 25, 2026</div>
-      </div>
-      <div class="list-item-trailing">
-        <span style="font-weight: 700; color: var(--color-success); font-size: var(--text-base);">78%</span>
-        <a href="#" class="text-xs text-primary view-feedback" style="margin-left: var(--space-2);">Feedback</a>
-      </div>
-    </div>
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">Kiswahili — Sarufi</div>
-        <div class="list-item-subtitle">May 20, 2026</div>
-      </div>
-      <div class="list-item-trailing">
-        <span style="font-weight: 700; color: var(--color-success); font-size: var(--text-base);">82%</span>
-        <a href="#" class="text-xs text-primary view-feedback" style="margin-left: var(--space-2);">Feedback</a>
-      </div>
-    </div>
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">Mathematics — Fractions</div>
-        <div class="list-item-subtitle">May 15, 2026</div>
-      </div>
-      <div class="list-item-trailing">
-        <span style="font-weight: 700; color: var(--color-warning); font-size: var(--text-base);">62%</span>
-        <a href="#" class="text-xs text-primary view-feedback" style="margin-left: var(--space-2);">Feedback</a>
-      </div>
-    </div>
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">English — Oral Presentation</div>
-        <div class="list-item-subtitle">May 12, 2026</div>
-      </div>
-      <div class="list-item-trailing">
-        <span style="font-weight: 700; color: var(--color-success); font-size: var(--text-base);">85%</span>
-        <a href="#" class="text-xs text-primary view-feedback" style="margin-left: var(--space-2);">Feedback</a>
-      </div>
-    </div>
-  </div>
 
-  <!-- Submit Appeal (shown when applicable) -->
-  <div class="card" style="background: #FEF3E0; border-color: var(--color-warning);">
-    <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
-      <span style="font-size: 1.5rem;">(!)</span>
-      <div>
-        <div class="text-sm font-semibold" style="margin-bottom: var(--space-1);">Disagree with a score?</div>
-        <p class="text-xs text-secondary" style="margin-bottom: var(--space-3);">You can submit an appeal for any assessment within 7 days. Your teacher will review it.</p>
-        <button class="btn btn-sm" style="background: var(--color-warning); color: #fff;" id="submit-appeal-btn">Submit Appeal</button>
-      </div>
-    </div>
+  <div class="list-stack" id="assessment-list" style="gap: var(--space-3);"></div>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <div class="empty-state-icon">~</div>
+    <h4>No assessments yet</h4>
+    <p>Your teacher will evaluate you soon. Check back later.</p>
   </div>
 </div>
 
 <script>
   (function() {
-    // update greeting with student name
-    if (AuthStore.user) {
-      var greet = document.getElementById('student-greeting');
-      if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName.split(' ')[0];
+    // load profile for greeting + school
+    API.get('/api/student/profile')
+      .then(function(p) {
+        var firstName = p.fullName ? p.fullName.split(' ')[0] : 'Student';
+        document.getElementById('student-greeting').textContent = 'Hello, ' + firstName;
+        document.getElementById('student-school').textContent = (p.schoolName || '') + ' &middot; Student Portal';
+      })
+      .catch(function() {
+        document.getElementById('student-school').textContent = 'Student Portal';
+      });
+
+    // load assessments
+    loadAssessments();
+
+    function loadAssessments() {
+      API.get('/api/student/assessments')
+        .then(function(data) {
+          var items = data.assessments || [];
+          var total = data.totalAssessments || 0;
+          var avg = data.averageScore || 0;
+          var appeals = data.pendingAppeals || 0;
+
+          document.getElementById('stat-total').textContent = total;
+          document.getElementById('stat-avg').textContent = avg.toFixed(0) + '%';
+          document.getElementById('stat-appeals').textContent = appeals;
+
+          renderList(items);
+        })
+        .catch(function(err) {
+          document.getElementById('stat-total').textContent = '0';
+          document.getElementById('stat-avg').textContent = '-';
+          document.getElementById('stat-appeals').textContent = '0';
+          renderList([]);
+        });
     }
 
-    // feedback link clicks
-    document.querySelectorAll('.view-feedback').forEach(function(link) {
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-        // find a relevant feedback from mock data
-        var fb = null; // loaded from API when assessment pipeline is connected
-        showModal('Assessment Feedback',
-          '<p class="text-sm" style="line-height:1.6;">' + (fb ? fb.text : 'Feedback not yet available.') + '</p>',
-          '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>'
-        );
-        setTimeout(function() {
-          document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-            b.addEventListener('click', function() {
-              var overlay = document.querySelector('.modal-overlay');
-              if (overlay) overlay.remove();
-            });
-          });
-        }, 50);
-      });
-    });
+    function renderList(items) {
+      var listEl = document.getElementById('assessment-list');
+      var emptyEl = document.getElementById('empty-state');
 
-    // appeal button
-    var appealBtn = document.getElementById('submit-appeal-btn');
-    if (appealBtn) {
-      appealBtn.addEventListener('click', function() {
-        showModal('Submit Appeal',
-          '<div class="form-group"><label>Assessment</label><select class="select"><option>Mathematics — Fractions (62%)</option><option>English — Comprehension (78%)</option></select></div>' +
-          '<div class="form-group"><label>Reason for appeal</label><textarea class="input" rows="3" placeholder="Explain why you believe the score should be reviewed..."></textarea></div>',
-          '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
-          '<button class="btn btn-primary btn-sm" id="confirm-appeal">Submit</button>'
-        );
-        setTimeout(function() {
-          var confirmBtn = document.getElementById('confirm-appeal');
-          if (confirmBtn) {
-            confirmBtn.addEventListener('click', function() {
-              document.querySelector('.modal-overlay').remove();
-              showToast('Appeal submitted. Your teacher will review it.', 'success');
-            });
+      if (!items || items.length === 0) {
+        if (listEl) listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      // sort by date descending
+      items.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+
+      listEl.innerHTML = items.map(function(a) {
+        var scorePct = ((a.score || 0) / 4.0 * 100).toFixed(0);
+        var confColor = getConfColor(a.confidence);
+        var appealBadge = '';
+        if (a.appealStatus === 'PENDING') {
+          appealBadge = '<span class="badge badge-warning" style="font-size:0.65rem;">Appeal Pending</span>';
+        } else if (a.appealStatus === 'UPHELD') {
+          appealBadge = '<span class="badge badge-success" style="font-size:0.65rem;">Appeal Upheld</span>';
+        } else if (a.appealStatus === 'ADJUSTED') {
+          appealBadge = '<span class="badge" style="font-size:0.65rem;background:#E8F8EF;color:var(--color-success);">Adjusted</span>';
+        } else if (a.appealStatus === 'DISMISSED') {
+          appealBadge = '<span class="badge" style="font-size:0.65rem;background:#FDEDEC;color:var(--color-error);">Dismissed</span>';
+        }
+
+        // show resolution note for resolved appeals
+        var resolutionNoteHtml = '';
+        if (a.appealResolutionNote) {
+          resolutionNoteHtml = '<div class="text-xs text-muted" style="margin-top:var(--space-1);font-style:italic;">"' + a.appealResolutionNote + '"</div>';
+        }
+        var resolvedByHtml = '';
+        if (a.appealResolvedBy) {
+          resolvedByHtml = '<div class="text-xs text-muted" style="margin-top:var(--space-1);">Resolved by ' + a.appealResolvedBy + ' on ' + (a.appealResolvedAt || '') + '</div>';
+        }
+
+        return '<div class="card assessment-item" data-record-id="' + a.recordId + '" data-audio-id="' + a.audioId + '" style="cursor:pointer;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="font-weight:600;">' + a.subjectName + '</div>' +
+              '<div class="text-sm text-muted">' + a.topic + ' &middot; ' + a.date + '</div>' +
+              '<div style="margin-top:var(--space-1);">' +
+                '<span class="badge" style="font-size:0.7rem;">' + (a.ratingLevel || '-') + '</span>' +
+                (a.confidence ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + confColor + ';margin-left:var(--space-2);vertical-align:middle;" title="AI confidence: ' + a.confidence + '"></span>' : '') +
+              '</div>' +
+            '</div>' +
+              '<div style="text-align:right;">' +
+              '<div style="font-size:1.4rem;font-weight:700;">' + scorePct + '%</div>' +
+              '<div class="text-xs text-muted">' + (a.score || 0).toFixed(1) + '/4.0</div>' +
+              appealBadge +
+            '</div>' +
+          '</div>' +
+          resolutionNoteHtml +
+          resolvedByHtml +
+        '</div>';
+      }).join('');
+
+      // wire clicks to show detail modal
+      document.querySelectorAll('.assessment-item').forEach(function(card) {
+        card.addEventListener('click', function() {
+          var rid = card.getAttribute('data-record-id');
+          showDetail(rid);
+        });
+      });
+    }
+
+    function showDetail(recordId) {
+      API.get('/api/student/assessments/' + recordId)
+        .then(function(data) {
+          var scorePct = ((data.score || 0) / 4.0 * 100).toFixed(0);
+          var bodyHtml = '<div style="max-height:55vh;overflow-y:auto;">';
+
+          bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
+          bodyHtml += '<strong>' + data.subjectName + '</strong> &middot; ' + data.topic + '<br>';
+          bodyHtml += 'Date: ' + data.date + '<br>';
+          bodyHtml += '</div>';
+
+          bodyHtml += '<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3);">';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:2rem;font-weight:700;">' + scorePct + '%</div><div class="text-xs text-muted">Score</div></div>';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;">' + (data.ratingLevel || '-') + '</div><div class="text-xs text-muted">Rating</div></div>';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;color:' + getConfColor(data.confidence) + ';">' + (data.confidence || '-') + '</div><div class="text-xs text-muted">AI Confidence</div></div>';
+          bodyHtml += '</div>';
+
+          if (data.evidence) {
+            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-2);font-style:italic;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">"' + data.evidence + '"</div>';
           }
-          document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-            b.addEventListener('click', function() {
-              var overlay = document.querySelector('.modal-overlay');
-              if (overlay) overlay.remove();
+
+          if (data.feedback) {
+            bodyHtml += '<div style="margin-bottom:var(--space-2);"><div class="text-sm" style="font-weight:600;margin-bottom:var(--space-1);">Teacher Feedback</div>';
+            bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + data.feedback + '</div></div>';
+          }
+
+          // appeal resolution section
+          if (data.appealStatus && data.appealStatus !== 'PENDING') {
+            var appealColor = data.appealStatus === 'UPHELD' || data.appealStatus === 'ADJUSTED' ? 'var(--color-success)' : 'var(--color-error)';
+            bodyHtml += '<div style="margin-bottom:var(--space-2);padding:var(--space-3);border-left:3px solid ' + appealColor + ';background:var(--color-bg);border-radius:var(--radius-sm);">';
+            bodyHtml += '<div class="text-sm" style="font-weight:600;margin-bottom:var(--space-1);color:' + appealColor + ';">Appeal ' + data.appealStatus.charAt(0) + data.appealStatus.slice(1).toLowerCase() + '</div>';
+            // show the current (possibly adjusted) results
+            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-1);">Result: ' + (data.ratingLevel || '') + ' &middot; ' + (data.score || 0).toFixed(1) + '/4.0</div>';
+            if (data.feedback && data.feedback !== 'No feedback available.') {
+              bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-1);font-style:italic;white-space:pre-wrap;">"' + data.feedback + '"</div>';
+            }
+            if (data.appealResolutionNote) {
+              bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;margin-bottom:var(--space-1);padding:var(--space-1);border-left:2px solid var(--color-primary);">Teacher note: "' + data.appealResolutionNote + '"</div>';
+            }
+            if (data.appealResolvedBy) {
+              bodyHtml += '<div class="text-xs text-muted">Resolved by ' + data.appealResolvedBy + ' on ' + (data.appealResolvedAt || '') + '</div>';
+            }
+            bodyHtml += '</div>';
+          } else if (data.appealStatus === 'PENDING') {
+            bodyHtml += '<div style="margin-bottom:var(--space-2);padding:var(--space-2);background:#FFF8E1;border-radius:var(--radius-sm);">';
+            bodyHtml += '<span class="badge badge-warning" style="font-size:0.7rem;">Appeal Pending</span>';
+            bodyHtml += '<div class="text-xs text-muted" style="margin-top:var(--space-1);">Your teacher has not resolved this appeal yet.</div>';
+            bodyHtml += '</div>';
+          }
+
+          // teacher feedback (show separately too if not already in appeal box)
+          if (data.feedback && data.feedback !== 'No feedback available.' && !(data.appealStatus && data.appealStatus !== 'PENDING')) {
+            bodyHtml += '<div style="margin-bottom:var(--space-2);"><div class="text-sm" style="font-weight:600;margin-bottom:var(--space-1);">Teacher Feedback</div>';
+            bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + data.feedback + '</div></div>';
+          }
+
+          if (data.rubricDesc) {
+            bodyHtml += '<div class="text-xs text-muted" style="margin-top:var(--space-2);border-top:1px solid var(--color-border);padding-top:var(--space-2);">';
+            bodyHtml += '<strong>Rubric:</strong> ' + data.rubricDesc + '<br>';
+            bodyHtml += '<strong>Scale:</strong> ' + (data.ratingScale || '');
+            bodyHtml += '</div>';
+          }
+
+          bodyHtml += '</div>';
+
+          showModal(data.subjectName + ' — ' + data.topic, bodyHtml,
+            '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>' +
+            '<button class="btn btn-sm" style="background:var(--color-warning);color:white;border:none;" id="appeal-btn" data-audio-id="' + data.audioId + '">Submit Appeal</button>');
+
+          setTimeout(function() {
+            document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+              b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
             });
-          });
-        }, 50);
+            var ab = document.getElementById('appeal-btn');
+            if (ab) ab.addEventListener('click', function() {
+              var aid = ab.getAttribute('data-audio-id');
+              var o = document.querySelector('.modal-overlay'); if (o) o.remove();
+              showAppealForm(aid);
+            });
+          }, 50);
+        })
+        .catch(function() { showToast('Failed to load detail.', 'error'); });
+    }
+
+    function showAppealForm(audioId) {
+      showModal('Submit Appeal',
+        '<p class="text-sm" style="margin-bottom:var(--space-3);">Explain why you disagree with this assessment.</p>' +
+        '<div class="form-group"><label>Reason</label><textarea class="input" id="appeal-reason" rows="3" placeholder="I believe my score should be higher because..."></textarea></div>',
+        '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+        '<button class="btn btn-primary btn-sm" id="submit-appeal-btn">Submit</button>');
+
+      setTimeout(function() {
+        document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+          b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+        });
+        var sb = document.getElementById('submit-appeal-btn');
+        if (sb) sb.addEventListener('click', function() {
+          var reason = document.getElementById('appeal-reason').value.trim();
+          if (!reason) { showToast('Please provide a reason.', 'error'); return; }
+          API.post('/api/student/appeals', { audioId: audioId, reason: reason })
+            .then(function() {
+              var o = document.querySelector('.modal-overlay'); if (o) o.remove();
+              showToast('Appeal submitted. Your teacher will review it.', 'success');
+              loadAssessments();
+            })
+            .catch(function(err) { showToast('Appeal failed: ' + (err.message || 'Unknown error'), 'error'); });
+        });
+      }, 50);
+    }
+
+    function getConfColor(conf) {
+      if (!conf) return '#ccc';
+      conf = conf.toLowerCase();
+      if (conf === 'high') return 'var(--color-success)';
+      if (conf === 'medium') return 'var(--color-warning)';
+      if (conf === 'low') return 'var(--color-error)';
+      return '#ccc';
+    }
+
+    // click appeal stat to navigate
+    var appealCard = document.getElementById('stat-appeal-card');
+    if (appealCard) {
+      appealCard.addEventListener('click', function() {
+        Router.navigate('student/appeal');
       });
     }
   })();

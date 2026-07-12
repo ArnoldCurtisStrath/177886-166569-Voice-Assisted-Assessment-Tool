@@ -1,17 +1,28 @@
 const Router = {
   // route definitions: hash -> config
   routes: {
-    'login':        { title: 'VoiceAssess',     role: null,     file: 'pages/login.html' },
-    'admin':        { title: 'Admin Dashboard', role: 'ADMIN',  file: 'pages/admin/dashboard.html' },
-    'admin/users':  { title: 'User Management', role: 'ADMIN',  file: 'pages/admin/users.html' },
-    'teacher':      { title: 'Dashboard',       role: 'TEACHER',file: 'pages/teacher/dashboard.html' },
+    'login':          { title: 'VoiceAssess',     role: null,     file: 'pages/login.html' },
+    'register':       { title: 'Register School', role: null,     file: 'pages/register.html' },
+    'admin':          { title: 'Admin Dashboard', role: 'ADMIN',  file: 'pages/admin/dashboard.html' },
+    'admin/users':    { title: 'User Management', role: 'ADMIN',  file: 'pages/admin/users.html' },
+    'admin/classes':  { title: 'Classes',         role: 'ADMIN',  file: 'pages/admin/classes.html' },
+    'admin/subjects': { title: 'Subjects',        role: 'ADMIN',  file: 'pages/admin/subjects.html' },
+    'admin/rubrics':  { title: 'KNEC Rubrics',    role: 'ADMIN',  file: 'pages/admin/rubrics.html' },
+    'admin/terms':    { title: 'Academic Terms',  role: 'ADMIN',  file: 'pages/admin/terms.html' },
+    'admin/compliance':{ title: 'Compliance',     role: 'ADMIN',  file: 'pages/admin/compliance.html' },
+    'admin/logs':     { title: 'Error Logs',      role: 'ADMIN',  file: 'pages/admin/logs.html' },
+    'teacher':        { title: 'Dashboard',       role: 'TEACHER',file: 'pages/teacher/dashboard.html' },
     'teacher/curate': { title: 'New Assessment',role: 'TEACHER',file: 'pages/teacher/curation.html' },
     'teacher/record':{ title: 'Assessment Audio',role:'TEACHER',file: 'pages/teacher/recording.html' },
     'teacher/review':{ title: 'Pending Reviews',role: 'TEACHER',file: 'pages/teacher/review.html' },
+    'teacher/class': { title: 'Class Grid',     role: 'TEACHER',file: 'pages/teacher/class-grid.html' },
+    'teacher/audit':{ title: 'Assessment Audit',role:'TEACHER',file: 'pages/teacher/audit.html' },
+    'teacher/appeals':{title: 'Appeals',       role:'TEACHER',file: 'pages/teacher/appeals.html' },
     'teacher/transcription':{ title: 'Transcription',role:'TEACHER',file: 'pages/teacher/transcription.html' },
     'parent':       { title: 'My Children',     role: 'PARENT', file: 'pages/parent/dashboard.html' },
     'parent/child': { title: 'Student Progress',role: 'PARENT', file: 'pages/parent/child-progress.html' },
-    'student':      { title: 'My Progress',     role: 'STUDENT',file: 'pages/student/dashboard.html' }
+    'student':      { title: 'My Progress',     role: 'STUDENT',file: 'pages/student/dashboard.html' },
+    'student/appeal':{title: 'My Appeals',     role: 'STUDENT',file: 'pages/student/appeal.html' }
   },
 
   currentHash: '',
@@ -67,8 +78,8 @@ const Router = {
       return;
     }
 
-    // if logged in but trying to access login page, redirect to dashboard
-    if (hash === 'login' && AuthStore.isLoggedIn) {
+    // if logged in but trying to access login/register page, redirect to dashboard
+    if ((hash === 'login' || hash === 'register') && AuthStore.isLoggedIn) {
       this.navigate(AuthStore.getDashboardRoute());
       return;
     }

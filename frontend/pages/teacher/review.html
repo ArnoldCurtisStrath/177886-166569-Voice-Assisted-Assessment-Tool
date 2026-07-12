@@ -2,24 +2,19 @@
 <div class="animate-fade-in">
   <div class="section-header">
     <span class="section-title">Pending Reviews</span>
-    <span class="badge badge-warning" id="review-count">3</span>
+    <span class="badge badge-warning" id="review-count">0</span>
   </div>
 
-  <!-- Tabs -->
   <div class="tabs" style="margin-bottom: var(--space-4);">
     <button class="tab tab-active" data-review-filter="all">All</button>
     <button class="tab" data-review-filter="flagged">Flagged</button>
     <button class="tab" data-review-filter="reviewed">Reviewed</button>
   </div>
 
-  <!-- Review Cards -->
-  <div class="list-stack" id="review-list" style="gap: var(--space-4);">
-    <!-- Populated by JS -->
-  </div>
+  <div class="list-stack" id="review-list" style="gap: var(--space-4);"></div>
 
-  <!-- Empty State -->
   <div class="empty-state" id="review-empty" style="display: none;">
-    <div class="empty-state-icon">&#10003;</div>
+    <div class="empty-state-icon">~</div>
     <h4>All caught up</h4>
     <p>No pending reviews to process.</p>
   </div>
@@ -27,18 +22,36 @@
 
 <script>
   (function() {
-    var reviews = []; // loaded from API when assessment pipeline is connected
+    var reviews = [];
     var activeFilter = 'all';
 
+    // load from API
+    function loadReviews() {
+      API.get('/api/teacher/reviews')
+        .then(function(data) {
+          reviews = data;
+          renderReviews();
+        })
+        .catch(function(err) {
+          console.error('Failed to load reviews:', err);
+          showToast('Could not load reviews.', 'error');
+        });
+    }
+
     function renderReviews() {
-      var filtered = activeFilter === 'all' ? [...reviews] :
-                     activeFilter === 'flagged' ? reviews.filter(function(r) { return r.issue.includes('mismatch') || r.issue.includes('Unmatched'); }) :
-                     []; // reviewed are those removed from the list
+      var filtered;
+      if (activeFilter === 'all') {
+        filtered = reviews.filter(function(r) { return r.status === 'PENDING_REVIEW' || r.status === 'EDITED'; });
+      } else if (activeFilter === 'flagged') {
+        filtered = reviews.filter(function(r) { return r.lowConfidenceCount > 0 && (r.status === 'PENDING_REVIEW' || r.status === 'EDITED'); });
+      } else {
+        // reviewed tab
+        filtered = reviews.filter(function(r) { return r.status === 'APPROVED' || r.status === 'REJECTED'; });
+      }
 
       var listEl = document.getElementById('review-list');
       var emptyEl = document.getElementById('review-empty');
       var countEl = document.getElementById('review-count');
-
       if (countEl) countEl.textContent = filtered.length;
 
       if (filtered.length === 0) {
@@ -46,142 +59,272 @@
         if (emptyEl) emptyEl.style.display = '';
         return;
       }
-
       if (emptyEl) emptyEl.style.display = 'none';
 
       if (listEl) {
         listEl.innerHTML = filtered.map(function(r) {
-          // determine issue severity for styling
-          var isWarning = r.issue.includes('mismatch') || r.issue.includes('Unmatched');
-          var issueBg = isWarning ? '#FEF3E0' : '#E8F8EF';
-          var issueBorder = isWarning ? 'var(--color-warning)' : 'var(--color-success)';
+          var hasLowConf = r.lowConfidenceCount > 0;
+          var confBadge = hasLowConf
+            ? '<span class="badge" style="background:#FDEDEC;color:var(--color-error);margin-left:var(--space-2);">' + r.lowConfidenceCount + ' low confidence</span>'
+            : '';
 
-          return `
-            <div class="card" data-review-id="${r.id}">
-              <div style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3);">
-                <div class="avatar avatar-md">${r.studentInitials}</div>
-                <div style="flex: 1; min-width: 0;">
-                  <div class="list-item-title">${r.studentName}</div>
-                  <div class="list-item-subtitle">${r.subject} &middot; ${r.strand} &middot; ${r.date}</div>
-                </div>
-                <span style="font-size: 1.25rem;">${isWarning ? '(!)' : '&#10003;'}</span>
-              </div>
+          var statusBadge = '';
+          if (r.status === 'EDITED') {
+            statusBadge = '<span class="badge badge-warning" style="margin-left:var(--space-2);">Edited</span>';
+          } else if (r.status === 'APPROVED') {
+            statusBadge = '<span class="badge" style="background:#E8F8EF;color:var(--color-success);margin-left:var(--space-2);">Approved</span>';
+          } else if (r.status === 'REJECTED') {
+            statusBadge = '<span class="badge" style="background:#FDEDEC;color:var(--color-error);margin-left:var(--space-2);">Rejected</span>';
+          }
 
-              <!-- Issue box -->
-              <div style="padding: var(--space-3); background: ${issueBg}; border: 1px solid ${issueBorder}; border-radius: var(--radius-sm); margin-bottom: var(--space-3);">
-                <p class="text-sm" style="color: var(--color-text); line-height: 1.5;">${r.issue}</p>
-              </div>
+          var isReviewed = r.status === 'APPROVED' || r.status === 'REJECTED';
 
-              <!-- Action buttons -->
-              <div style="display: flex; gap: var(--space-2);">
-                <button class="btn btn-sm review-approve" data-id="${r.id}" style="flex: 1; background-color: #E8F8EF; color: var(--color-success); border: 1.5px solid var(--color-success); border-radius: var(--radius-sm); text-align: center;">Approve</button>
-                <button class="btn btn-sm review-edit" data-id="${r.id}" style="flex: 1; background-color: transparent; color: var(--color-primary); border: 1.5px solid var(--color-primary); border-radius: var(--radius-sm); text-align: center;">Edit</button>
-                <button class="btn btn-sm review-reject" data-id="${r.id}" style="flex: 1; background-color: #FDEDEC; color: var(--color-error); border: 1.5px solid var(--color-error); border-radius: var(--radius-sm); text-align: center;">Reject</button>
-              </div>
-            </div>
-          `;
+          return '<div class="card review-card" data-staging-id="' + r.stagingId + '" data-audio-id="' + r.audioId + '" style="cursor:pointer;">' +
+            '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-2);">' +
+              '<div>' +
+                '<div style="font-weight:600;">' + r.className + ' &middot; ' + r.subjectName + statusBadge + '</div>' +
+                '<div class="text-sm text-muted">' + r.topic + ' &middot; ' + r.date + '</div>' +
+              '</div>' +
+              '<span class="text-sm text-muted">' + r.studentCount + ' students</span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:var(--space-2);">' +
+              '<span class="text-xs text-muted" style="flex:1;">' + (r.transcriptSnippet || 'No transcript') + '</span>' +
+              confBadge +
+            '</div>' +
+            (isReviewed ? '' :
+            '<div style="display:flex;gap:var(--space-2);margin-top:var(--space-3);">' +
+              '<button class="btn btn-sm review-approve" data-staging-id="' + r.stagingId + '" style="flex:1;background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);border-radius:var(--radius-sm);">Approve</button>' +
+              '<button class="btn btn-sm review-edit-btn" data-staging-id="' + r.stagingId + '" style="flex:1;background:transparent;color:var(--color-primary);border:1.5px solid var(--color-primary);border-radius:var(--radius-sm);">Edit</button>' +
+              '<button class="btn btn-sm review-reject" data-staging-id="' + r.stagingId + '" style="flex:1;background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);border-radius:var(--radius-sm);">Reject</button>' +
+            '</div>') +
+          '</div>';
         }).join('');
 
-        // wire up actions
+        // wire click on card to show detail
+        document.querySelectorAll('.review-card').forEach(function(card) {
+          card.addEventListener('click', function(e) {
+            // don't trigger if clicking a button
+            if (e.target.tagName === 'BUTTON') return;
+            var sid = card.getAttribute('data-staging-id');
+            showDetail(sid);
+          });
+        });
+
         wireActions();
       }
     }
 
-    function wireActions() {
-      // Approve
-      document.querySelectorAll('.review-approve').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = btn.getAttribute('data-id');
-          showModal('Confirm Approval',
-            '<p class="text-sm">Approve this assessment? It will be finalized and visible to parents and students.</p>',
-            '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
-            '<button class="btn btn-sm" style="background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);" id="confirm-approve" data-id="' + id + '">Approve</button>'
-          );
-          // wire confirm button
-          setTimeout(function() {
-            var confirmBtn = document.getElementById('confirm-approve');
-            if (confirmBtn) {
-              confirmBtn.addEventListener('click', function() {
-                removeReview(id);
-                document.querySelector('.modal-overlay').remove();
-                showToast('Assessment approved and finalized.', 'success');
-              });
-            }
-            // close buttons
-            document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-              b.addEventListener('click', function() {
-                var overlay = document.querySelector('.modal-overlay');
-                if (overlay) overlay.remove();
-              });
-            });
-          }, 50);
-        });
-      });
+    function showDetail(stagingId) {
+      API.get('/api/teacher/reviews/' + stagingId)
+        .then(function(data) {
+          var bodyHtml = '<div style="max-height:60vh;overflow-y:auto;">';
 
-      // Edit
-      document.querySelectorAll('.review-edit').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = btn.getAttribute('data-id');
-          var review = reviews.find(function(r) { return r.id === id; });
-          showModal('Edit Assessment — ' + (review ? review.studentName : ''),
-            '<div class="form-group"><label>Student Name</label><input class="input" value="' + (review ? review.studentName : '') + '"></div>' +
-            '<div class="form-group"><label>Strand</label><input class="input" value="' + (review ? review.strand : '') + '"></div>' +
-            '<div class="form-group"><label>Issue Resolution</label><textarea class="input" rows="2">' + (review ? review.issue : '') + '</textarea></div>',
-            '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
-            '<button class="btn btn-primary btn-sm" id="confirm-edit" data-id="' + id + '">Save Changes</button>'
-          );
-          setTimeout(function() {
-            var saveBtn = document.getElementById('confirm-edit');
-            if (saveBtn) {
-              saveBtn.addEventListener('click', function() {
-                removeReview(id);
-                document.querySelector('.modal-overlay').remove();
-                showToast('Assessment edited successfully.', 'success');
-              });
-            }
-            document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-              b.addEventListener('click', function() {
-                var overlay = document.querySelector('.modal-overlay');
-                if (overlay) overlay.remove();
-              });
-            });
-          }, 50);
-        });
-      });
+          // session info
+          bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
+          bodyHtml += '<strong>' + data.subjectName + '</strong> &middot; ' + data.topic + '<br>';
+          bodyHtml += 'Class: ' + data.className + ' &middot; ' + data.date + '<br>';
+          bodyHtml += 'Strand: ' + (data.strand || '-') + ' &middot; ' + (data.subStrand || '-') + '<br>';
+          bodyHtml += '</div>';
 
-      // Reject
-      document.querySelectorAll('.review-reject').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = btn.getAttribute('data-id');
-          showModal('Reject Assessment',
-            '<p class="text-sm" style="margin-bottom:var(--space-3);">This assessment will be discarded. This action cannot be undone.</p>' +
-            '<div class="form-group"><label>Reason for rejection</label><textarea class="input" rows="2" placeholder="Optional note..."></textarea></div>',
-            '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
-            '<button class="btn btn-danger btn-sm" id="confirm-reject" data-id="' + id + '">Reject</button>'
-          );
-          setTimeout(function() {
-            var rejectBtn = document.getElementById('confirm-reject');
-            if (rejectBtn) {
-              rejectBtn.addEventListener('click', function() {
-                removeReview(id);
-                document.querySelector('.modal-overlay').remove();
-                showToast('Assessment rejected.', 'error');
-              });
+          // rubric
+          if (data.rubricDesc) {
+            bodyHtml += '<div class="text-xs text-muted" style="margin-bottom:var(--space-2);background:var(--color-bg);padding:var(--space-2);border-radius:var(--radius-sm);">';
+            bodyHtml += '<strong>Rubric:</strong> ' + data.rubricDesc + '<br>';
+            bodyHtml += '<strong>Scale:</strong> ' + (data.ratingScale || '');
+            bodyHtml += '</div>';
+          }
+
+          // transcript
+          if (data.fullTranscript) {
+            bodyHtml += '<details style="margin-bottom:var(--space-3);"><summary class="text-sm" style="cursor:pointer;font-weight:600;">Transcript</summary>';
+            bodyHtml += '<div class="text-xs" style="background:var(--color-bg);padding:var(--space-2);max-height:200px;overflow-y:auto;white-space:pre-wrap;border-radius:var(--radius-sm);margin-top:var(--space-1);">' + (data.fullTranscript || data.transcriptSnippet || '') + '</div>';
+            bodyHtml += '</details>';
+          }
+
+          // per-student assessments
+          var items = data.assessment;
+          if (items && items.length > 0) {
+            bodyHtml += '<div style="margin-bottom:var(--space-2);font-weight:600;font-size:0.9rem;">Student Assessments</div>';
+            for (var i = 0; i < items.length; i++) {
+              var a = items[i];
+              var flagColor = a.confidenceFlag === 'red' ? 'var(--color-error)' : a.confidenceFlag === 'orange' ? 'var(--color-warning)' : 'var(--color-success)';
+              bodyHtml += '<div class="card" style="margin-bottom:var(--space-2);border-left:3px solid ' + flagColor + ';">';
+              bodyHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-1);">';
+              bodyHtml += '<span style="font-weight:600;">' + (a.studentName || 'Unknown') + '</span>';
+              bodyHtml += '<span class="badge" style="font-size:0.7rem;">' + a.ratingLevel + '</span>';
+              bodyHtml += '</div>';
+              bodyHtml += '<div class="text-xs text-muted">Confidence: <span style="color:' + flagColor + ';font-weight:600;">' + (a.confidence || 'medium') + '</span></div>';
+              if (a.evidence) {
+                bodyHtml += '<div class="text-xs" style="margin-top:var(--space-1);font-style:italic;">"' + a.evidence + '"</div>';
+              }
+              if (a.strengths) {
+                bodyHtml += '<div class="text-xs" style="margin-top:var(--space-1);color:var(--color-success);">+ ' + a.strengths + '</div>';
+              }
+              if (a.areasForImprovement) {
+                bodyHtml += '<div class="text-xs" style="margin-top:2px;color:var(--color-warning);">- ' + a.areasForImprovement + '</div>';
+              }
+              bodyHtml += '</div>';
             }
+          }
+
+          if (data.overallSummary) {
+            bodyHtml += '<div class="text-xs text-muted" style="margin-top:var(--space-2);border-top:1px solid var(--color-border);padding-top:var(--space-2);">' + data.overallSummary + '</div>';
+          }
+
+          bodyHtml += '</div>';
+
+          var isPending = data.status === 'PENDING_REVIEW' || data.status === 'EDITED';
+          var footer = isPending
+            ? '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>' +
+              '<button class="btn btn-sm modal-approve-btn" style="background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);" data-sid="' + stagingId + '">Approve</button>' +
+              '<button class="btn btn-sm modal-edit-btn" style="background:transparent;color:var(--color-primary);border:1.5px solid var(--color-primary);" data-sid="' + stagingId + '">Edit</button>' +
+              '<button class="btn btn-sm modal-reject-btn" style="background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);" data-sid="' + stagingId + '">Reject</button>'
+            : '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>';
+
+          showModal(data.subjectName + ' — ' + data.topic, bodyHtml, footer);
+
+          // wire detail modal buttons
+          setTimeout(function() {
             document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-              b.addEventListener('click', function() {
-                var overlay = document.querySelector('.modal-overlay');
-                if (overlay) overlay.remove();
-              });
+              b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
             });
+            var appBtn = document.querySelector('.modal-approve-btn');
+            if (appBtn) appBtn.addEventListener('click', function() { doApprove(stagingId); });
+            var edtBtn = document.querySelector('.modal-edit-btn');
+            if (edtBtn) edtBtn.addEventListener('click', function() { showEditForm(stagingId, data); });
+            var rejBtn = document.querySelector('.modal-reject-btn');
+            if (rejBtn) rejBtn.addEventListener('click', function() { doReject(stagingId); });
           }, 50);
+        })
+        .catch(function(err) {
+          showToast('Failed to load review detail.', 'error');
         });
-      });
     }
 
-    function removeReview(id) {
-      reviews = reviews.filter(function(r) { return r.id !== id; });
-      renderReviews();
+    function showEditForm(stagingId, data) {
+      var items = data.assessment || [];
+      var formHtml = '<div style="max-height:55vh;overflow-y:auto;">';
+      for (var i = 0; i < items.length; i++) {
+        var a = items[i];
+        formHtml += '<div class="card" style="margin-bottom:var(--space-2);">';
+        formHtml += '<div style="font-weight:600;margin-bottom:var(--space-2);">' + (a.studentName || 'Student') + '</div>';
+        formHtml += '<div class="form-group"><label>Rating Level</label><select class="input edit-rating" data-student-id="' + (a.studentId || '') + '">';
+        var ratings = ['Below Expectations', 'Approaching Expectations', 'Meeting Expectations', 'Exceeding Expectations'];
+        for (var j = 0; j < ratings.length; j++) {
+          formHtml += '<option value="' + ratings[j] + '"' + (a.ratingLevel === ratings[j] ? ' selected' : '') + '>' + ratings[j] + '</option>';
+        }
+        formHtml += '</select></div>';
+        formHtml += '<div class="form-group"><label>Strengths</label><textarea class="input edit-strengths" rows="2" data-student-id="' + (a.studentId || '') + '">' + (a.strengths || '') + '</textarea></div>';
+        formHtml += '<div class="form-group"><label>Areas to Improve</label><textarea class="input edit-areas" rows="2" data-student-id="' + (a.studentId || '') + '">' + (a.areasForImprovement || '') + '</textarea></div>';
+        formHtml += '</div>';
+      }
+      formHtml += '</div>';
+
+      showModal('Edit Assessment', formHtml,
+        '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+        '<button class="btn btn-primary btn-sm" id="save-edit-btn">Save Changes</button>');
+
+      setTimeout(function() {
+        document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+          b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+        });
+        var saveBtn = document.getElementById('save-edit-btn');
+        if (saveBtn) {
+          saveBtn.addEventListener('click', function() {
+            var edited = [];
+            document.querySelectorAll('.edit-rating').forEach(function(sel) {
+              var sid = sel.getAttribute('data-student-id');
+              var rating = sel.value;
+              var strengthsEl = document.querySelector('.edit-strengths[data-student-id="' + sid + '"]');
+              var areasEl = document.querySelector('.edit-areas[data-student-id="' + sid + '"]');
+              var orig = findOriginal(items, sid);
+              edited.push({
+                studentId: sid,
+                studentName: orig ? orig.studentName : '',
+                ratingLevel: rating,
+                confidence: orig ? orig.confidence : 'medium',
+                evidence: orig ? orig.evidence : '',
+                strengths: strengthsEl ? strengthsEl.value : '',
+                areasForImprovement: areasEl ? areasEl.value : ''
+              });
+            });
+            doEdit(stagingId, edited);
+          });
+        }
+      }, 50);
+    }
+
+    function findOriginal(items, studentId) {
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].studentId === studentId) return items[i];
+      }
+      return null;
+    }
+
+    function doApprove(stagingId) {
+      API.post('/api/teacher/reviews/' + stagingId + '/approve')
+        .then(function() {
+          var o = document.querySelector('.modal-overlay'); if (o) o.remove();
+          showToast('Assessment approved and finalized.', 'success');
+          loadReviews();
+        })
+        .catch(function(err) { showToast('Approve failed: ' + (err.message || 'Unknown error'), 'error'); });
+    }
+
+    function doEdit(stagingId, edited) {
+      var o = document.querySelector('.modal-overlay'); if (o) o.remove();
+      API.post('/api/teacher/reviews/' + stagingId + '/edit', { assessment: edited })
+        .then(function() {
+          showToast('Assessment edited and finalized.', 'success');
+          loadReviews();
+        })
+        .catch(function(err) { showToast('Edit failed: ' + (err.message || 'Unknown error'), 'error'); });
+    }
+
+    function doReject(stagingId) {
+      showModal('Reject Assessment',
+        '<p class="text-sm">This assessment will be discarded. This cannot be undone.</p>',
+        '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+        '<button class="btn btn-danger btn-sm" id="confirm-reject-btn">Reject</button>');
+      setTimeout(function() {
+        document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+          b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+        });
+        var btn = document.getElementById('confirm-reject-btn');
+        if (btn) btn.addEventListener('click', function() {
+          API.post('/api/teacher/reviews/' + stagingId + '/reject')
+            .then(function() {
+              var o = document.querySelector('.modal-overlay'); if (o) o.remove();
+              showToast('Assessment rejected.', 'error');
+              loadReviews();
+            })
+            .catch(function(err) { showToast('Reject failed: ' + (err.message || 'Unknown error'), 'error'); });
+        });
+      }, 50);
+    }
+
+    function wireActions() {
+      document.querySelectorAll('.review-approve').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          doApprove(btn.getAttribute('data-staging-id'));
+        });
+      });
+      document.querySelectorAll('.review-edit-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var sid = btn.getAttribute('data-staging-id');
+          API.get('/api/teacher/reviews/' + sid)
+            .then(function(data) { showEditForm(sid, data); })
+            .catch(function() { showToast('Failed to load detail.', 'error'); });
+        });
+      });
+      document.querySelectorAll('.review-reject').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          doReject(btn.getAttribute('data-staging-id'));
+        });
+      });
     }
 
     // tab filters
@@ -194,7 +337,6 @@
       });
     });
 
-    // initial render
-    renderReviews();
+    loadReviews();
   })();
 </script>

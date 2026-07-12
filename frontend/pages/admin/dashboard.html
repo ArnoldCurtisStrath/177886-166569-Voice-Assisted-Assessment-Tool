@@ -2,7 +2,7 @@
 <div class="animate-fade-in">
   <!-- Welcome -->
   <h2 style="margin-bottom: var(--space-1);" id="admin-greeting">Hello, Administrator</h2>
-  <p class="text-sm text-secondary" style="margin-bottom: var(--space-6);" id="admin-school">School</p>
+  <p class="text-sm text-secondary" style="margin-bottom: var(--space-6);" id="admin-school">Loading...</p>
 
   <!-- Stats Row -->
   <div class="stat-row" style="margin-bottom: var(--space-6);">
@@ -52,59 +52,71 @@
     <a href="#admin/terms" class="card card-hover">
       <div class="quick-icon" style="color: var(--color-success);">T</div>
       <div class="list-item-title">Set Active Term</div>
-      <div class="text-xs text-muted">Current: Term 1, 2026</div>
+      <div class="text-xs text-muted" id="quick-term-label">Loading...</div>
     </a>
     <a href="#admin/compliance" class="card card-hover">
       <div class="quick-icon" style="color: var(--color-success);">%</div>
       <div class="list-item-title">View Compliance</div>
       <div class="text-xs text-muted">School-wide analytics</div>
     </a>
+    <a href="#" class="card card-hover" id="download-school-report">
+      <div class="quick-icon" style="color: var(--color-accent);">D</div>
+      <div class="list-item-title">Download School Report</div>
+      <div class="text-xs text-muted">PDF summary of all assessments</div>
+    </a>
   </div>
 
-  <!-- Recent Activity (static for now) -->
+  <!-- Recent Activity -->
   <div class="section-header">
     <span class="section-title">Recent Activity</span>
     <a href="#admin/compliance" class="section-action">View all</a>
   </div>
-  <div class="list-stack">
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">English Comprehension — Grade 4B</div>
-        <div class="list-item-subtitle">Uploaded by Ms. Erika · May 25, 2026</div>
-      </div>
-      <span class="badge badge-warning">UPLOADED</span>
-    </div>
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">Kiswahili Sarufi — Grade 4B</div>
-        <div class="list-item-subtitle">Uploaded by Ms. Erika · May 20, 2026</div>
-      </div>
-      <span class="badge badge-success">FINALIZED</span>
-    </div>
-    <div class="list-item">
-      <div class="list-item-body">
-        <div class="list-item-title">Mathematics Fractions — Grade 4C</div>
-        <div class="list-item-subtitle">Uploaded by Grace Muthoni · May 15, 2026</div>
-      </div>
-      <span class="badge badge-neutral">STAGED</span>
-    </div>
+  <div id="recent-activity"></div>
+  <div class="empty-state" id="activity-empty" style="display:none;">
+    <div class="empty-state-icon">-</div>
+    <h4>No activity yet</h4>
+    <p>Recent assessments will appear here once teachers begin evaluating.</p>
   </div>
 </div>
 
 <script>
   (function() {
-    // update greeting and school from auth store
     if (AuthStore.user) {
       var greet = document.getElementById('admin-greeting');
       if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName.split(' ')[0];
-      var schoolEl = document.getElementById('admin-school');
-      if (schoolEl) schoolEl.textContent = 'Strathmore Primary';
     }
 
-    // quick-action cards: set flag so users page auto-opens create modal
+    // load school info
+    API.get('/api/admin/school')
+      .then(function(s) {
+        var schoolEl = document.getElementById('admin-school');
+        if (schoolEl) schoolEl.textContent = s.schoolName;
+      })
+      .catch(function() {
+        var schoolEl = document.getElementById('admin-school');
+        if (schoolEl) schoolEl.textContent = 'Admin Portal';
+      });
+
+    // load active term for quick-action card
+    API.get('/api/admin/terms')
+      .then(function(terms) {
+        var active = null;
+        for (var i = 0; i < terms.length; i++) {
+          if (terms[i].status === 'ACTIVE' || terms[i].status === 'active') {
+            active = terms[i];
+            break;
+          }
+        }
+        var label = document.getElementById('quick-term-label');
+        if (label) {
+          label.textContent = active ? 'Current: ' + active.termName : 'No active term';
+        }
+      })
+      .catch(function() {});
+
+    // quick-action cards
     var createTeacher = document.getElementById('quick-create-teacher');
     var createStudent = document.getElementById('quick-create-student');
-
     if (createTeacher) {
       createTeacher.addEventListener('click', function(e) {
         e.preventDefault();
@@ -120,7 +132,7 @@
       });
     }
 
-    // load stats from backend
+    // load stats
     API.get('/api/admin/stats')
       .then(function(s) {
         var setVal = function(id, val) {
@@ -133,7 +145,49 @@
         setVal('stat-admins', s.totalAdmins);
       })
       .catch(function() {
-        // if stats fail, just show dashes (already there)
+        showToast('Could not load stats.', 'error');
       });
+
+    // load recent activity
+    API.get('/api/admin/recent-activity')
+      .then(function(items) {
+        var listEl = document.getElementById('recent-activity');
+        var emptyEl = document.getElementById('activity-empty');
+        if (!items || items.length === 0) {
+          if (emptyEl) emptyEl.style.display = '';
+          return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        var statusBadge = function(status) {
+          if (!status) return '';
+          var s = status.toUpperCase();
+          if (s === 'COMPLETED') return '<span class="badge badge-success">FINALIZED</span>';
+          if (s === 'TRANSCRIBED') return '<span class="badge badge-warning">UPLOADED</span>';
+          if (s === 'PENDING_REVIEW' || s === 'APPEALED') return '<span class="badge badge-neutral">STAGED</span>';
+          if (s === 'REJECTED') return '<span class="badge" style="background:#FDEDEC;color:var(--color-error);">REJECTED</span>';
+          return '<span class="badge">' + status + '</span>';
+        };
+
+        listEl.innerHTML = '<div class="list-stack">' + items.map(function(a) {
+          return '<div class="list-item">' +
+            '<div class="list-item-body">' +
+              '<div class="list-item-title">' + a.subjectName + ' — ' + a.className + '</div>' +
+              '<div class="list-item-subtitle">' + a.topic + ' &middot; ' + a.teacherName + ' &middot; ' + (a.date || '') + '</div>' +
+            '</div>' +
+            statusBadge(a.status) +
+          '</div>';
+        }).join('') + '</div>';
+      })
+      .catch(function() {
+        var emptyEl = document.getElementById('activity-empty');
+        if (emptyEl) emptyEl.style.display = '';
+      });
+
+    // school report download
+    document.getElementById('download-school-report').addEventListener('click', function(e) {
+      e.preventDefault();
+      window.open(API.BASE + '/api/admin/reports/school', '_blank');
+    });
   })();
 </script>
