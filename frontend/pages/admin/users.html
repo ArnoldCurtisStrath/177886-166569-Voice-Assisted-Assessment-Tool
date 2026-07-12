@@ -69,6 +69,7 @@
         <div class="form-group" id="user-password-group">
           <label id="user-password-label">Password</label>
           <input type="password" id="user-password" class="input" placeholder="Min 6 characters">
+          <input type="password" id="user-confirm-password" class="input" placeholder="Re-enter password" style="margin-top:var(--space-2);">
         </div>
         <div class="form-group" id="user-active-group" style="display:none;">
           <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;">
@@ -323,6 +324,7 @@
       document.getElementById('user-fullname').value = '';
       document.getElementById('user-email').value = '';
       document.getElementById('user-password').value = '';
+      document.getElementById('user-confirm-password').value = '';
       document.getElementById('user-phone').value = '';
       document.getElementById('user-dob').value = '';
       document.getElementById('user-active').checked = true;
@@ -365,6 +367,7 @@
       document.getElementById('user-fullname').value = u.fullName || '';
       document.getElementById('user-email').value = u.email || '';
       document.getElementById('user-password').value = '';
+      document.getElementById('user-confirm-password').value = '';
       document.getElementById('user-active').checked = u.isActive;
       document.getElementById('user-phone').value = u.phoneNumber || '';
       document.getElementById('user-dob').value = u.dateOfBirth || '';
@@ -399,6 +402,7 @@
       var fullName = document.getElementById('user-fullname').value.trim();
       var email = document.getElementById('user-email').value.trim();
       var password = document.getElementById('user-password').value;
+      var confirmPassword = document.getElementById('user-confirm-password').value;
 
       if (!fullName || !email) {
         showToast('Please fill in all required fields.', 'error');
@@ -412,6 +416,16 @@
         return;
       }
 
+      if (!isEditing && password !== confirmPassword) {
+        showToast('Passwords do not match.', 'error');
+        return;
+      }
+
+      if (isEditing && password && password.length > 0 && password !== confirmPassword) {
+        showToast('Passwords do not match.', 'error');
+        return;
+      }
+
       var btn = this;
       btn.disabled = true;
       btn.textContent = isEditing ? 'Saving...' : 'Creating...';
@@ -419,7 +433,10 @@
       if (isEditing) {
         var payload = { email: email, fullName: fullName };
         payload.isActive = document.getElementById('user-active').checked;
-        if (password && password.length > 0) payload.password = password;
+        if (password && password.length > 0) {
+          payload.password = password;
+          payload.confirmPassword = confirmPassword;
+        }
         if (role === 'PARENT') payload.phoneNumber = document.getElementById('user-phone').value.trim();
         if (role === 'STUDENT') payload.dateOfBirth = document.getElementById('user-dob').value;
 
@@ -436,7 +453,7 @@
           });
       } else {
         var payload = {
-          email: email, password: password, role: role, fullName: fullName
+          email: email, password: password, confirmPassword: confirmPassword, role: role, fullName: fullName
         };
         payload.schoolId = (AuthStore.user && AuthStore.user.schoolId) || 'a1000000-0000-0000-0000-000000000001';
         if (role === 'PARENT') payload.phoneNumber = document.getElementById('user-phone').value.trim();

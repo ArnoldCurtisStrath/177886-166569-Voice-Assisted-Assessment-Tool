@@ -39,6 +39,11 @@
     </div>
 
     <div class="form-group">
+      <label for="reg-confirm-password">Confirm Password</label>
+      <input type="password" id="reg-confirm-password" class="input" placeholder="Re-enter your password" autocomplete="new-password" required>
+    </div>
+
+    <div class="form-group">
       <label for="reg-phone">Phone Number (optional)</label>
       <input type="text" id="reg-phone" class="input" placeholder="+254...">
     </div>
@@ -67,11 +72,12 @@
       var fullName = document.getElementById('reg-fullname').value.trim();
       var email = document.getElementById('reg-email').value.trim();
       var password = document.getElementById('reg-password').value;
+      var confirmPassword = document.getElementById('reg-confirm-password').value;
       var phone = document.getElementById('reg-phone').value.trim();
       var errorEl = document.getElementById('register-error');
       var submitBtn = document.getElementById('register-submit');
 
-      if (!schoolName || !knecCode || !fullName || !email || !password) {
+      if (!schoolName || !knecCode || !fullName || !email || !password || !confirmPassword) {
         errorEl.textContent = 'Please fill in all required fields.';
         errorEl.style.display = 'block';
         return;
@@ -79,6 +85,12 @@
 
       if (password.length < 6) {
         errorEl.textContent = 'Password must be at least 6 characters.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        errorEl.textContent = 'Passwords do not match.';
         errorEl.style.display = 'block';
         return;
       }
@@ -92,7 +104,8 @@
         knecCode: knecCode,
         fullName: fullName,
         email: email,
-        password: password
+        password: password,
+        confirmPassword: confirmPassword
       };
       if (phone) payload.contactPhone = phone;
 
