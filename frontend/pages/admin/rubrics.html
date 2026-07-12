@@ -1,0 +1,279 @@
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">KNEC Rubrics</span>
+    <span class="badge badge-primary" id="rubric-count-badge">0</span>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;" id="btn-create-rubric">+ Add Rubric</button>
+  </div>
+
+  <!-- filter by subject -->
+  <div style="margin-bottom: var(--space-4);">
+    <select id="rubric-subject-filter" class="input">
+      <option value="all">All Subjects</option>
+    </select>
+  </div>
+
+  <div class="list-stack" id="rubric-list"></div>
+
+  <div class="empty-state" id="rubric-empty" style="display: none;">
+    <div class="empty-state-icon">R</div>
+    <h4>No rubrics found</h4>
+    <p>Rubrics define the assessment criteria for each subject.</p>
+  </div>
+
+  <div class="empty-state" id="rubric-loading">
+    <div class="empty-state-icon">~</div>
+    <h4>Loading rubrics...</h4>
+  </div>
+</div>
+
+<button class="fab" id="fab-create-rubric" title="Add new rubric">+</button>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="rubric-modal" style="display:none;">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 id="rubric-modal-title">Add Rubric</h3>
+      <button class="modal-close" id="rubric-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <div class="form-group">
+          <label>Subject</label>
+          <select id="rubric-subject" class="input"></select>
+        </div>
+        <div class="form-group">
+          <label>Strand</label>
+          <input type="text" id="rubric-strand" class="input" placeholder="e.g. Reading, Writing">
+        </div>
+        <div class="form-group">
+          <label>Sub-Strand</label>
+          <input type="text" id="rubric-substrand" class="input" placeholder="e.g. Oral Reading, Composition">
+        </div>
+        <div class="form-group">
+          <label>Competency Description</label>
+          <textarea id="rubric-desc" class="input" placeholder="Describe the skill being assessed"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Rating Scale</label>
+          <input type="text" id="rubric-scale" class="input" value="Below / Approaching / Meeting / Exceeding">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" id="rubric-modal-cancel">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="rubric-modal-delete" style="display:none;">Delete</button>
+      <button class="btn btn-primary btn-sm" id="rubric-modal-submit">Add Rubric</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var rubrics = [];
+    var subjects = [];
+    var editingId = null;
+    var activeFilter = 'all';
+
+    function loadAll() {
+      Promise.all([
+        API.get('/api/admin/rubrics'),
+        API.get('/api/admin/subjects')
+      ]).then(function(results) {
+        rubrics = results[0] || [];
+        subjects = results[1] || [];
+        populateFilters();
+        renderRubrics();
+      }).catch(function(err) {
+        showToast('Failed to load data: ' + err.message, 'error');
+      });
+    }
+
+    function populateFilters() {
+      var filterEl = document.getElementById('rubric-subject-filter');
+      var modalSelect = document.getElementById('rubric-subject');
+
+      // keep the "All Subjects" option
+      var filterHtml = '<option value="all">All Subjects</option>';
+      var modalHtml = '';
+
+      subjects.forEach(function(s) {
+        var opt = '<option value="' + s.subjectId + '">' + s.subjectName + ' (Grade ' + s.gradeLevel + ')</option>';
+        filterHtml += opt;
+        modalHtml += opt;
+      });
+
+      filterEl.innerHTML = filterHtml;
+      modalSelect.innerHTML = modalHtml;
+    }
+
+    function renderRubrics() {
+      var filtered = rubrics.filter(function(r) {
+        return activeFilter === 'all' || r.subjectId === activeFilter;
+      });
+
+      var listEl = document.getElementById('rubric-list');
+      var emptyEl = document.getElementById('rubric-empty');
+      var loadingEl = document.getElementById('rubric-loading');
+      var countBadge = document.getElementById('rubric-count-badge');
+
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (countBadge) countBadge.textContent = filtered.length;
+
+      if (!filtered.length) {
+        if (listEl) listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+      }
+
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      if (listEl) {
+        listEl.innerHTML = filtered.map(function(r) {
+          var desc = r.competencyDesc || '';
+          return (
+            '<div class="list-item clickable" data-rubric-id="' + r.rubricId + '">' +
+              '<div class="list-item-body">' +
+                '<div class="list-item-title">' + r.strand + ' &gt; ' + r.subStrand + '</div>' +
+                '<div class="list-item-subtitle">' +
+                  (desc.length > 100 ? desc.substring(0, 100) + '...' : desc) +
+                '</div>' +
+              '</div>' +
+              '<div class="list-item-trailing">' +
+                '<span class="badge badge-neutral">' + r.subjectName + '</span>' +
+                '<span class="badge badge-primary">' + r.ratingScale + '</span>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join('');
+
+        listEl.querySelectorAll('.list-item').forEach(function(row) {
+          row.addEventListener('click', function() {
+            var rid = row.getAttribute('data-rubric-id');
+            var r = rubrics.find(function(x) { return x.rubricId === rid; });
+            if (!r) return;
+            openEditForm(r);
+          });
+        });
+      }
+    }
+
+    // filter change
+    document.getElementById('rubric-subject-filter').addEventListener('change', function() {
+      activeFilter = this.value;
+      renderRubrics();
+    });
+
+    function openCreateForm() {
+      editingId = null;
+      document.getElementById('rubric-modal-title').textContent = 'Add Rubric';
+      document.getElementById('rubric-modal-submit').textContent = 'Add Rubric';
+      document.getElementById('rubric-modal-delete').style.display = 'none';
+      document.getElementById('rubric-strand').value = '';
+      document.getElementById('rubric-substrand').value = '';
+      document.getElementById('rubric-desc').value = '';
+      document.getElementById('rubric-scale').value = 'Below / Approaching / Meeting / Exceeding';
+      document.getElementById('rubric-modal').style.display = 'flex';
+    }
+
+    function openEditForm(r) {
+      editingId = r.rubricId;
+      document.getElementById('rubric-modal-title').textContent = 'Edit Rubric';
+      document.getElementById('rubric-modal-submit').textContent = 'Save Changes';
+      document.getElementById('rubric-modal-delete').style.display = '';
+
+      // set the subject select to match
+      var subjectSelect = document.getElementById('rubric-subject');
+      for (var i = 0; i < subjectSelect.options.length; i++) {
+        if (subjectSelect.options[i].value === r.subjectId) {
+          subjectSelect.selectedIndex = i;
+          break;
+        }
+      }
+
+      document.getElementById('rubric-strand').value = r.strand || '';
+      document.getElementById('rubric-substrand').value = r.subStrand || '';
+      document.getElementById('rubric-desc').value = r.competencyDesc || '';
+      document.getElementById('rubric-scale').value = r.ratingScale || '';
+      document.getElementById('rubric-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('rubric-modal').style.display = 'none';
+      editingId = null;
+    }
+
+    document.getElementById('btn-create-rubric').addEventListener('click', openCreateForm);
+    document.getElementById('fab-create-rubric').addEventListener('click', openCreateForm);
+    document.getElementById('rubric-modal-close').addEventListener('click', closeModal);
+    document.getElementById('rubric-modal-cancel').addEventListener('click', closeModal);
+    document.getElementById('rubric-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.getElementById('rubric-modal-submit').addEventListener('click', function() {
+      var subjectId = document.getElementById('rubric-subject').value;
+      var strand = document.getElementById('rubric-strand').value.trim();
+      var subStrand = document.getElementById('rubric-substrand').value.trim();
+      var desc = document.getElementById('rubric-desc').value.trim();
+      var scale = document.getElementById('rubric-scale').value.trim();
+
+      if (!desc) {
+        showToast('Competency description is required', 'error');
+        return;
+      }
+
+      var payload = {
+        subjectId: subjectId,
+        competencyDesc: desc,
+        strand: strand || 'General',
+        subStrand: subStrand || 'General',
+        ratingScale: scale || 'Below / Approaching / Meeting / Exceeding'
+      };
+
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      var promise = editingId
+        ? API.put('/api/admin/rubrics/' + editingId, payload)
+        : API.post('/api/admin/rubrics', payload);
+
+      promise
+        .then(function() {
+          closeModal();
+          showToast(editingId ? 'Rubric updated' : 'Rubric added', 'success');
+          loadAll();
+          btn.disabled = false;
+          btn.textContent = editingId ? 'Save Changes' : 'Add Rubric';
+        })
+        .catch(function(err) {
+          showToast('Failed: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = editingId ? 'Save Changes' : 'Add Rubric';
+        });
+    });
+
+    document.getElementById('rubric-modal-delete').addEventListener('click', function() {
+      if (!editingId) return;
+      if (!confirm('Delete this rubric? This cannot be undone.')) return;
+
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+
+      API.del('/api/admin/rubrics/' + editingId)
+        .then(function() {
+          closeModal();
+          showToast('Rubric deleted', 'success');
+          loadAll();
+        })
+        .catch(function(err) {
+          showToast('Failed to delete: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Delete';
+        });
+    });
+
+    loadAll();
+  })();
+</script>

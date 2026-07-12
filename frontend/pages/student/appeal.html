@@ -1,0 +1,64 @@
+<!-- VoiceAssess — Student My Appeals -->
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">My Appeals</span>
+  </div>
+
+  <div class="list-stack" id="appeals-list" style="gap: var(--space-3);"></div>
+
+  <div class="empty-state" id="appeals-empty" style="display:none;">
+    <div class="empty-state-icon">~</div>
+    <h4>No appeals submitted</h4>
+    <p>If you disagree with an assessment, you can submit an appeal from the assessment detail view.</p>
+  </div>
+</div>
+
+<script>
+  (function() {
+    API.get('/api/student/appeals')
+      .then(function(items) {
+        var listEl = document.getElementById('appeals-list');
+        var emptyEl = document.getElementById('appeals-empty');
+
+        if (!items || items.length === 0) {
+          if (listEl) listEl.innerHTML = '';
+          if (emptyEl) emptyEl.style.display = '';
+          return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        // sort newest first
+        items.sort(function(a, b) { return (b.submittedAt || '').localeCompare(a.submittedAt || ''); });
+
+        listEl.innerHTML = items.map(function(a) {
+          var statusBadge = '';
+          if (a.status === 'PENDING') statusBadge = '<span class="badge badge-warning">Pending</span>';
+          else if (a.status === 'UPHELD') statusBadge = '<span class="badge badge-success">Upheld</span>';
+          else if (a.status === 'ADJUSTED') statusBadge = '<span class="badge" style="background:#E8F8EF;color:var(--color-success);">Adjusted</span>';
+          else if (a.status === 'DISMISSED') statusBadge = '<span class="badge" style="background:#FDEDEC;color:var(--color-error);">Dismissed</span>';
+          else statusBadge = '<span class="badge">' + a.status + '</span>';
+
+          return '<div class="card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-2);">' +
+              '<div>' +
+                '<div style="font-weight:600;">' + a.subjectName + ' &middot; ' + a.topic + '</div>' +
+                '<div class="text-xs text-muted">' + a.date + '</div>' +
+              '</div>' +
+              statusBadge +
+            '</div>' +
+            '<div class="text-sm" style="padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + a.reason + '</div>' +
+            '<div class="text-xs text-muted" style="margin-top:var(--space-1);">Submitted: ' + (a.submittedAt || '') + (a.resolvedAt ? ' / Resolved: ' + a.resolvedAt : '') + '</div>' +
+            (a.status !== 'PENDING' && a.currentScore != null ? '<div style="margin-top:var(--space-2);padding:var(--space-2);border-left:3px solid var(--color-success);">' +
+              '<div class="text-sm" style="font-weight:600;">Current Result: ' + (a.currentRating || '') + ' (' + (a.currentScore || 0).toFixed(1) + '/4.0)</div>' +
+              (a.currentFeedback ? '<div class="text-xs" style="margin-top:var(--space-1);white-space:pre-wrap;font-style:italic;">"' + a.currentFeedback + '"</div>' : '') +
+            '</div>' : '') +
+            (a.resolutionNote ? '<div class="text-xs" style="margin-top:var(--space-2);padding:var(--space-2);border-left:3px solid var(--color-primary);font-style:italic;">Teacher: "' + a.resolutionNote + '"</div>' : '') +
+            (a.resolvedBy ? '<div class="text-xs text-muted" style="margin-top:var(--space-1);">Resolved by ' + a.resolvedBy + '</div>' : '') +
+          '</div>';
+        }).join('');
+      })
+      .catch(function() {
+        document.getElementById('appeals-list').innerHTML = '<p class="text-sm text-muted">Failed to load appeals.</p>';
+      });
+  })();
+</script>

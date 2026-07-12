@@ -1,0 +1,298 @@
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">Subjects</span>
+    <span class="badge badge-primary" id="subject-count-badge">0</span>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;" id="btn-create-subject">+ Create Subject</button>
+  </div>
+
+  <!-- filter by grade level -->
+  <div style="margin-bottom: var(--space-4);">
+    <select id="subject-grade-filter" class="input">
+      <option value="0">All Grades</option>
+      <option value="1">Grade 1</option>
+      <option value="2">Grade 2</option>
+      <option value="3">Grade 3</option>
+      <option value="4">Grade 4</option>
+      <option value="5">Grade 5</option>
+      <option value="6">Grade 6</option>
+      <option value="7">Grade 7</option>
+      <option value="8">Grade 8</option>
+    </select>
+  </div>
+
+  <div class="list-stack" id="subject-list"></div>
+
+  <div class="empty-state" id="subject-empty" style="display: none;">
+    <div class="empty-state-icon">S</div>
+    <h4>No subjects found</h4>
+    <p>Try a different grade level or create a new subject.</p>
+  </div>
+
+  <div class="empty-state" id="subject-loading">
+    <div class="empty-state-icon">~</div>
+    <h4>Loading subjects...</h4>
+  </div>
+</div>
+
+<button class="fab" id="fab-create-subject" title="Create new subject">+</button>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="subject-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="subject-modal-title">Create Subject</h3>
+      <button class="modal-close" id="subject-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <div class="form-group">
+          <label>Subject Name</label>
+          <input type="text" id="subject-name" class="input" placeholder="e.g. English Language">
+        </div>
+        <div class="form-group">
+          <label>Grade Level</label>
+          <select id="subject-grade" class="input">
+            <option value="1">Grade 1</option>
+            <option value="2">Grade 2</option>
+            <option value="3">Grade 3</option>
+            <option value="4" selected>Grade 4</option>
+            <option value="5">Grade 5</option>
+            <option value="6">Grade 6</option>
+            <option value="7">Grade 7</option>
+            <option value="8">Grade 8</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" id="subject-modal-cancel">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="subject-modal-delete" style="display:none;">Delete</button>
+      <button class="btn btn-primary btn-sm" id="subject-modal-submit">Create Subject</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rubrics detail modal (shown when clicking a subject) -->
+<div class="modal-overlay" id="rubric-detail-modal" style="display:none;">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 id="rubric-detail-title">Rubrics</h3>
+      <button class="modal-close" id="rubric-detail-close">&times;</button>
+    </div>
+    <div class="modal-body" id="rubric-detail-body">
+      <p>Loading rubrics...</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm rubric-detail-close-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var subjects = [];
+    var allRubrics = [];
+    var editingId = null;
+
+    function loadSubjects() {
+      API.get('/api/admin/subjects')
+        .then(function(data) {
+          subjects = data || [];
+          renderSubjects();
+        })
+        .catch(function(err) {
+          subjects = [];
+          renderSubjects();
+          showToast('Failed to load subjects: ' + err.message, 'error');
+        });
+    }
+
+    // also load rubrics for the detail modal
+    function loadRubrics() {
+      API.get('/api/admin/rubrics')
+        .then(function(data) { allRubrics = data || []; })
+        .catch(function() { allRubrics = []; });
+    }
+
+    function renderSubjects() {
+      var filterVal = parseInt(document.getElementById('subject-grade-filter').value);
+      var filtered = filterVal > 0
+        ? subjects.filter(function(s) { return s.gradeLevel === filterVal; })
+        : subjects;
+
+      var listEl = document.getElementById('subject-list');
+      var emptyEl = document.getElementById('subject-empty');
+      var loadingEl = document.getElementById('subject-loading');
+      var countBadge = document.getElementById('subject-count-badge');
+
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (countBadge) countBadge.textContent = filtered.length;
+
+      if (!filtered.length) {
+        if (listEl) listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+      }
+
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      if (listEl) {
+        listEl.innerHTML = filtered.map(function(s) {
+          return (
+            '<div class="list-item clickable" data-subject-id="' + s.subjectId + '">' +
+              '<div class="avatar avatar-md">' + s.subjectName.charAt(0) + '</div>' +
+              '<div class="list-item-body">' +
+                '<div class="list-item-title">' + s.subjectName + '</div>' +
+                '<div class="list-item-subtitle">Grade ' + s.gradeLevel + '</div>' +
+              '</div>' +
+              '<div class="list-item-trailing">' +
+                '<span class="badge badge-primary">' + s.rubricCount + ' rubric(s)</span>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join('');
+
+        listEl.querySelectorAll('.list-item').forEach(function(row) {
+          row.addEventListener('click', function() {
+            var sid = row.getAttribute('data-subject-id');
+            var s = subjects.find(function(x) { return x.subjectId === sid; });
+            if (!s) return;
+            showRubricDetail(s);
+          });
+        });
+      }
+    }
+
+    function showRubricDetail(subject) {
+      document.getElementById('rubric-detail-title').textContent = 'Rubrics — ' + subject.subjectName;
+
+      var rubrics = allRubrics.filter(function(r) { return r.subjectId === subject.subjectId; });
+      var body = document.getElementById('rubric-detail-body');
+
+      if (!rubrics.length) {
+        body.innerHTML = '<p style="color:var(--text-muted);">No rubrics for this subject yet.</p>';
+      } else {
+        body.innerHTML = '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
+          rubrics.map(function(r) {
+            return '<div style="padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
+              '<div style="font-weight:600;font-size:var(--text-sm);">' + r.strand + ' &gt; ' + r.subStrand + '</div>' +
+              '<div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-1);">' +
+                (r.competencyDesc.length > 120 ? r.competencyDesc.substring(0, 120) + '...' : r.competencyDesc) +
+              '</div>' +
+              '<div style="margin-top:var(--space-1);"><span class="badge badge-neutral">' + r.ratingScale + '</span></div>' +
+            '</div>';
+          }).join('') +
+        '</div>';
+      }
+
+      document.getElementById('rubric-detail-modal').style.display = 'flex';
+    }
+
+    // wire grade filter
+    document.getElementById('subject-grade-filter').addEventListener('change', renderSubjects);
+
+    // modal for create/edit subject
+    function openCreateForm() {
+      editingId = null;
+      document.getElementById('subject-modal-title').textContent = 'Create Subject';
+      document.getElementById('subject-modal-submit').textContent = 'Create Subject';
+      document.getElementById('subject-modal-delete').style.display = 'none';
+      document.getElementById('subject-name').value = '';
+      document.getElementById('subject-grade').value = '4';
+      document.getElementById('subject-modal').style.display = 'flex';
+    }
+
+    function openEditForm(s) {
+      editingId = s.subjectId;
+      document.getElementById('subject-modal-title').textContent = 'Edit Subject';
+      document.getElementById('subject-modal-submit').textContent = 'Save Changes';
+      document.getElementById('subject-modal-delete').style.display = '';
+      document.getElementById('subject-name').value = s.subjectName;
+      document.getElementById('subject-grade').value = s.gradeLevel;
+      document.getElementById('subject-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('subject-modal').style.display = 'none';
+      editingId = null;
+    }
+
+    document.getElementById('btn-create-subject').addEventListener('click', openCreateForm);
+    document.getElementById('fab-create-subject').addEventListener('click', openCreateForm);
+    document.getElementById('subject-modal-close').addEventListener('click', closeModal);
+    document.getElementById('subject-modal-cancel').addEventListener('click', closeModal);
+    document.getElementById('subject-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.getElementById('subject-modal-submit').addEventListener('click', function() {
+      var name = document.getElementById('subject-name').value.trim();
+      var grade = parseInt(document.getElementById('subject-grade').value);
+
+      if (!name) {
+        showToast('Subject name is required', 'error');
+        return;
+      }
+
+      var payload = { subjectName: name, gradeLevel: grade };
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      var promise = editingId
+        ? API.put('/api/admin/subjects/' + editingId, payload)
+        : API.post('/api/admin/subjects', payload);
+
+      promise
+        .then(function() {
+          closeModal();
+          showToast(editingId ? 'Subject updated' : 'Subject created', 'success');
+          loadSubjects();
+          loadRubrics();
+          btn.disabled = false;
+          btn.textContent = editingId ? 'Save Changes' : 'Create Subject';
+        })
+        .catch(function(err) {
+          showToast('Failed: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = editingId ? 'Save Changes' : 'Create Subject';
+        });
+    });
+
+    document.getElementById('subject-modal-delete').addEventListener('click', function() {
+      if (!editingId) return;
+      if (!confirm('Delete this subject? Rubrics for this subject must be removed first.')) return;
+
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+
+      API.del('/api/admin/subjects/' + editingId)
+        .then(function() {
+          closeModal();
+          showToast('Subject deleted', 'success');
+          loadSubjects();
+          loadRubrics();
+        })
+        .catch(function(err) {
+          showToast('Failed to delete: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Delete';
+        });
+    });
+
+    // rubric detail modal close
+    document.getElementById('rubric-detail-close').addEventListener('click', function() {
+      document.getElementById('rubric-detail-modal').style.display = 'none';
+    });
+    document.getElementById('rubric-detail-modal').addEventListener('click', function(e) {
+      if (e.target === this) this.style.display = 'none';
+    });
+    document.querySelector('.rubric-detail-close-btn').addEventListener('click', function() {
+      document.getElementById('rubric-detail-modal').style.display = 'none';
+    });
+
+    loadSubjects();
+    loadRubrics();
+  })();
+</script>

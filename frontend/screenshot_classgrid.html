@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VoiceAssess — Class Grid (D.5)</title>
+<link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/components.css"><link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<a href="#page-content" class="skip-link">Skip to main content</a>
+<div class="shell" id="app-shell">
+  <div class="sidebar-overlay"></div>
+  <aside class="sidebar">
+    <div class="sidebar-user"><div class="avatar avatar-md">T</div><div class="sidebar-user-info"><div class="sidebar-user-name">teacherone</div><div class="sidebar-user-role">TEACHER</div></div></div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">=</span>Dashboard</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">+</span>New Assessment</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">?</span>Pending Reviews</a>
+      <a class="sidebar-link active" href="#"><span class="sidebar-link-icon">[</span>Class Grid</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">!</span>Appeals</a>
+    </nav>
+    <div class="sidebar-footer"><button class="btn btn-ghost btn-block">Log out</button></div>
+  </aside>
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <header class="topbar">
+      <div class="topbar-left"><button class="hamburger hide-desktop"><span></span><span></span><span></span></button></div>
+      <div class="topbar-center">VoiceAssess</div>
+      <div class="topbar-right"><div class="avatar avatar-sm hide-mobile">T</div></div>
+    </header>
+    <main class="page-content" style="padding:var(--space-4) var(--space-5);">
+      <div class="section-header">
+        <span class="section-title">Grade 4 East — Class Grid</span>
+        <span style="display:flex;gap:8px;"><a class="btn btn-sm btn-secondary" style="font-size:0.75rem;">Export CSV</a><a class="btn btn-sm btn-primary" style="font-size:0.75rem;">Export PDF</a></span>
+      </div>
+
+      <div class="stat-row" style="margin-bottom:var(--space-4);">
+        <div class="stat-card"><div class="stat-value">4</div><div class="stat-label">Students</div></div>
+        <div class="stat-card"><div class="stat-value">2</div><div class="stat-label">Assessments</div></div>
+        <div class="stat-card"><div class="stat-value">2.8</div><div class="stat-label">Class Avg</div></div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.8rem;">
+          <thead>
+            <tr>
+              <th style="position:sticky;left:0;background:var(--color-bg);min-width:140px;padding:var(--space-2);border-bottom:2px solid var(--color-border);text-align:left;">Student</th>
+              <th style="padding:var(--space-2);border-bottom:2px solid var(--color-border);text-align:center;min-width:90px;writing-mode:vertical-rl;text-orientation:mixed;font-size:0.7rem;">English<br>Pronunciation of th sounds</th>
+              <th style="padding:var(--space-2);border-bottom:2px solid var(--color-border);text-align:center;min-width:90px;writing-mode:vertical-rl;text-orientation:mixed;font-size:0.7rem;">Science<br>Plant parts</th>
+              <th style="padding:var(--space-2);border-bottom:2px solid var(--color-border);text-align:center;min-width:50px;">Avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--color-border);">
+              <td style="position:sticky;left:0;background:var(--color-bg);padding:var(--space-2);font-weight:500;">Erika Wambui</td>
+              <td style="padding:var(--space-1);text-align:center;">
+                <div style="font-weight:600;">3.0</div>
+                <div class="text-xs text-muted">Meeting</div>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-success);margin-top:2px;"></span>
+              </td>
+              <td style="padding:var(--space-1);text-align:center;">
+                <div style="font-weight:600;">4.0</div>
+                <div class="text-xs text-muted">Exceeding</div>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-success);margin-top:2px;"></span>
+              </td>
+              <td style="padding:var(--space-2);text-align:center;font-weight:600;">3.5</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-border);">
+              <td style="position:sticky;left:0;background:var(--color-bg);padding:var(--space-2);font-weight:500;">Kevin Otieno</td>
+              <td style="padding:var(--space-1);text-align:center;">
+                <div style="font-weight:600;">2.0</div>
+                <div class="text-xs text-muted">Approaching</div>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-warning);margin-top:2px;"></span>
+              </td>
+              <td style="padding:var(--space-1);text-align:center;">
+                <div style="font-weight:600;">2.0</div>
+                <div class="text-xs text-muted">Approaching</div>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-warning);margin-top:2px;"></span>
+              </td>
+              <td style="padding:var(--space-2);text-align:center;font-weight:600;">2.0</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-border);">
+              <td style="position:sticky;left:0;background:var(--color-bg);padding:var(--space-2);font-weight:500;">Mary Njeri</td>
+              <td style="padding:var(--space-1);text-align:center;color:var(--text-muted);">-</td>
+              <td style="padding:var(--space-1);text-align:center;">
+                <div style="font-weight:600;">3.0</div>
+                <div class="text-xs text-muted">Meeting</div>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-success);margin-top:2px;"></span>
+              </td>
+              <td style="padding:var(--space-2);text-align:center;font-weight:600;">3.0</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--color-border);">
+              <td style="position:sticky;left:0;background:var(--color-bg);padding:var(--space-2);font-weight:500;">James Mwangi</td>
+              <td style="padding:var(--space-1);text-align:center;">
+                <div style="font-weight:600;">2.0</div>
+                <div class="text-xs text-muted">Approaching</div>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-error);margin-top:2px;"></span>
+              </td>
+              <td style="padding:var(--space-1);text-align:center;">
+                <div style="font-weight:600;">3.0</div>
+                <div class="text-xs text-muted">Meeting</div>
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-success);margin-top:2px;"></span>
+              </td>
+              <td style="padding:var(--space-2);text-align:center;font-weight:600;">2.5</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+</div>
+</body>
+</html>

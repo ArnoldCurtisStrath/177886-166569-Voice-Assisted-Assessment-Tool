@@ -1,0 +1,743 @@
+<div class="animate-fade-in" id="classes-page">
+
+  <!-- grid view — list of class cards -->
+  <div id="class-grid-view">
+    <div class="section-header">
+      <span class="section-title">Classes</span>
+      <span class="badge badge-primary" id="class-count-badge">0</span>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto;" id="btn-create-class">+ Create Class</button>
+    </div>
+
+    <div class="grid-2" id="class-grid"></div>
+
+    <div class="empty-state" id="class-empty" style="display:none;">
+      <div class="empty-state-icon">[</div>
+      <h4>No classes yet</h4>
+      <p>Create your first class to get started.</p>
+    </div>
+
+    <div class="empty-state" id="class-loading">
+      <div class="empty-state-icon">~</div>
+      <h4>Loading classes...</h4>
+    </div>
+  </div>
+
+  <!-- detail view — shown when a class is clicked -->
+  <div id="class-detail-view" style="display:none;">
+
+    <div class="section-header" style="margin-bottom:var(--space-4);">
+      <button class="btn btn-ghost btn-sm" id="btn-back-to-grid">&larr; Back to Classes</button>
+      <button class="btn btn-secondary btn-sm" id="btn-detail-edit" style="margin-left:auto;">Edit</button>
+      <button class="btn btn-danger btn-sm" id="btn-detail-delete" style="margin-left:var(--space-2);">Delete</button>
+    </div>
+
+    <div class="card" id="class-detail-header" style="margin-bottom:var(--space-4);">
+      <div style="display:flex;align-items:center;gap:var(--space-3);">
+        <div class="avatar avatar-md" id="detail-grade-avatar" style="background-color:var(--color-primary);color:#fff;font-size:var(--text-xl);font-weight:700;">4</div>
+        <div>
+          <div class="text-lg" id="detail-class-name" style="font-weight:700;">Grade 4 East</div>
+          <div class="text-muted text-sm" id="detail-class-meta">0 students enrolled</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);">
+      <div>
+        <span class="section-title">Enrolled Students</span>
+        <span class="badge badge-primary" id="detail-student-count">0</span>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btn-add-student">+ Add Student</button>
+    </div>
+
+    <div class="list-stack" id="detail-student-list"></div>
+
+    <div class="empty-state" id="detail-student-empty" style="display:none;">
+      <div class="empty-state-icon">#</div>
+      <h4>No students enrolled</h4>
+      <p>Add students to this class to get started.</p>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);margin-top:var(--space-5);">
+      <div>
+        <span class="section-title">Assigned Teachers</span>
+        <span class="badge badge-success" id="detail-teacher-count">0</span>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btn-assign-teacher">+ Assign Teacher</button>
+    </div>
+
+    <div class="list-stack" id="detail-teacher-list"></div>
+
+    <div class="empty-state" id="detail-teacher-empty" style="display:none;">
+      <div class="empty-state-icon">@</div>
+      <h4>No teachers assigned</h4>
+      <p>Assign teachers to this class so they can record assessments.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="class-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="class-modal-title">Create Class</h3>
+      <button class="modal-close" id="class-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <div class="form-group">
+          <label>Grade Level</label>
+          <input type="number" id="class-grade" class="input" min="1" max="12" placeholder="e.g. 4" required>
+        </div>
+        <div class="form-group">
+          <label>Stream Name</label>
+          <input type="text" id="class-stream" class="input" placeholder="e.g. East, West, North">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" id="class-modal-cancel">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="class-modal-delete" style="display:none;">Delete</button>
+      <button class="btn btn-primary btn-sm" id="class-modal-submit">Create Class</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Student Modal -->
+<div class="modal-overlay" id="add-student-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Student to <span id="add-student-class-name">Class</span></h3>
+      <button class="modal-close" id="add-student-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <input type="text" class="input" id="add-student-search" placeholder="Search students...">
+        <div class="list-stack" id="add-student-list"></div>
+        <div class="empty-state" id="add-student-empty" style="display:none;">
+          <div class="empty-state-icon">#</div>
+          <h4>No students available</h4>
+          <p>All students are already enrolled in this class or no students exist yet.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" id="add-student-modal-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Teacher Modal -->
+<div class="modal-overlay" id="assign-teacher-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Assign Teacher to <span id="assign-teacher-class-name">Class</span></h3>
+      <button class="modal-close" id="assign-teacher-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <input type="text" class="input" id="assign-teacher-search" placeholder="Search teachers...">
+        <div class="list-stack" id="assign-teacher-list"></div>
+        <div class="empty-state" id="assign-teacher-empty" style="display:none;">
+          <div class="empty-state-icon">@</div>
+          <h4>No teachers available</h4>
+          <p>All teachers are already assigned to this class or none exist yet.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" id="assign-teacher-modal-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" id="fab-create-class" title="Create new class">+</button>
+
+<script>
+(function() {
+  var classes = [];
+  var editingId = null;
+  var currentClassId = null;
+
+  // for the add-student modal
+  var availableStudents = [];
+  var addStudentSearch = '';
+
+  // for the assign-teacher modal
+  var availableTeachers = [];
+  var assignTeacherSearch = '';
+
+  function loadClasses() {
+    var loadingEl = document.getElementById('class-loading');
+    var emptyEl = document.getElementById('class-empty');
+    if (loadingEl) loadingEl.style.display = '';
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    API.get('/api/admin/classes')
+      .then(function(data) {
+        classes = data || [];
+        renderClassGrid();
+      })
+      .catch(function(err) {
+        classes = [];
+        renderClassGrid();
+        if (typeof showToast === 'function') showToast('Failed to load classes: ' + err.message, 'error');
+      });
+  }
+
+  function renderClassGrid() {
+    var gridEl = document.getElementById('class-grid');
+    var emptyEl = document.getElementById('class-empty');
+    var loadingEl = document.getElementById('class-loading');
+    var countBadge = document.getElementById('class-count-badge');
+
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (countBadge) countBadge.textContent = classes.length;
+
+    if (!classes.length) {
+      if (gridEl) gridEl.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    if (gridEl) {
+      gridEl.innerHTML = classes.map(function(c) {
+        return (
+          '<div class="card card-hover class-card" data-class-id="' + c.classId + '">' +
+            '<div style="display:flex;align-items:center;gap:var(--space-3);">' +
+              '<div class="avatar avatar-md" style="background-color:var(--color-primary);color:#fff;font-size:var(--text-xl);font-weight:700;">' + c.gradeLevel + '</div>' +
+              '<div style="flex:1;min-width:0;">' +
+                '<div class="text-base" style="font-weight:700;">' + c.displayName + '</div>' +
+                '<div class="text-sm text-muted">' + (c.studentCount || 0) + ' student(s)</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      gridEl.querySelectorAll('.class-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+          var cid = card.getAttribute('data-class-id');
+          var c = classes.find(function(x) { return x.classId === cid; });
+          if (c) showClassDetail(c);
+        });
+      });
+    }
+  }
+
+  var viewingClass = null;
+
+  function showClassDetail(c) {
+    viewingClass = c;
+    currentClassId = c.classId;
+
+    document.getElementById('class-grid-view').style.display = 'none';
+    document.getElementById('class-detail-view').style.display = '';
+
+    document.getElementById('detail-grade-avatar').textContent = c.gradeLevel;
+    document.getElementById('detail-class-name').textContent = c.displayName;
+    document.getElementById('detail-class-meta').textContent = (c.studentCount || 0) + ' students enrolled';
+
+    loadStudentsInClass(c.classId);
+    loadTeachersInClass(c.classId);
+  }
+
+  function backToGrid() {
+    viewingClass = null;
+    currentClassId = null;
+    document.getElementById('class-detail-view').style.display = 'none';
+    document.getElementById('class-grid-view').style.display = '';
+  }
+
+  function loadStudentsInClass(classId) {
+    var listEl = document.getElementById('detail-student-list');
+    var emptyEl = document.getElementById('detail-student-empty');
+    var countBadge = document.getElementById('detail-student-count');
+
+    if (listEl) listEl.innerHTML = '<div class="text-sm text-muted" style="padding:var(--space-3);text-align:center;">Loading...</div>';
+
+    API.get('/api/admin/classes/' + classId + '/students')
+      .then(function(students) {
+        if (countBadge) countBadge.textContent = students.length;
+
+        var metaEl = document.getElementById('detail-class-meta');
+        if (metaEl) metaEl.textContent = students.length + ' students enrolled';
+
+        if (!students.length) {
+          if (listEl) listEl.innerHTML = '';
+          if (emptyEl) emptyEl.style.display = '';
+          return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        if (listEl) {
+          listEl.innerHTML = students.map(function(s) {
+            return (
+              '<div class="list-item" data-student-id="' + s.studentId + '">' +
+                '<div class="avatar avatar-sm">' + getInitials(s.fullName) + '</div>' +
+                '<div class="list-item-body">' +
+                  '<div class="list-item-title">' + s.fullName + '</div>' +
+                  '<div class="list-item-subtitle">Enrolled ' + (s.enrolledAt ? s.enrolledAt.substring(0, 10) : '') + '</div>' +
+                '</div>' +
+                '<div class="list-item-trailing">' +
+                  '<button class="btn btn-danger btn-sm btn-remove-student" data-student-id="' + s.studentId + '">Remove</button>' +
+                '</div>' +
+              '</div>'
+            );
+          }).join('');
+
+          listEl.querySelectorAll('.btn-remove-student').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var sid = btn.getAttribute('data-student-id');
+              if (confirm('Remove this student from the class?')) {
+                removeStudentFromClass(classId, sid);
+              }
+            });
+          });
+        }
+      })
+      .catch(function(err) {
+        if (listEl) listEl.innerHTML = '';
+        if (typeof showToast === 'function') showToast('Failed to load students: ' + err.message, 'error');
+      });
+  }
+
+  function removeStudentFromClass(classId, studentId) {
+    API.del('/api/admin/classes/' + classId + '/students/' + studentId)
+      .then(function() {
+        if (typeof showToast === 'function') showToast('Student removed', 'success');
+        loadStudentsInClass(classId);
+        loadClasses();
+      })
+      .catch(function(err) {
+        if (typeof showToast === 'function') showToast('Failed to remove: ' + err.message, 'error');
+      });
+  }
+
+  // -- teacher assignments in class detail --
+
+  function loadTeachersInClass(classId) {
+    var listEl = document.getElementById('detail-teacher-list');
+    var emptyEl = document.getElementById('detail-teacher-empty');
+    var countBadge = document.getElementById('detail-teacher-count');
+
+    if (listEl) listEl.innerHTML = '<div class="text-sm text-muted" style="padding:var(--space-3);text-align:center;">Loading...</div>';
+
+    API.get('/api/admin/classes/' + classId + '/teachers')
+      .then(function(teachers) {
+        if (countBadge) countBadge.textContent = teachers.length;
+
+        if (!teachers.length) {
+          if (listEl) listEl.innerHTML = '';
+          if (emptyEl) emptyEl.style.display = '';
+          return;
+        }
+
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        if (listEl) {
+          listEl.innerHTML = teachers.map(function(t) {
+            return (
+              '<div class="list-item" data-teacher-id="' + t.teacherId + '">' +
+                '<div class="avatar avatar-sm">' + getInitials(t.fullName) + '</div>' +
+                '<div class="list-item-body">' +
+                  '<div class="list-item-title">' + t.fullName + '</div>' +
+                  '<div class="list-item-subtitle">' + (t.email || '') + '</div>' +
+                '</div>' +
+                '<div class="list-item-trailing">' +
+                  '<button class="btn btn-danger btn-sm btn-remove-teacher" data-teacher-id="' + t.teacherId + '">Remove</button>' +
+                '</div>' +
+              '</div>'
+            );
+          }).join('');
+
+          listEl.querySelectorAll('.btn-remove-teacher').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var tid = btn.getAttribute('data-teacher-id');
+              if (confirm('Remove this teacher from the class?')) {
+                removeTeacherFromClass(classId, tid);
+              }
+            });
+          });
+        }
+      })
+      .catch(function(err) {
+        if (listEl) listEl.innerHTML = '';
+        if (typeof showToast === 'function') showToast('Failed to load teachers: ' + err.message, 'error');
+      });
+  }
+
+  function removeTeacherFromClass(classId, teacherId) {
+    API.del('/api/admin/classes/' + classId + '/teachers/' + teacherId)
+      .then(function() {
+        if (typeof showToast === 'function') showToast('Teacher removed', 'success');
+        loadTeachersInClass(classId);
+      })
+      .catch(function(err) {
+        if (typeof showToast === 'function') showToast('Failed to remove: ' + err.message, 'error');
+      });
+  }
+
+  function openAssignTeacherModal(classId) {
+    var modal = document.getElementById('assign-teacher-modal');
+    if (!modal) return;
+
+    var classNameEl = document.getElementById('assign-teacher-class-name');
+    if (classNameEl && viewingClass) classNameEl.textContent = viewingClass.displayName;
+
+    assignTeacherSearch = '';
+    var searchInput = document.getElementById('assign-teacher-search');
+    if (searchInput) searchInput.value = '';
+
+    modal.style.display = 'flex';
+
+    var listEl = document.getElementById('assign-teacher-list');
+    if (listEl) listEl.innerHTML = '<div class="text-sm text-muted" style="padding:var(--space-3);text-align:center;">Loading...</div>';
+    var emptyEl = document.getElementById('assign-teacher-empty');
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    API.get('/api/admin/teachers/available?classId=' + classId)
+      .then(function(data) {
+        availableTeachers = data || [];
+        renderAvailableTeachers();
+      })
+      .catch(function(err) {
+        availableTeachers = [];
+        renderAvailableTeachers();
+        if (typeof showToast === 'function') showToast('Failed to load teachers: ' + err.message, 'error');
+      });
+  }
+
+  function renderAvailableTeachers() {
+    var listEl = document.getElementById('assign-teacher-list');
+    var emptyEl = document.getElementById('assign-teacher-empty');
+
+    var q = assignTeacherSearch.toLowerCase();
+    var filtered = availableTeachers.filter(function(t) {
+      return !q || (t.fullName && t.fullName.toLowerCase().includes(q))
+                || (t.email && t.email.toLowerCase().includes(q));
+    });
+
+    if (!filtered.length) {
+      if (listEl) listEl.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    if (listEl) {
+      listEl.innerHTML = filtered.map(function(t) {
+        return (
+          '<div class="list-item clickable assign-teacher-item" data-teacher-id="' + t.teacherId + '">' +
+            '<div class="avatar avatar-sm">' + getInitials(t.fullName) + '</div>' +
+            '<div class="list-item-body">' +
+              '<div class="list-item-title">' + t.fullName + '</div>' +
+              '<div class="list-item-subtitle">' + (t.email || '') + '</div>' +
+            '</div>' +
+            '<div class="list-item-trailing">' +
+              '<button class="btn btn-primary btn-sm btn-do-assign">+ Assign</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      listEl.querySelectorAll('.btn-do-assign').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var item = btn.closest('.assign-teacher-item');
+          var tid = item.getAttribute('data-teacher-id');
+          btn.disabled = true;
+          btn.textContent = '...';
+          assignTeacherToClass(currentClassId, tid, btn);
+        });
+      });
+    }
+  }
+
+  function closeAssignTeacherModal() {
+    document.getElementById('assign-teacher-modal').style.display = 'none';
+  }
+
+  function assignTeacherToClass(classId, teacherId, btn) {
+    API.post('/api/admin/classes/' + classId + '/teachers', { teacherId: teacherId })
+      .then(function() {
+        if (typeof showToast === 'function') showToast('Teacher assigned', 'success');
+        loadTeachersInClass(classId);
+        // refresh available list
+        API.get('/api/admin/teachers/available?classId=' + classId)
+          .then(function(data) {
+            availableTeachers = data || [];
+            renderAvailableTeachers();
+          });
+      })
+      .catch(function(err) {
+        if (typeof showToast === 'function') showToast('Failed to assign: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '+ Assign'; }
+      });
+  }
+
+  function getInitials(name) {
+    if (!name) return '??';
+    return name.split(' ').map(function(n) { return n.charAt(0); }).join('').slice(0, 2).toUpperCase();
+  }
+
+  function openAddStudentModal(classId) {
+    var modal = document.getElementById('add-student-modal');
+    if (!modal) return;
+
+    var classNameEl = document.getElementById('add-student-class-name');
+    if (classNameEl && viewingClass) classNameEl.textContent = viewingClass.displayName;
+
+    addStudentSearch = '';
+    var searchInput = document.getElementById('add-student-search');
+    if (searchInput) searchInput.value = '';
+
+    modal.style.display = 'flex';
+
+    var listEl = document.getElementById('add-student-list');
+    if (listEl) listEl.innerHTML = '<div class="text-sm text-muted" style="padding:var(--space-3);text-align:center;">Loading...</div>';
+    var emptyEl = document.getElementById('add-student-empty');
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    API.get('/api/admin/students/unenrolled?classId=' + classId)
+      .then(function(data) {
+        availableStudents = data || [];
+        renderAvailableStudents();
+      })
+      .catch(function(err) {
+        availableStudents = [];
+        renderAvailableStudents();
+        if (typeof showToast === 'function') showToast('Failed to load students: ' + err.message, 'error');
+      });
+  }
+
+  function renderAvailableStudents() {
+    var listEl = document.getElementById('add-student-list');
+    var emptyEl = document.getElementById('add-student-empty');
+
+    var q = addStudentSearch.toLowerCase();
+    var filtered = availableStudents.filter(function(s) {
+      return !q || (s.fullName && s.fullName.toLowerCase().includes(q));
+    });
+
+    if (!filtered.length) {
+      if (listEl) listEl.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = '';
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    if (listEl) {
+      listEl.innerHTML = filtered.map(function(s) {
+        return (
+          '<div class="list-item clickable add-student-item" data-student-id="' + s.studentId + '">' +
+            '<div class="avatar avatar-sm">' + getInitials(s.fullName) + '</div>' +
+            '<div class="list-item-body">' +
+              '<div class="list-item-title">' + s.fullName + '</div>' +
+            '</div>' +
+            '<div class="list-item-trailing">' +
+              '<button class="btn btn-primary btn-sm btn-do-add">+ Add</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      listEl.querySelectorAll('.btn-do-add').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var item = btn.closest('.add-student-item');
+          var sid = item.getAttribute('data-student-id');
+          btn.disabled = true;
+          btn.textContent = '...';
+          addStudentToClass(currentClassId, sid, btn);
+        });
+      });
+    }
+  }
+
+  function closeAddStudentModal() {
+    document.getElementById('add-student-modal').style.display = 'none';
+  }
+
+  function addStudentToClass(classId, studentId, btn) {
+    API.post('/api/admin/classes/' + classId + '/students', { studentId: studentId })
+      .then(function() {
+        if (typeof showToast === 'function') showToast('Student added', 'success');
+        loadStudentsInClass(classId);
+        loadClasses();
+        API.get('/api/admin/students/unenrolled?classId=' + classId)
+          .then(function(data) {
+            availableStudents = data || [];
+            renderAvailableStudents();
+          });
+      })
+      .catch(function(err) {
+        if (typeof showToast === 'function') showToast('Failed to add: ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '+ Add'; }
+      });
+  }
+
+  function openCreateForm() {
+    editingId = null;
+    document.getElementById('class-modal-title').textContent = 'Create Class';
+    document.getElementById('class-modal-submit').textContent = 'Create Class';
+    document.getElementById('class-modal-delete').style.display = 'none';
+    document.getElementById('class-grade').value = '';
+    document.getElementById('class-stream').value = '';
+    document.getElementById('class-modal').style.display = 'flex';
+  }
+
+  function openEditForm(c) {
+    editingId = c.classId;
+    document.getElementById('class-modal-title').textContent = 'Edit Class';
+    document.getElementById('class-modal-submit').textContent = 'Save Changes';
+    document.getElementById('class-modal-delete').style.display = '';
+    document.getElementById('class-grade').value = c.gradeLevel;
+    document.getElementById('class-stream').value = c.streamName;
+    document.getElementById('class-modal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('class-modal').style.display = 'none';
+    editingId = null;
+  }
+
+  // wire up header / FAB buttons
+  document.getElementById('btn-create-class').addEventListener('click', openCreateForm);
+  document.getElementById('fab-create-class').addEventListener('click', openCreateForm);
+  document.getElementById('class-modal-close').addEventListener('click', closeModal);
+  document.getElementById('class-modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('class-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // detail navigation
+  document.getElementById('btn-back-to-grid').addEventListener('click', backToGrid);
+  document.getElementById('btn-add-student').addEventListener('click', function() {
+    if (currentClassId) openAddStudentModal(currentClassId);
+  });
+
+  // detail edit/delete
+  document.getElementById('btn-detail-edit').addEventListener('click', function() {
+    if (viewingClass) openEditForm(viewingClass);
+  });
+  document.getElementById('btn-detail-delete').addEventListener('click', function() {
+    if (!viewingClass) return;
+    if (!confirm('Delete this class? This cannot be undone.')) return;
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+    API.del('/api/admin/classes/' + viewingClass.classId)
+      .then(function() {
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+        if (typeof showToast === 'function') showToast('Class deleted', 'success');
+        backToGrid();
+        loadClasses();
+      })
+      .catch(function(err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+      });
+  });
+
+  // add student modal events
+  document.getElementById('add-student-modal-close').addEventListener('click', closeAddStudentModal);
+  document.getElementById('add-student-modal-cancel').addEventListener('click', closeAddStudentModal);
+  document.getElementById('add-student-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeAddStudentModal();
+  });
+  document.getElementById('add-student-search').addEventListener('input', function() {
+    addStudentSearch = this.value.trim();
+    renderAvailableStudents();
+  });
+
+  // assign teacher modal events
+  document.getElementById('btn-assign-teacher').addEventListener('click', function() {
+    if (currentClassId) openAssignTeacherModal(currentClassId);
+  });
+  document.getElementById('assign-teacher-modal-close').addEventListener('click', closeAssignTeacherModal);
+  document.getElementById('assign-teacher-modal-cancel').addEventListener('click', closeAssignTeacherModal);
+  document.getElementById('assign-teacher-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeAssignTeacherModal();
+  });
+  document.getElementById('assign-teacher-search').addEventListener('input', function() {
+    assignTeacherSearch = this.value.trim();
+    renderAvailableTeachers();
+  });
+
+  // create/edit submit
+  document.getElementById('class-modal-submit').addEventListener('click', function() {
+    var grade = parseInt(document.getElementById('class-grade').value);
+    var stream = document.getElementById('class-stream').value.trim();
+
+    if (!grade || grade < 1 || grade > 12) {
+      showToast('Enter a valid grade level (1-12)', 'error');
+      return;
+    }
+    if (!stream) {
+      showToast('Stream name is required', 'error');
+      return;
+    }
+
+    var payload = { gradeLevel: grade, streamName: stream };
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    var promise = editingId
+      ? API.put('/api/admin/classes/' + editingId, payload)
+      : API.post('/api/admin/classes', payload);
+
+    promise
+      .then(function() {
+        closeModal();
+        showToast(editingId ? 'Class updated' : 'Class created', 'success');
+        loadClasses();
+        if (editingId === currentClassId) {
+          var updated = classes.find(function(x) { return x.classId === editingId; });
+          if (updated) showClassDetail(updated);
+        }
+        btn.disabled = false;
+        btn.textContent = editingId ? 'Save Changes' : 'Create Class';
+      })
+      .catch(function(err) {
+        showToast('Failed: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = editingId ? 'Save Changes' : 'Create Class';
+      });
+  });
+
+  // delete from modal
+  document.getElementById('class-modal-delete').addEventListener('click', function() {
+    if (!editingId) return;
+    if (!confirm('Delete this class? This cannot be undone.')) return;
+
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+
+    API.del('/api/admin/classes/' + editingId)
+      .then(function() {
+        closeModal();
+        showToast('Class deleted', 'success');
+        backToGrid();
+        loadClasses();
+      })
+      .catch(function(err) {
+        showToast('Failed to delete: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+      });
+  });
+
+  loadClasses();
+})();
+</script>

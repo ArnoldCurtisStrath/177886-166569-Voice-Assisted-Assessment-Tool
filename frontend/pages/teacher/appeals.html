@@ -1,0 +1,129 @@
+<!-- VoiceAssess — Teacher Appeals -->
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">Pending Appeals</span>
+    <span class="badge badge-warning" id="appeals-count">0</span>
+  </div>
+
+  <div class="list-stack" id="appeals-list" style="gap: var(--space-3);"></div>
+
+  <div class="empty-state" id="appeals-empty" style="display:none;">
+    <div class="empty-state-icon">~</div>
+    <h4>No pending appeals</h4>
+    <p>All student appeals have been resolved.</p>
+  </div>
+</div>
+
+<script>
+  (function() {
+    function loadAppeals() {
+      API.get('/api/teacher/appeals')
+        .then(function(data) {
+          renderAppeals(data);
+        })
+        .catch(function() { showToast('Failed to load appeals.', 'error'); });
+    }
+
+    function renderAppeals(items) {
+      var listEl = document.getElementById('appeals-list');
+      var emptyEl = document.getElementById('appeals-empty');
+      var countEl = document.getElementById('appeals-count');
+      if (countEl) countEl.textContent = items.length;
+
+      if (!items || items.length === 0) {
+        if (listEl) listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      listEl.innerHTML = items.map(function(a) {
+        return '<div class="card">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-2);">' +
+            '<div>' +
+              '<div style="font-weight:600;">' + a.studentName + '</div>' +
+              '<div class="text-sm text-muted">' + a.subjectName + ' &middot; ' + a.topic + '</div>' +
+            '</div>' +
+            '<span class="text-xs text-muted">' + (a.submittedAt || '') + '</span>' +
+          '</div>' +
+          '<div class="text-sm" style="padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);margin-bottom:var(--space-2);">' + a.reason + '</div>' +
+          '<div style="display:flex;gap:var(--space-2);">' +
+            '<button class="btn btn-sm resolve-btn" data-action="UPHELD" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);border-radius:var(--radius-sm);">Uphold</button>' +
+            '<button class="btn btn-sm resolve-btn" data-action="ADJUSTED" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:transparent;color:var(--color-primary);border:1.5px solid var(--color-primary);border-radius:var(--radius-sm);">Adjust</button>' +
+            '<button class="btn btn-sm resolve-btn" data-action="DISMISSED" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);border-radius:var(--radius-sm);">Dismiss</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      document.querySelectorAll('.resolve-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var action = btn.getAttribute('data-action');
+          var aid = btn.getAttribute('data-aid');
+          var curScore = btn.getAttribute('data-score');
+          var curRating = btn.getAttribute('data-rating');
+          var curFb = btn.getAttribute('data-feedback');
+          if (action === 'ADJUSTED') {
+            showAdjustForm(aid, curScore, curRating, curFb);
+          } else {
+            var note = prompt('Add a note explaining your decision to the student (optional):');
+            doResolve(aid, action, null, note || '');
+          }
+        });
+      });
+    }
+
+    function showAdjustForm(appealId, curScore, curRating, curFb) {
+      var scoreVal = curScore ? parseFloat(curScore) : 2;
+      var ratingOpts = ['Below Expectations', 'Approaching Expectations', 'Meeting Expectations', 'Exceeding Expectations'];
+      var ratingHtml = ratingOpts.map(function(r) {
+        return '<option value="' + r + '"' + (r === curRating ? ' selected' : '') + '>' + r + '</option>';
+      }).join('');
+
+      var fbRef = '';
+      if (curFb) {
+        fbRef = '<div class="text-xs" style="margin-bottom:var(--space-3);padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);border-left:3px solid var(--color-primary);">' +
+          '<div style="font-weight:600;margin-bottom:var(--space-1);">Current Feedback</div>' +
+          '<div style="white-space:pre-wrap;">' + curFb + '</div></div>';
+      }
+
+      showModal('Adjust Assessment',
+        fbRef +
+        '<div class="form-group"><label>New Score (current: ' + scoreVal.toFixed(1) + ')</label><input class="input" type="number" id="adj-score" min="1" max="4" step="0.5" value="' + scoreVal + '"></div>' +
+        '<div class="form-group"><label>New Rating</label><select class="input" id="adj-rating">' + ratingHtml + '</select></div>' +
+        '<div class="form-group"><label>Updated Feedback</label><textarea class="input" id="adj-feedback" rows="2">' + (curFb || '') + '</textarea></div>' +
+        '<div class="form-group"><label>Note to Student (optional explanation)</label><textarea class="input" id="adj-note" rows="2" placeholder="Explain why you are adjusting this score..."></textarea></div>',
+        '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+        '<button class="btn btn-primary btn-sm" id="save-adjust-btn">Save</button>');
+
+      setTimeout(function() {
+        document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+          b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+        });
+        var sb = document.getElementById('save-adjust-btn');
+        if (sb) sb.addEventListener('click', function() {
+          var score = parseFloat(document.getElementById('adj-score').value);
+          var rating = document.getElementById('adj-rating').value;
+          var feedback = document.getElementById('adj-feedback').value;
+          var note = document.getElementById('adj-note').value;
+          doResolve(appealId, 'ADJUSTED', { score: score, ratingLevel: rating, feedback: feedback }, note);
+        });
+      }, 50);
+    }
+
+    function doResolve(appealId, action, editedData, note) {
+      var body = { action: action };
+      if (editedData) body.editedData = editedData;
+      if (note && note.trim()) body.resolutionNote = note.trim();
+
+      API.post('/api/teacher/appeals/' + appealId + '/resolve', body)
+        .then(function() {
+          var o = document.querySelector('.modal-overlay'); if (o) o.remove();
+          showToast('Appeal resolved.', 'success');
+          loadAppeals();
+        })
+        .catch(function(err) { showToast('Failed: ' + (err.message || 'Unknown error'), 'error'); });
+    }
+
+    loadAppeals();
+  })();
+</script>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VoiceAssess — Compliance (D.9)</title>
+<link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/components.css"><link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<a href="#page-content" class="skip-link">Skip to main content</a>
+<div class="shell" id="app-shell">
+  <div class="sidebar-overlay"></div>
+  <aside class="sidebar">
+    <div class="sidebar-user"><div class="avatar avatar-md">A</div><div class="sidebar-user-info"><div class="sidebar-user-name">Alice Admin</div><div class="sidebar-user-role">ADMIN</div></div></div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">=</span>Dashboard</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">#</span>Users</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">[</span>Classes</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">S</span>Subjects</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">R</span>Rubrics</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">T</span>Terms</a>
+      <a class="sidebar-link active" href="#"><span class="sidebar-link-icon">%</span>Compliance</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">!</span>Error Logs</a>
+    </nav>
+    <div class="sidebar-footer"><button class="btn btn-ghost btn-block">Log out</button></div>
+  </aside>
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <header class="topbar">
+      <div class="topbar-left"><button class="hamburger hide-desktop"><span></span><span></span><span></span></button></div>
+      <div class="topbar-center">VoiceAssess</div>
+      <div class="topbar-right"><div class="avatar avatar-sm hide-mobile">A</div></div>
+    </header>
+    <main class="page-content" style="padding:var(--space-4) var(--space-5);">
+
+      <div class="section-header" style="margin-bottom:var(--space-4);">
+        <span class="section-title">Compliance Dashboard</span>
+        <select class="input" style="width:auto;min-width:160px;font-size:0.8rem;">
+          <option value="">All Grade Levels</option>
+          <option value="4" selected>Grade 4</option>
+          <option value="5">Grade 5</option>
+        </select>
+      </div>
+
+      <div class="stat-row" style="margin-bottom:var(--space-5);">
+        <div class="stat-card"><div class="stat-value">3</div><div class="stat-label">Total Teachers</div></div>
+        <div class="stat-card"><div class="stat-value">2</div><div class="stat-label">Total Classes</div></div>
+        <div class="stat-card"><div class="stat-value">8</div><div class="stat-label">Total Assessments</div></div>
+        <div class="stat-card"><div class="stat-value">4</div><div class="stat-label">Students</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:var(--space-4);">
+        <div style="font-weight:600;margin-bottom:var(--space-3);">Assessments by Subject — Grade 4</div>
+        <div style="display:flex;align-items:flex-end;gap:var(--space-4);height:200px;padding:0 var(--space-2);">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;">
+            <div style="font-weight:600;font-size:0.8rem;margin-bottom:4px;">4</div>
+            <div style="width:60%;background:var(--color-primary);height:160px;border-radius:4px 4px 0 0;"></div>
+            <div class="text-xs text-muted" style="margin-top:var(--space-1);">English</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;">
+            <div style="font-weight:600;font-size:0.8rem;margin-bottom:4px;">3</div>
+            <div style="width:60%;background:var(--color-accent);height:120px;border-radius:4px 4px 0 0;"></div>
+            <div class="text-xs text-muted" style="margin-top:var(--space-1);">Science</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;">
+            <div style="font-weight:600;font-size:0.8rem;margin-bottom:4px;">1</div>
+            <div style="width:60%;background:var(--color-warning);height:40px;border-radius:4px 4px 0 0;"></div>
+            <div class="text-xs text-muted" style="margin-top:var(--space-1);">Kiswahili</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:600;margin-bottom:var(--space-3);">Teacher Assessment Activity</div>
+        <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">
+            <span>teacherone</span>
+            <span style="display:flex;align-items:center;gap:var(--space-1);">
+              <span style="display:inline-block;height:12px;width:120px;background:var(--color-primary);border-radius:2px;"></span>
+              <span style="font-weight:600;font-size:0.8rem;">5 assessments</span>
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">
+            <span>Jane Kariuki</span>
+            <span style="display:flex;align-items:center;gap:var(--space-1);">
+              <span style="display:inline-block;height:12px;width:72px;background:var(--color-accent);border-radius:2px;"></span>
+              <span style="font-weight:600;font-size:0.8rem;">3 assessments</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">Academic Terms</span>
+    <span class="badge badge-primary" id="term-count-badge">0</span>
+    <button class="btn btn-primary btn-sm" style="margin-left:auto;" id="btn-create-term">+ Create Term</button>
+  </div>
+
+  <div class="list-stack" id="term-list"></div>
+
+  <div class="empty-state" id="term-empty" style="display: none;">
+    <div class="empty-state-icon">T</div>
+    <h4>No terms yet</h4>
+    <p>Create academic terms to organize assessments.</p>
+  </div>
+
+  <div class="empty-state" id="term-loading">
+    <div class="empty-state-icon">~</div>
+    <h4>Loading terms...</h4>
+  </div>
+</div>
+
+<button class="fab" id="fab-create-term" title="Create new term">+</button>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="term-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="term-modal-title">Create Term</h3>
+      <button class="modal-close" id="term-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+        <div class="form-group">
+          <label>Term Name</label>
+          <input type="text" id="term-name" class="input" placeholder="e.g. Term 2 2026">
+        </div>
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" id="term-start" class="input">
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input type="date" id="term-end" class="input">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="term-status" class="input">
+            <option value="ACTIVE">Active</option>
+            <option value="UPCOMING">Upcoming</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" id="term-modal-cancel">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="term-modal-delete" style="display:none;">Delete</button>
+      <button class="btn btn-primary btn-sm" id="term-modal-submit">Create Term</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var terms = [];
+    var editingId = null;
+
+    function formatDate(dateStr) {
+      var d = new Date(dateStr + 'T00:00:00');
+      var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+    }
+
+    function statusBadgeClass(status) {
+      if (!status) return 'badge-neutral';
+      var s = status.toUpperCase();
+      if (s === 'ACTIVE') return 'badge-success';
+      if (s === 'UPCOMING') return 'badge-primary';
+      return 'badge-neutral';
+    }
+
+    function loadTerms() {
+      var loadingEl = document.getElementById('term-loading');
+      var emptyEl = document.getElementById('term-empty');
+      if (loadingEl) loadingEl.style.display = '';
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      API.get('/api/admin/terms')
+        .then(function(data) {
+          terms = data || [];
+          renderTerms();
+        })
+        .catch(function(err) {
+          terms = [];
+          renderTerms();
+          showToast('Failed to load terms: ' + err.message, 'error');
+        });
+    }
+
+    function renderTerms() {
+      var listEl = document.getElementById('term-list');
+      var emptyEl = document.getElementById('term-empty');
+      var loadingEl = document.getElementById('term-loading');
+      var countBadge = document.getElementById('term-count-badge');
+
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (countBadge) countBadge.textContent = terms.length;
+
+      if (!terms.length) {
+        if (listEl) listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+      }
+
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      if (listEl) {
+        listEl.innerHTML = terms.map(function(t) {
+          var isActive = t.status && t.status.toUpperCase() === 'ACTIVE';
+          var borderStyle = isActive ? 'border-left:4px solid var(--color-success);' : '';
+          return (
+            '<div class="list-item clickable" data-term-id="' + t.termId + '" style="' + borderStyle + '">' +
+              '<div class="list-item-body">' +
+                '<div class="list-item-title">' + t.termName + '</div>' +
+                '<div class="list-item-subtitle">' +
+                  formatDate(t.startDate) + ' — ' + formatDate(t.endDate) +
+                '</div>' +
+              '</div>' +
+              '<div class="list-item-trailing" style="gap:var(--space-2);">' +
+                (isActive ? '' :
+                  '<button class="btn btn-sm btn-ghost activate-term-btn" data-term-id="' + t.termId + '">Activate</button>'
+                ) +
+                '<span class="badge ' + statusBadgeClass(t.status) + '">' + (t.status || 'UNKNOWN') + '</span>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join('');
+
+        // activate buttons
+        listEl.querySelectorAll('.activate-term-btn').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var tid = this.getAttribute('data-term-id');
+            activateTerm(tid);
+          });
+        });
+
+        // click to edit
+        listEl.querySelectorAll('.list-item').forEach(function(row) {
+          row.addEventListener('click', function() {
+            var tid = row.getAttribute('data-term-id');
+            var t = terms.find(function(x) { return x.termId === tid; });
+            if (!t) return;
+            openEditForm(t);
+          });
+        });
+      }
+    }
+
+    function activateTerm(termId) {
+      API.put('/api/admin/terms/' + termId, { status: 'ACTIVE' })
+        .then(function() {
+          showToast('Term activated', 'success');
+          loadTerms();
+        })
+        .catch(function(err) {
+          showToast('Failed to activate: ' + err.message, 'error');
+        });
+    }
+
+    function openCreateForm() {
+      editingId = null;
+      document.getElementById('term-modal-title').textContent = 'Create Term';
+      document.getElementById('term-modal-submit').textContent = 'Create Term';
+      document.getElementById('term-modal-delete').style.display = 'none';
+      document.getElementById('term-name').value = '';
+      document.getElementById('term-start').value = '';
+      document.getElementById('term-end').value = '';
+      document.getElementById('term-status').value = 'UPCOMING';
+      document.getElementById('term-modal').style.display = 'flex';
+    }
+
+    function openEditForm(t) {
+      editingId = t.termId;
+      document.getElementById('term-modal-title').textContent = 'Edit Term';
+      document.getElementById('term-modal-submit').textContent = 'Save Changes';
+      document.getElementById('term-modal-delete').style.display = '';
+      document.getElementById('term-name').value = t.termName;
+      document.getElementById('term-start').value = t.startDate;
+      document.getElementById('term-end').value = t.endDate;
+      document.getElementById('term-status').value = t.status ? t.status.toUpperCase() : 'UPCOMING';
+      document.getElementById('term-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('term-modal').style.display = 'none';
+      editingId = null;
+    }
+
+    document.getElementById('btn-create-term').addEventListener('click', openCreateForm);
+    document.getElementById('fab-create-term').addEventListener('click', openCreateForm);
+    document.getElementById('term-modal-close').addEventListener('click', closeModal);
+    document.getElementById('term-modal-cancel').addEventListener('click', closeModal);
+    document.getElementById('term-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    document.getElementById('term-modal-submit').addEventListener('click', function() {
+      var name = document.getElementById('term-name').value.trim();
+      var start = document.getElementById('term-start').value;
+      var end = document.getElementById('term-end').value;
+      var status = document.getElementById('term-status').value;
+
+      if (!name || !start || !end) {
+        showToast('All fields are required', 'error');
+        return;
+      }
+
+      var payload = {
+        termName: name,
+        startDate: start,
+        endDate: end,
+        status: status
+      };
+
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      var promise = editingId
+        ? API.put('/api/admin/terms/' + editingId, payload)
+        : API.post('/api/admin/terms', payload);
+
+      promise
+        .then(function() {
+          closeModal();
+          showToast(editingId ? 'Term updated' : 'Term created', 'success');
+          loadTerms();
+          btn.disabled = false;
+          btn.textContent = editingId ? 'Save Changes' : 'Create Term';
+        })
+        .catch(function(err) {
+          showToast('Failed: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = editingId ? 'Save Changes' : 'Create Term';
+        });
+    });
+
+    document.getElementById('term-modal-delete').addEventListener('click', function() {
+      if (!editingId) return;
+      if (!confirm('Delete this term? This cannot be undone.')) return;
+
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+
+      API.del('/api/admin/terms/' + editingId)
+        .then(function() {
+          closeModal();
+          showToast('Term deleted', 'success');
+          loadTerms();
+        })
+        .catch(function(err) {
+          showToast('Failed to delete: ' + err.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Delete';
+        });
+    });
+
+    loadTerms();
+  })();
+</script>

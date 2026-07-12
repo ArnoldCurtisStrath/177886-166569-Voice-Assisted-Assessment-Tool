@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D7C66">
+<title>VoiceAssess</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<a href="#page-content" class="skip-link">Skip to main content</a>
+
+<div class="shell" id="app-shell">
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-user">
+      <div class="avatar avatar-md" id="sidebar-avatar">T</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">teacherone</div>
+        <div class="sidebar-user-role">TEACHER</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <a class="sidebar-link" href="#teacher"><span class="sidebar-link-icon">=</span>Dashboard</a>
+      <a class="sidebar-link active" href="#teacher/curate"><span class="sidebar-link-icon">+</span>New Assessment</a>
+      <a class="sidebar-link" href="#teacher/review"><span class="sidebar-link-icon">?</span>Pending Reviews</a>
+      <a class="sidebar-link" href="#teacher/class"><span class="sidebar-link-icon">[</span>Class Grid</a>
+      <a class="sidebar-link" href="#teacher/appeals"><span class="sidebar-link-icon">!</span>Appeals</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-ghost btn-block">Log out</button>
+    </div>
+  </aside>
+
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger hide-desktop" aria-label="Open menu"><span></span><span></span><span></span></button>
+      </div>
+      <div class="topbar-center">VoiceAssess</div>
+      <div class="topbar-right">
+        <div class="avatar avatar-sm hide-mobile">T</div>
+      </div>
+    </header>
+
+    <main class="page-content" id="page-content" style="padding: var(--space-4) var(--space-5);">
+
+      <div class="animate-fade-in" style="display: flex; flex-direction: column; gap: var(--space-4);">
+
+        <div style="display: flex; align-items: center; gap: var(--space-3);">
+          <span class="badge badge-success">TRANSCRIBED</span>
+        </div>
+
+        <h2 style="margin: 0;">Transcription Result</h2>
+
+        <div class="card" style="display: flex; flex-direction: column; gap: var(--space-2);">
+          <div style="display: flex; justify-content: space-between;">
+            <span class="text-xs text-muted">Topic</span>
+            <span class="text-sm font-semibold">Pronunciation of th sounds</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span class="text-xs text-muted">Subject</span>
+            <span class="text-sm font-semibold">English Language</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span class="text-xs text-muted">Class</span>
+            <span class="text-sm font-semibold">Grade 4 East</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span class="text-xs text-muted">Duration</span>
+            <span class="text-sm font-semibold mono">00:38</span>
+          </div>
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; gap: var(--space-2);">
+          <span class="text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.5px;">Transcript</span>
+          <div style="font-size: var(--text-base); line-height: 1.7; color: var(--color-text); white-space: pre-wrap; max-height: 400px; overflow-y: auto; padding: var(--space-1);">Good morning class. Today we are going to practice the th sound. It is a sound that many learners find tricky. Erika can you come forward please. Yes stand here. Now I want you to say the word three. Go ahead.
+Three.
+Very good. Now try the word thank. Like when you are telling someone thank you.
+Thank. Thank you.
+Good good. Now this one. Say this and that.
+This. That.
+Excellent Erika. I can hear the th sound coming out clearly. Not dis and dat, but this and that. Now try father.
+Father.
+And mother.
+Mother.
+Wonderful. Class give Erika a round of applause. She has pronounced the th sound very well today. Keep practising at home with your parents. Well done Erika you may sit down.</div>
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; gap: var(--space-2);">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <span class="text-xs text-muted" style="text-transform: uppercase; letter-spacing: 0.5px;">AI Assessment Result</span>
+              <span class="badge badge-success">AI ASSESSED</span>
+            </div>
+          </div>
+          <pre style="font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.5; color: var(--color-text); white-space: pre-wrap; max-height: 500px; overflow-y: auto; padding: var(--space-3); background: var(--color-bg-subtle); border-radius: var(--radius-sm); margin: 0;">{
+  "session": {
+    "subject": "English",
+    "topic": "Pronunciation of th sounds",
+    "strand": "Reading",
+    "subStrand": "Oral Reading",
+    "className": "Grade 4 East",
+    "date": "2026-06-30"
+  },
+  "overallSummary": "Erika demonstrated clear pronunciation of the th sound across all test words including three, thank, this, that, father, and mother. She correctly produced both the voiced and voiceless th sounds.",
+  "assessment": [
+    {
+      "studentId": "d75a1f3c-8b2e-4a91-b6c0-29e7f4a1d832",
+      "studentName": "Erika Wambui",
+      "ratingLevel": "Meeting Expectations",
+      "confidence": "high",
+      "evidence": "Teacher states: 'I can hear the th sound coming out clearly. Not dis and dat, but this and that.' Erika correctly pronounced all six test words without substitution errors.",
+      "strengths": "Erika produced both voiced and voiceless th sounds accurately across all test words. She avoided the common f and d substitution errors typical at this grade level.",
+      "areasForImprovement": "Erika could benefit from practising the th sound in longer phrases and in spontaneous conversation rather than single-word repetition."
+    }
+  ]
+}</pre>
+        </div>
+
+        <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4);">
+          <button class="btn btn-secondary btn-block">New Assessment</button>
+          <button class="btn btn-primary btn-block">Review &amp; Finalize</button>
+        </div>
+
+      </div>
+
+    </main>
+
+    <nav class="bottom-nav" id="bottom-nav"></nav>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+</body>
+</html>

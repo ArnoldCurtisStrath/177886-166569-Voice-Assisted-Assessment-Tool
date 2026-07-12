@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VoiceAssess — Access Denied (D.7)</title>
+<link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/components.css"><link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<a href="#page-content" class="skip-link">Skip to main content</a>
+<div class="shell" id="app-shell">
+  <div class="sidebar-overlay"></div>
+  <aside class="sidebar">
+    <div class="sidebar-user"><div class="avatar avatar-md">E</div><div class="sidebar-user-info"><div class="sidebar-user-name">Erika Wambui</div><div class="sidebar-user-role">STUDENT</div></div></div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-link active" href="#"><span class="sidebar-link-icon">%</span>My Progress</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">!</span>Appeal</a>
+    </nav>
+    <div class="sidebar-footer"><button class="btn btn-ghost btn-block">Log out</button></div>
+  </aside>
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <header class="topbar">
+      <div class="topbar-left"><button class="hamburger hide-desktop"><span></span><span></span><span></span></button></div>
+      <div class="topbar-center">VoiceAssess</div>
+      <div class="topbar-right"><div class="avatar avatar-sm hide-mobile">E</div></div>
+    </header>
+    <main class="page-content" style="padding:var(--space-4) var(--space-5);display:flex;align-items:center;justify-content:center;">
+      <div class="empty-state">
+        <div class="empty-state-icon" style="background:#FDEDEC;color:var(--color-error);">!</div>
+        <h4 style="color:var(--color-error);">Access Denied</h4>
+        <p>You do not have permission to access this page.</p>
+        <p class="text-xs text-muted">Request blocked: HTTP 403 Forbidden</p>
+        <p class="text-xs text-muted">Role required: ADMIN. Your role: STUDENT.</p>
+        <button class="btn btn-primary" style="margin-top:var(--space-3);">Go to Dashboard</button>
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+</div>
+</body>
+</html>

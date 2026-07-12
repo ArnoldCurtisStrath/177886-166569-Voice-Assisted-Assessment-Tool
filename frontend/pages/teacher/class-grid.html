@@ -1,0 +1,162 @@
+<!-- VoiceAssess — Teacher Class Grid -->
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title" id="grid-title">Class Grid</span>
+    <a class="btn btn-sm btn-secondary" id="export-csv-btn" style="display:none;">Export CSV</a>
+    <a class="btn btn-sm btn-primary" id="export-pdf-btn" style="display:none;">Export PDF</a>
+  </div>
+
+  <div id="grid-loading" class="text-sm text-muted" style="padding:var(--space-6);text-align:center;">Loading...</div>
+
+  <!-- summary stats -->
+  <div class="stat-row" id="grid-stats" style="display:none;margin-bottom:var(--space-4);"></div>
+
+  <!-- the grid table -->
+  <div style="overflow-x:auto;" id="grid-container" class="hidden"></div>
+
+  <div class="empty-state" id="grid-empty" style="display:none;">
+    <div class="empty-state-icon">[</div>
+    <h4>No assessments yet</h4>
+    <p>Complete and approve assessments for this class to see them here.</p>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var classId = localStorage.getItem('voiceassess_selected_class');
+    if (!classId) {
+      document.getElementById('grid-loading').textContent = 'No class selected. Go back to the dashboard and pick a class.';
+      return;
+    }
+
+    API.get('/api/teacher/classes/' + classId + '/grid')
+      .then(function(data) {
+        document.getElementById('grid-loading').style.display = 'none';
+        document.getElementById('grid-title').textContent = data.className || 'Class Grid';
+        renderGrid(data);
+      })
+      .catch(function(err) {
+        document.getElementById('grid-loading').textContent = 'Failed to load grid: ' + (err.message || 'Unknown error');
+      });
+
+    function renderGrid(data) {
+      var students = data.students || [];
+      var assessments = data.assessments || [];
+      var scores = data.scores || {};
+      var averages = data.averages || {};
+
+      if (assessments.length === 0) {
+        document.getElementById('grid-empty').style.display = '';
+        return;
+      }
+
+      // summary stats
+      var classAvg = 0;
+      var avgCount = 0;
+      for (var sid in averages) {
+        var v = averages[sid];
+        if (typeof v === 'number' && v > 0) { classAvg += v; avgCount++; }
+      }
+      classAvg = avgCount > 0 ? (classAvg / avgCount) : 0;
+
+      var statsEl = document.getElementById('grid-stats');
+      statsEl.style.display = '';
+      statsEl.innerHTML =
+        '<div class="stat-card"><div class="stat-value">' + students.length + '</div><div class="stat-label">Students</div></div>' +
+        '<div class="stat-card"><div class="stat-value">' + assessments.length + '</div><div class="stat-label">Assessments</div></div>' +
+        '<div class="stat-card"><div class="stat-value">' + classAvg.toFixed(1) + '</div><div class="stat-label">Class Avg</div></div>';
+
+      var csvBtn = document.getElementById('export-csv-btn');
+      var pdfBtn = document.getElementById('export-pdf-btn');
+      if (csvBtn) csvBtn.style.display = '';
+      if (pdfBtn) pdfBtn.style.display = '';
+
+      // build table
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">';
+      // header
+      html += '<thead><tr><th style="position:sticky;left:0;background:var(--color-bg);min-width:140px;padding:var(--space-2);border-bottom:2px solid var(--color-border);text-align:left;">Student</th>';
+      for (var i = 0; i < assessments.length; i++) {
+        var a = assessments[i];
+        html += '<th style="padding:var(--space-2);border-bottom:2px solid var(--color-border);text-align:center;min-width:80px;writing-mode:vertical-rl;text-orientation:mixed;font-size:0.7rem;">' + a.subjectName + '<br>' + a.topic + '</th>';
+      }
+      html += '<th style="padding:var(--space-2);border-bottom:2px solid var(--color-border);text-align:center;min-width:50px;">Avg</th>';
+      html += '</tr></thead><tbody>';
+
+      for (var i = 0; i < students.length; i++) {
+        var s = students[i];
+        var sid = s.studentId;
+        html += '<tr style="border-bottom:1px solid var(--color-border);">';
+        html += '<td style="position:sticky;left:0;background:var(--color-bg);padding:var(--space-2);font-weight:500;">' + s.fullName + '</td>';
+
+        var rowTotal = 0;
+        var rowCount = 0;
+        for (var j = 0; j < assessments.length; j++) {
+          var a = assessments[j];
+          var key = sid + ':' + a.audioId;
+          var cell = scores[key];
+
+          if (cell) {
+            var score = cell.score;
+            var rating = cell.ratingLevel || '';
+            var conf = cell.confidence || '';
+            var bg = getConfBg(conf);
+            rowTotal += score;
+            rowCount++;
+            html += '<td style="padding:var(--space-1);text-align:center;cursor:pointer;" class="grid-cell" data-audio-id="' + a.audioId + '" data-record-id="' + (cell.recordId || '') + '">';
+            html += '<div style="font-weight:600;font-size:0.9rem;">' + score.toFixed(1) + '</div>';
+            html += '<div class="text-xs text-muted">' + rating + '</div>';
+            if (conf) {
+              html += '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + bg + ';margin-top:2px;" title="Confidence: ' + conf + '"></span>';
+            }
+            html += '</td>';
+          } else {
+            html += '<td style="padding:var(--space-1);text-align:center;color:var(--color-muted);">-</td>';
+          }
+        }
+
+        var avg = rowCount > 0 ? (rowTotal / rowCount) : 0;
+        html += '<td style="padding:var(--space-2);text-align:center;font-weight:600;">' + (rowCount > 0 ? avg.toFixed(1) : '-') + '</td>';
+        html += '</tr>';
+      }
+
+      html += '</tbody></table>';
+      document.getElementById('grid-container').innerHTML = html;
+      document.getElementById('grid-container').classList.remove('hidden');
+
+      // wire cell clicks to audit view
+      document.querySelectorAll('.grid-cell').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+          var aid = cell.getAttribute('data-audio-id');
+          if (aid) {
+            localStorage.setItem('voiceassess_audit_audio', aid);
+            Router.navigate('teacher/audit');
+          }
+        });
+      });
+    }
+
+    function getConfBg(conf) {
+      if (!conf) return '#ccc';
+      conf = conf.toLowerCase();
+      if (conf === 'high') return 'var(--color-success)';
+      if (conf === 'medium') return 'var(--color-warning)';
+      if (conf === 'low') return 'var(--color-error)';
+      return '#ccc';
+    }
+
+    // export buttons
+    document.getElementById('export-csv-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      var classId = localStorage.getItem('voiceassess_selected_class');
+      if (!classId) return;
+      window.open(API.BASE + '/api/teacher/classes/' + classId + '/export?format=csv', '_blank');
+    });
+
+    document.getElementById('export-pdf-btn').addEventListener('click', function(e) {
+      e.preventDefault();
+      var classId = localStorage.getItem('voiceassess_selected_class');
+      if (!classId) return;
+      window.open(API.BASE + '/api/teacher/classes/' + classId + '/export?format=pdf', '_blank');
+    });
+  })();
+</script>

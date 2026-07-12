@@ -1,0 +1,128 @@
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">Error Logs</span>
+    <span class="badge badge-primary" id="log-count-badge">0</span>
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto;" id="logs-refresh">Refresh</button>
+  </div>
+
+  <div class="list-stack" id="log-list"></div>
+
+  <div class="empty-state" id="log-empty" style="display: none;">
+    <div class="empty-state-icon">!</div>
+    <h4>No errors logged</h4>
+    <p>Your system is running smoothly. Error logs will appear here when issues occur.</p>
+  </div>
+
+  <div class="empty-state" id="log-loading">
+    <div class="empty-state-icon">~</div>
+    <h4>Loading logs...</h4>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var logs = [];
+    var expandedId = null;
+
+    function loadLogs() {
+      var loadingEl = document.getElementById('log-loading');
+      var emptyEl = document.getElementById('log-empty');
+      if (loadingEl) loadingEl.style.display = '';
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      API.get('/api/admin/logs?limit=100')
+        .then(function(data) {
+          logs = data || [];
+          renderLogs();
+        })
+        .catch(function(err) {
+          logs = [];
+          renderLogs();
+          showToast('Failed to load logs: ' + err.message, 'error');
+        });
+    }
+
+    function formatTimestamp(ts) {
+      try {
+        var d = new Date(ts);
+        if (isNaN(d.getTime())) return ts;
+        var months = ['Jan','Feb','Mar','Apr','May','Jun',
+                      'Jul','Aug','Sep','Oct','Nov','Dec'];
+        var dateStr = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+        var hours = d.getHours().toString().padStart(2, '0');
+        var mins = d.getMinutes().toString().padStart(2, '0');
+        var secs = d.getSeconds().toString().padStart(2, '0');
+        return dateStr + ', ' + hours + ':' + mins + ':' + secs;
+      } catch (e) {
+        return ts;
+      }
+    }
+
+    function errorBadgeClass(type) {
+      if (!type) return 'badge-neutral';
+      var t = type.toUpperCase();
+      if (t === 'ERROR' || t === 'EXCEPTION') return 'badge-error';
+      if (t === 'WARN' || t === 'WARNING') return 'badge-warning';
+      if (t === 'AUDIT') return 'badge-primary';
+      return 'badge-neutral';
+    }
+
+    function renderLogs() {
+      var listEl = document.getElementById('log-list');
+      var emptyEl = document.getElementById('log-empty');
+      var loadingEl = document.getElementById('log-loading');
+      var countBadge = document.getElementById('log-count-badge');
+
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (countBadge) countBadge.textContent = logs.length;
+
+      if (!logs.length) {
+        if (listEl) listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = '';
+        return;
+      }
+
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      if (listEl) {
+        listEl.innerHTML = logs.map(function(l) {
+          var isExpanded = expandedId === l.logId;
+          var msg = l.errorMessage || '';
+          var shortMsg = msg.length > 120 ? msg.substring(0, 120) + '...' : msg;
+
+          return (
+            '<div class="list-item clickable" data-log-id="' + l.logId + '">' +
+              '<div class="list-item-body">' +
+                '<div class="list-item-title">' +
+                  '<span class="badge ' + errorBadgeClass(l.errorType) + '" style="margin-right:var(--space-2);">' + (l.errorType || 'UNKNOWN') + '</span>' +
+                  formatTimestamp(l.timestamp) +
+                '</div>' +
+                '<div class="list-item-subtitle" style="margin-top:var(--space-1);font-family:var(--font-mono);font-size:var(--text-xs);white-space:pre-wrap;">' +
+                  (isExpanded ? msg : shortMsg) +
+                '</div>' +
+                (l.relatedEntity ? '<div class="list-item-subtitle" style="margin-top:var(--space-1);">Related: ' + l.relatedEntity + '</div>' : '') +
+              '</div>' +
+              (msg.length > 120 ? '<div class="list-chevron" style="flex-shrink:0;">' + (isExpanded ? '&uarr;' : '&darr;') + '</div>' : '') +
+            '</div>'
+          );
+        }).join('');
+
+        listEl.querySelectorAll('.list-item').forEach(function(row) {
+          row.addEventListener('click', function() {
+            var lid = row.getAttribute('data-log-id');
+            var l = logs.find(function(x) { return x.logId === lid; });
+            if (!l) return;
+            if (l.errorMessage && l.errorMessage.length > 120) {
+              expandedId = expandedId === lid ? null : lid;
+              renderLogs();
+            }
+          });
+        });
+      }
+    }
+
+    document.getElementById('logs-refresh').addEventListener('click', loadLogs);
+
+    loadLogs();
+  })();
+</script>

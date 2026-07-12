@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VoiceAssess — Review Detail (D.4)</title>
+<link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/components.css"><link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<a href="#page-content" class="skip-link">Skip to main content</a>
+<div class="shell" id="app-shell">
+  <div class="sidebar-overlay"></div>
+  <aside class="sidebar">
+    <div class="sidebar-user"><div class="avatar avatar-md">T</div><div class="sidebar-user-info"><div class="sidebar-user-name">teacherone</div><div class="sidebar-user-role">TEACHER</div></div></div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">=</span>Dashboard</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">+</span>New Assessment</a>
+      <a class="sidebar-link active" href="#"><span class="sidebar-link-icon">?</span>Pending Reviews</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">[</span>Class Grid</a>
+      <a class="sidebar-link" href="#"><span class="sidebar-link-icon">!</span>Appeals</a>
+    </nav>
+    <div class="sidebar-footer"><button class="btn btn-ghost btn-block">Log out</button></div>
+  </aside>
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <header class="topbar">
+      <div class="topbar-left"><button class="hamburger hide-desktop"><span></span><span></span><span></span></button></div>
+      <div class="topbar-center">VoiceAssess</div>
+      <div class="topbar-right"><div class="avatar avatar-sm hide-mobile">T</div></div>
+    </header>
+    <main class="page-content" style="padding:var(--space-4) var(--space-5);">
+      <div style="max-width:700px;margin:0 auto;">
+
+        <!-- Review detail card -->
+        <div class="card" style="margin-bottom:var(--space-4);">
+          <div class="text-sm" style="margin-bottom:var(--space-3);">
+            <strong>English Language</strong> &middot; Pronunciation of th sounds<br>
+            Class: Grade 4 East &middot; 30 June 2026<br>
+            Strand: Reading &middot; Oral Reading
+          </div>
+          <div class="text-xs text-muted" style="margin-bottom:var(--space-2);background:var(--color-bg);padding:var(--space-2);border-radius:var(--radius-sm);">
+            <strong>Rubric:</strong> Can read a short passage aloud with correct pronunciation<br>
+            <strong>Scale:</strong> Below / Approaching / Meeting / Exceeding
+          </div>
+          <details style="margin-bottom:var(--space-3);"><summary class="text-sm" style="cursor:pointer;font-weight:600;">Transcript</summary>
+            <div class="text-xs" style="background:var(--color-bg);padding:var(--space-2);max-height:200px;overflow-y:auto;white-space:pre-wrap;border-radius:var(--radius-sm);margin-top:var(--space-1);">Good morning class. Today we are going to practice the th sound. It is a sound that many learners find tricky. Erika can you come forward please. Yes stand here. Now I want you to say the word three. Go ahead.
+Three.
+Very good. Now try the word thank. Like when you are telling someone thank you.
+Thank. Thank you.
+Good good. Now this one. Say this and that.
+This. That.
+Excellent Erika. I can hear the th sound coming out clearly. Not dis and dat, but this and that. Now try father.
+Father.
+And mother.
+Mother.
+Wonderful. Class give Erika a round of applause. She has pronounced the th sound very well today. Keep practising at home with your parents. Well done Erika you may sit down.</div>
+          </details>
+
+          <div style="margin-bottom:var(--space-2);font-weight:600;font-size:0.9rem;">Student Assessments</div>
+
+          <!-- Erika's card — green confidence -->
+          <div class="card" style="margin-bottom:var(--space-2);border-left:3px solid var(--color-success);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-1);">
+              <span style="font-weight:600;">Erika Wambui</span>
+              <span class="badge" style="font-size:0.7rem;">Meeting Expectations</span>
+            </div>
+            <div class="text-xs text-muted">Confidence: <span style="color:var(--color-success);font-weight:600;">high</span></div>
+            <div class="text-xs" style="margin-top:var(--space-1);font-style:italic;">"Erika correctly pronounced three, thank, this, that, father, and mother with clear th sounds in all positions."</div>
+            <div class="text-xs" style="margin-top:var(--space-1);color:var(--color-success);">+ Consistent production of both voiced and voiceless th sounds. No substitution with f or d sounds was observed.</div>
+            <div class="text-xs" style="margin-top:2px;color:var(--color-warning);">- Continue practising th sounds in longer sentences and connected speech to build fluency.</div>
+          </div>
+
+          <!-- Second student — orange confidence -->
+          <div class="card" style="margin-bottom:var(--space-2);border-left:3px solid var(--color-warning);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-1);">
+              <span style="font-weight:600;">Kevin Otieno</span>
+              <span class="badge" style="font-size:0.7rem;">Approaching Expectations</span>
+            </div>
+            <div class="text-xs text-muted">Confidence: <span style="color:var(--color-warning);font-weight:600;">medium</span></div>
+            <div class="text-xs" style="margin-top:var(--space-1);font-style:italic;">"Kevin had difficulty with the th sound. He pronounced thank as tank and this as dis."</div>
+            <div class="text-xs" style="margin-top:var(--space-1);color:var(--color-success);">+ Kevin attempted all six words and showed improvement on father and mother.</div>
+            <div class="text-xs" style="margin-top:2px;color:var(--color-warning);">- Needs targeted practice with voiceless th at the start of words. Confuses th with t and d sounds.</div>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:var(--space-2);max-width:700px;margin:0 auto;">
+          <button class="btn btn-sm" style="flex:1;background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);border-radius:var(--radius-sm);">Approve</button>
+          <button class="btn btn-sm" style="flex:1;background:transparent;color:var(--color-primary);border:1.5px solid var(--color-primary);border-radius:var(--radius-sm);">Edit</button>
+          <button class="btn btn-sm" style="flex:1;background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);border-radius:var(--radius-sm);">Reject</button>
+        </div>
+
+      </div>
+    </main>
+    <nav class="bottom-nav"></nav>
+  </div>
+</div>
+</body>
+</html>

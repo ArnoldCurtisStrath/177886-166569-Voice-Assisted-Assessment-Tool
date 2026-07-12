@@ -1,0 +1,158 @@
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">Compliance Overview</span>
+    <button class="btn btn-primary btn-sm" id="compliance-pdf-btn">Download PDF</button>
+    <button class="btn btn-ghost btn-sm" id="compliance-refresh">Refresh</button>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stat-row" style="margin-bottom: var(--space-6);">
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="comp-classes">-</div>
+      <div class="stat-label">Classes</div>
+    </div>
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="comp-subjects">-</div>
+      <div class="stat-label">Subjects</div>
+    </div>
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="comp-rubrics">-</div>
+      <div class="stat-label">Rubrics</div>
+    </div>
+    <div class="stat-card accent-bg">
+      <div class="stat-value" id="comp-teachers">-</div>
+      <div class="stat-label">Teachers</div>
+    </div>
+  </div>
+
+  <!-- Assessments by Subject (bar chart) -->
+  <div class="section-header" style="margin-top:var(--space-6);">
+    <span class="section-title">Assessments by Subject</span>
+  </div>
+  <div class="card" id="by-subject-chart" style="margin-bottom:var(--space-6);">
+    <p class="text-sm text-secondary" style="padding:var(--space-4);text-align:center;">No data yet.</p>
+  </div>
+
+  <!-- Assessments by Status -->
+  <div class="section-header" style="margin-top:var(--space-6);">
+    <span class="section-title">Assessments by Status</span>
+  </div>
+  <div class="stat-row" id="by-status-row">
+    <div class="empty-state" style="padding:var(--space-4);">
+      <p style="color:var(--text-muted);">No assessments found.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    function loadCompliance() {
+      API.get('/api/admin/compliance')
+        .then(function(d) {
+          renderStats(d);
+          renderBySubject(d.assessmentsBySubject || []);
+          renderByStatus(d.assessmentsByStatus || {});
+        })
+        .catch(function(err) {
+          showToast('Failed to load compliance: ' + err.message, 'error');
+        });
+    }
+
+    function renderStats(d) {
+      setVal('comp-classes', d.totalClasses);
+      setVal('comp-subjects', d.totalSubjects);
+      setVal('comp-rubrics', d.totalRubrics);
+      setVal('comp-teachers', d.totalTeachers);
+
+      // update the stat-row for assessments separately
+      var statRow = document.querySelector('.stat-row');
+      if (statRow) {
+        // check if assessment card already exists
+        var existing = document.getElementById('comp-assessments');
+        if (existing) {
+          existing.textContent = d.totalAssessments || 0;
+        } else {
+          var card = document.createElement('div');
+          card.className = 'stat-card accent-bg';
+          card.innerHTML = '<div class="stat-value" id="comp-assessments">' + (d.totalAssessments || 0) + '</div><div class="stat-label">Assessments</div>';
+          statRow.appendChild(card);
+        }
+      }
+    }
+
+    function setVal(id, val) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = val != null ? val : '-';
+    }
+
+    function renderBySubject(bySubject) {
+      var container = document.getElementById('by-subject-chart');
+      if (!container) return;
+
+      if (!bySubject.length) {
+        container.innerHTML = '<p class="text-sm text-secondary" style="padding:var(--space-4);text-align:center;">No assessments yet.</p>';
+        return;
+      }
+
+      var maxCount = 0;
+      bySubject.forEach(function(item) {
+        if (item.count > maxCount) maxCount = item.count;
+      });
+
+      var html = '<div style="display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-4);">';
+      bySubject.forEach(function(item) {
+        var pct = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+        html +=
+          '<div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:var(--text-sm);margin-bottom:var(--space-1);">' +
+              '<span style="font-weight:600;">' + item.subjectName + '</span>' +
+              '<span style="color:var(--text-muted);">' + item.count + '</span>' +
+            '</div>' +
+            '<div class="progress-bar">' +
+              '<div class="progress-fill" style="width:' + pct + '%;"></div>' +
+            '</div>' +
+          '</div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function renderByStatus(byStatus) {
+      var container = document.getElementById('by-status-row');
+      if (!container) return;
+
+      var statusColors = {
+        'UPLOADED': 'badge-warning',
+        'TRANSCRIBED': 'badge-primary',
+        'PENDING_REVIEW': 'badge-warning',
+        'COMPLETED': 'badge-success',
+        'FAILED': 'badge-error'
+      };
+
+      var keys = Object.keys(byStatus);
+      if (!keys.length) {
+        container.innerHTML = '<div class="stat-card"><div class="stat-value" style="font-size:var(--text-base);">0</div><div class="stat-label">No assessments</div></div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      keys.forEach(function(status) {
+        var count = byStatus[status];
+        var card = document.createElement('div');
+        card.className = 'stat-card';
+        card.innerHTML =
+          '<div class="stat-value" style="font-size:var(--text-lg);">' + count + '</div>' +
+          '<div class="stat-label"><span class="badge ' + (statusColors[status] || 'badge-neutral') + '">' + status + '</span></div>';
+        container.appendChild(card);
+      });
+    }
+
+    document.getElementById('compliance-refresh').addEventListener('click', loadCompliance);
+
+    document.getElementById('compliance-pdf-btn').addEventListener('click', function() {
+      window.open(API.BASE + '/api/admin/reports/compliance', '_blank');
+    });
+
+    loadCompliance();
+  })();
+</script>
