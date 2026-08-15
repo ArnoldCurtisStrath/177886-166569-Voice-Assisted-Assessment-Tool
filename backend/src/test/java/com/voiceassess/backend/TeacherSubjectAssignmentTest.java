@@ -72,14 +72,14 @@ class TeacherSubjectAssignmentTest {
 
     @Test
     void testGetTeacherSubjectsReturnsEmptyInitially() {
-        var subjects = adminService.getTeacherSubjects(teacher.getTeacherId());
+        var subjects = adminService.getTeacherSubjects(teacher.getTeacherId(), school.getSchoolId());
         assertTrue(subjects.isEmpty());
     }
 
     @Test
     void testAssignSubjectToTeacher() {
         var result = adminService.assignSubjectToTeacher(
-                teacher.getTeacherId(), subject1.getSubjectId());
+                teacher.getTeacherId(), subject1.getSubjectId(), school.getSchoolId());
 
         assertNotNull(result.get("assignmentId"));
         assertEquals("English", result.get("subjectName"));
@@ -91,41 +91,41 @@ class TeacherSubjectAssignmentTest {
 
     @Test
     void testAssignDuplicateSubjectFails() {
-        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId());
+        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId(), school.getSchoolId());
 
         assertThrows(IllegalArgumentException.class, () -> {
-            adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId());
+            adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId(), school.getSchoolId());
         });
     }
 
     @Test
     void testRemoveSubjectFromTeacher() {
-        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId());
+        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId(), school.getSchoolId());
         assertTrue(tsaRepo.existsByTeacherAndSubject(teacher, subject1));
 
-        adminService.removeSubjectFromTeacher(teacher.getTeacherId(), subject1.getSubjectId());
+        adminService.removeSubjectFromTeacher(teacher.getTeacherId(), subject1.getSubjectId(), school.getSchoolId());
         assertFalse(tsaRepo.existsByTeacherAndSubject(teacher, subject1));
     }
 
     @Test
     void testRemoveNonexistentAssignmentFails() {
         assertThrows(IllegalArgumentException.class, () -> {
-            adminService.removeSubjectFromTeacher(teacher.getTeacherId(), subject1.getSubjectId());
+            adminService.removeSubjectFromTeacher(teacher.getTeacherId(), subject1.getSubjectId(), school.getSchoolId());
         });
     }
 
     @Test
     void testGetAvailableSubjectsExcludesAssigned() {
-        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId());
+        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId(), school.getSchoolId());
 
-        var available = adminService.getAvailableSubjectsForTeacher(teacher.getTeacherId());
+        var available = adminService.getAvailableSubjectsForTeacher(teacher.getTeacherId(), school.getSchoolId());
 
-        // subject1 is assigned — should not appear
+        // subject1 is assigned â€” should not appear
         boolean hasSubject1 = available.stream()
                 .anyMatch(s -> subject1.getSubjectId().toString().equals(s.get("subjectId")));
         assertFalse(hasSubject1);
 
-        // subject2 is not assigned — should appear
+        // subject2 is not assigned â€” should appear
         boolean hasSubject2 = available.stream()
                 .anyMatch(s -> subject2.getSubjectId().toString().equals(s.get("subjectId")));
         assertTrue(hasSubject2);
@@ -133,10 +133,10 @@ class TeacherSubjectAssignmentTest {
 
     @Test
     void testGetTeacherSubjectsReturnsAssigned() {
-        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId());
-        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject2.getSubjectId());
+        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject1.getSubjectId(), school.getSchoolId());
+        adminService.assignSubjectToTeacher(teacher.getTeacherId(), subject2.getSubjectId(), school.getSchoolId());
 
-        var subjects = adminService.getTeacherSubjects(teacher.getTeacherId());
+        var subjects = adminService.getTeacherSubjects(teacher.getTeacherId(), school.getSchoolId());
         assertEquals(2, subjects.size());
 
         var names = subjects.stream().map(s -> (String) s.get("subjectName")).toList();

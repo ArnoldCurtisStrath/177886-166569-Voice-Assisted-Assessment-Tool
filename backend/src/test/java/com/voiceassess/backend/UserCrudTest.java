@@ -40,7 +40,7 @@ class UserCrudTest {
         parentReq.role = "PARENT"; parentReq.fullName = "Test Parent";
         parentReq.schoolId = school.getSchoolId().toString();
         parentReq.phoneNumber = "+254700000000";
-        var parentResult = userService.createUser(parentReq);
+        var parentResult = userService.createUser(parentReq, school.getSchoolId());
         parentUserId = UUID.fromString((String) parentResult.get("userId"));
         parent = parentRepo.findByUser(userRepo.findById(parentUserId).get()).get();
         var studentReq = new UserService.CreateUserRequest();
@@ -48,44 +48,44 @@ class UserCrudTest {
         studentReq.role = "STUDENT"; studentReq.fullName = "Test Student";
         studentReq.schoolId = school.getSchoolId().toString();
         studentReq.dateOfBirth = LocalDate.of(2015, 3, 10);
-        var studentResult = userService.createUser(studentReq);
+        var studentResult = userService.createUser(studentReq, school.getSchoolId());
         studentUserId = UUID.fromString((String) studentResult.get("userId"));
         student = studentRepo.findByUser(userRepo.findById(studentUserId).get()).get();
     }
 
     @Test void testLinkParentToStudent() {
-        System.out.println("[PASS] Link parent to student — verify junction table record");
-        var r = userService.linkParentToStudent(parent.getParentId(), student.getStudentId());
+        System.out.println("[PASS] Link parent to student â€” verify junction table record");
+        var r = userService.linkParentToStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId());
         assertTrue((Boolean) r.get("linked"));
         assertTrue(parentLinkRepo.existsByParentAndStudent(parent, student));
     }
 
     @Test void testLinkDuplicateFails() {
         System.out.println("[PASS] Duplicate parent-student link rejected");
-        userService.linkParentToStudent(parent.getParentId(), student.getStudentId());
+        userService.linkParentToStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId());
         assertThrows(IllegalArgumentException.class, () ->
-            userService.linkParentToStudent(parent.getParentId(), student.getStudentId()));
+            userService.linkParentToStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId()));
     }
 
     @Test void testUnlinkParentFromStudent() {
-        System.out.println("[PASS] Unlink parent from student — junction record removed");
-        userService.linkParentToStudent(parent.getParentId(), student.getStudentId());
+        System.out.println("[PASS] Unlink parent from student â€” junction record removed");
+        userService.linkParentToStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId());
         assertTrue(parentLinkRepo.existsByParentAndStudent(parent, student));
-        userService.unlinkParentFromStudent(parent.getParentId(), student.getStudentId());
+        userService.unlinkParentFromStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId());
         assertFalse(parentLinkRepo.existsByParentAndStudent(parent, student));
     }
 
     @Test void testGetLinkedStudents() {
         System.out.println("[PASS] Get linked students returns correct list");
-        userService.linkParentToStudent(parent.getParentId(), student.getStudentId());
-        var linked = userService.getLinkedStudents(parent.getParentId());
+        userService.linkParentToStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId());
+        var linked = userService.getLinkedStudents(parent.getParentId(), school.getSchoolId());
         assertEquals(1, linked.size());
         assertEquals("Test Student", linked.get(0).get("fullName"));
     }
 
     @Test void testGetAvailableStudentsExcludesLinked() {
         System.out.println("[PASS] Available students list excludes already-linked students");
-        userService.linkParentToStudent(parent.getParentId(), student.getStudentId());
+        userService.linkParentToStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId());
         var available = userService.getAvailableStudentsForParent(parent.getParentId(), school.getSchoolId());
         boolean found = available.stream().anyMatch(s -> student.getStudentId().toString().equals(s.get("studentId")));
         assertFalse(found);
@@ -98,7 +98,7 @@ class UserCrudTest {
         s2Req.role = "STUDENT"; s2Req.fullName = "Student Two";
         s2Req.schoolId = school.getSchoolId().toString();
         s2Req.dateOfBirth = LocalDate.of(2016, 5, 20);
-        userService.createUser(s2Req);
+        userService.createUser(s2Req, school.getSchoolId());
         var available = userService.getAvailableStudentsForParent(parent.getParentId(), school.getSchoolId());
         assertTrue(available.size() >= 2);
     }
@@ -106,7 +106,7 @@ class UserCrudTest {
     @Test void testUpdateUserName() {
         System.out.println("[PASS] Update user full name in profile table");
         var req = new UserService.UpdateUserRequest(); req.fullName = "Updated Parent Name";
-        var result = userService.updateUser(parentUserId, req);
+        var result = userService.updateUser(parentUserId, req, school.getSchoolId());
         assertEquals("Updated Parent Name", result.get("fullName"));
         var updated = parentRepo.findByUser(userRepo.findById(parentUserId).get());
         assertTrue(updated.isPresent());
@@ -116,7 +116,7 @@ class UserCrudTest {
     @Test void testUpdateUserEmail() {
         System.out.println("[PASS] Update user email address");
         var req = new UserService.UpdateUserRequest(); req.email = "parent-new@test.com";
-        var result = userService.updateUser(parentUserId, req);
+        var result = userService.updateUser(parentUserId, req, school.getSchoolId());
         assertEquals("parent-new@test.com", result.get("email"));
         assertEquals("parent-new@test.com", userRepo.findById(parentUserId).get().getEmail());
     }
@@ -124,32 +124,32 @@ class UserCrudTest {
     @Test void testUpdateUserDuplicateEmailFails() {
         System.out.println("[PASS] Duplicate email update rejected");
         var req = new UserService.UpdateUserRequest(); req.email = "student@test.com";
-        assertThrows(IllegalArgumentException.class, () -> userService.updateUser(parentUserId, req));
+        assertThrows(IllegalArgumentException.class, () -> userService.updateUser(parentUserId, req, school.getSchoolId()));
     }
 
     @Test void testToggleUserActive() {
-        System.out.println("[PASS] Toggle user active status — deactivate then reactivate");
+        System.out.println("[PASS] Toggle user active status â€” deactivate then reactivate");
         var req = new UserService.UpdateUserRequest(); req.isActive = false;
-        var result = userService.updateUser(parentUserId, req);
+        var result = userService.updateUser(parentUserId, req, school.getSchoolId());
         assertEquals(false, result.get("isActive"));
         assertFalse(userRepo.findById(parentUserId).get().isActive());
         req.isActive = true;
-        userService.updateUser(parentUserId, req);
+        userService.updateUser(parentUserId, req, school.getSchoolId());
         assertTrue(userRepo.findById(parentUserId).get().isActive());
     }
 
     @Test void testUpdateUserPassword() {
-        System.out.println("[PASS] Update user password — hash changes");
+        System.out.println("[PASS] Update user password â€” hash changes");
         var req = new UserService.UpdateUserRequest(); req.password = "newpassword456";
-        userService.updateUser(parentUserId, req);
+        userService.updateUser(parentUserId, req, school.getSchoolId());
         assertNotNull(userRepo.findById(parentUserId).get().getPasswordHash());
     }
 
     @Test void testDeleteParentCascadesLinks() {
         System.out.println("[PASS] Delete parent cascades to remove links but preserves student");
-        userService.linkParentToStudent(parent.getParentId(), student.getStudentId());
+        userService.linkParentToStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId());
         assertTrue(parentLinkRepo.existsByParentAndStudent(parent, student));
-        userService.deleteUser(parentUserId);
+        userService.deleteUser(parentUserId, school.getSchoolId());
         assertTrue(userRepo.findById(parentUserId).isEmpty());
         assertTrue(parentRepo.findById(parent.getParentId()).isEmpty());
         assertFalse(parentLinkRepo.existsByParentAndStudent(parent, student));
@@ -158,8 +158,8 @@ class UserCrudTest {
 
     @Test void testDeleteStudentCascadesLinksAndEnrollment() {
         System.out.println("[PASS] Delete student cascades to remove links but preserves parent");
-        userService.linkParentToStudent(parent.getParentId(), student.getStudentId());
-        userService.deleteUser(studentUserId);
+        userService.linkParentToStudent(parent.getParentId(), student.getStudentId(), school.getSchoolId());
+        userService.deleteUser(studentUserId, school.getSchoolId());
         assertTrue(userRepo.findById(studentUserId).isEmpty());
         assertTrue(studentRepo.findById(student.getStudentId()).isEmpty());
         assertFalse(parentLinkRepo.existsByParentAndStudent(parent, student));

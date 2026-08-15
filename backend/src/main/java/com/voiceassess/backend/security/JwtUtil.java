@@ -22,7 +22,20 @@ public class JwtUtil {
     private final SecretKey key;
     private final long expirationMs = 24 * 60 * 60 * 1000; // 24 hours
 
-    public JwtUtil(@Value("${app.jwt.secret:voiceassess-dev-secret-key-change-in-production-2026}") String secret) {
+    public JwtUtil(@Value("${app.jwt.secret:}") String secret) {
+        // the env placeholder can resolve empty in some contexts (tests) —
+        // the dotenv loader also registers APP_JWT_SECRET as a system property
+        if (secret.isBlank()) {
+            secret = System.getProperty("APP_JWT_SECRET", "");
+        }
+        // fail fast instead of silently signing with a known default —
+        // a leaked default secret means anyone can forge tokens
+        if (secret.isBlank()) {
+            throw new IllegalStateException("app.jwt.secret is not set — add APP_JWT_SECRET to the .env file");
+        }
+        if (secret.equals("voiceassess-dev-secret-key-change-in-production-2026")) {
+            throw new IllegalStateException("app.jwt.secret is still the old default — generate a real secret in the .env file");
+        }
         // jjwt 0.12 requires the key to be at least 256 bits for HS256
         // pad or truncate the secret to work
         var bytes = secret.getBytes(StandardCharsets.UTF_8);

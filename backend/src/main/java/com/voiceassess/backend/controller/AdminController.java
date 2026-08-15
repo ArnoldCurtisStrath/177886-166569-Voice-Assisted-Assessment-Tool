@@ -48,10 +48,9 @@ public class AdminController {
     // -- CLASSES --
 
     @GetMapping("/classes")
-    public ResponseEntity<?> listClasses(@AuthenticationPrincipal User user,
-                                         @RequestParam(required = false) UUID schoolId) {
-        var resolvedId = schoolId != null ? schoolId : resolveSchoolId(user);
-        return ResponseEntity.ok(adminService.getAllClasses(resolvedId));
+    public ResponseEntity<?> listClasses(@AuthenticationPrincipal User user) {
+        // school always comes from the session — never trust a client param
+        return ResponseEntity.ok(adminService.getAllClasses(resolveSchoolId(user)));
     }
 
     @PostMapping("/classes")
@@ -102,7 +101,7 @@ public class AdminController {
         }
 
         try {
-            var updated = adminService.updateClass(classId, gl, streamName.trim());
+            var updated = adminService.updateClass(classId, resolveSchoolId(user), gl, streamName.trim());
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -110,9 +109,10 @@ public class AdminController {
     }
 
     @DeleteMapping("/classes/{classId}")
-    public ResponseEntity<?> deleteClass(@PathVariable UUID classId) {
+    public ResponseEntity<?> deleteClass(@AuthenticationPrincipal User user,
+                                          @PathVariable UUID classId) {
         try {
-            adminService.deleteClass(classId);
+            adminService.deleteClass(classId, resolveSchoolId(user));
             return ResponseEntity.ok(Map.of("message", "Class deleted"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -122,13 +122,19 @@ public class AdminController {
     // -- STUDENT ENROLLMENTS --
 
     @GetMapping("/classes/{classId}/students")
-    public ResponseEntity<?> listStudentsInClass(@PathVariable UUID classId) {
-        var students = adminService.getStudentsInClass(classId);
-        return ResponseEntity.ok(students);
+    public ResponseEntity<?> listStudentsInClass(@AuthenticationPrincipal User user,
+                                                  @PathVariable UUID classId) {
+        try {
+            var students = adminService.getStudentsInClass(classId, resolveSchoolId(user));
+            return ResponseEntity.ok(students);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/classes/{classId}/students")
-    public ResponseEntity<?> addStudentToClass(@PathVariable UUID classId,
+    public ResponseEntity<?> addStudentToClass(@AuthenticationPrincipal User user,
+                                                @PathVariable UUID classId,
                                                 @RequestBody Map<String, Object> body) {
         var studentIdStr = (String) body.get("studentId");
         if (studentIdStr == null) {
@@ -143,7 +149,7 @@ public class AdminController {
         }
 
         try {
-            var result = adminService.addStudentToClass(classId, studentId);
+            var result = adminService.addStudentToClass(classId, studentId, resolveSchoolId(user));
             return ResponseEntity.status(201).body(result);
         } catch (IllegalArgumentException e) {
             var status = e.getMessage().contains("already enrolled") ? 409 : 404;
@@ -152,10 +158,11 @@ public class AdminController {
     }
 
     @DeleteMapping("/classes/{classId}/students/{studentId}")
-    public ResponseEntity<?> removeStudentFromClass(@PathVariable UUID classId,
+    public ResponseEntity<?> removeStudentFromClass(@AuthenticationPrincipal User user,
+                                                     @PathVariable UUID classId,
                                                      @PathVariable UUID studentId) {
         try {
-            var result = adminService.removeStudentFromClass(classId, studentId);
+            var result = adminService.removeStudentFromClass(classId, studentId, resolveSchoolId(user));
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -163,21 +170,32 @@ public class AdminController {
     }
 
     @GetMapping("/students/unenrolled")
-    public ResponseEntity<?> unenrolledStudents(@RequestParam UUID classId) {
-        var students = adminService.getUnenrolledStudents(classId);
-        return ResponseEntity.ok(students);
+    public ResponseEntity<?> unenrolledStudents(@AuthenticationPrincipal User user,
+                                                 @RequestParam UUID classId) {
+        try {
+            var students = adminService.getUnenrolledStudents(classId, resolveSchoolId(user));
+            return ResponseEntity.ok(students);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
     }
 
     // -- TEACHER ASSIGNMENTS --
 
     @GetMapping("/classes/{classId}/teachers")
-    public ResponseEntity<?> listTeachersInClass(@PathVariable UUID classId) {
-        var teachers = adminService.getTeachersInClass(classId);
-        return ResponseEntity.ok(teachers);
+    public ResponseEntity<?> listTeachersInClass(@AuthenticationPrincipal User user,
+                                                  @PathVariable UUID classId) {
+        try {
+            var teachers = adminService.getTeachersInClass(classId, resolveSchoolId(user));
+            return ResponseEntity.ok(teachers);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/classes/{classId}/teachers")
-    public ResponseEntity<?> assignTeacherToClass(@PathVariable UUID classId,
+    public ResponseEntity<?> assignTeacherToClass(@AuthenticationPrincipal User user,
+                                                   @PathVariable UUID classId,
                                                    @RequestBody Map<String, Object> body) {
         var teacherIdStr = (String) body.get("teacherId");
         if (teacherIdStr == null) {
@@ -192,7 +210,7 @@ public class AdminController {
         }
 
         try {
-            var result = adminService.assignTeacherToClass(classId, teacherId);
+            var result = adminService.assignTeacherToClass(classId, teacherId, resolveSchoolId(user));
             return ResponseEntity.status(201).body(result);
         } catch (IllegalArgumentException e) {
             var status = e.getMessage().contains("already assigned") ? 409 : 404;
@@ -201,10 +219,11 @@ public class AdminController {
     }
 
     @DeleteMapping("/classes/{classId}/teachers/{teacherId}")
-    public ResponseEntity<?> removeTeacherFromClass(@PathVariable UUID classId,
+    public ResponseEntity<?> removeTeacherFromClass(@AuthenticationPrincipal User user,
+                                                     @PathVariable UUID classId,
                                                      @PathVariable UUID teacherId) {
         try {
-            var result = adminService.removeTeacherFromClass(classId, teacherId);
+            var result = adminService.removeTeacherFromClass(classId, teacherId, resolveSchoolId(user));
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -212,33 +231,41 @@ public class AdminController {
     }
 
     @GetMapping("/teachers/available")
-    public ResponseEntity<?> availableTeachers(@RequestParam UUID classId) {
-        var teachers = adminService.getAvailableTeachersForClass(classId);
-        return ResponseEntity.ok(teachers);
+    public ResponseEntity<?> availableTeachers(@AuthenticationPrincipal User user,
+                                                @RequestParam UUID classId) {
+        try {
+            var teachers = adminService.getAvailableTeachersForClass(classId, resolveSchoolId(user));
+            return ResponseEntity.ok(teachers);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
     }
 
     // -- TEACHER-SUBJECT ASSIGNMENTS --
 
     @GetMapping("/teachers/{teacherId}/subjects")
-    public ResponseEntity<?> getTeacherSubjects(@PathVariable UUID teacherId) {
+    public ResponseEntity<?> getTeacherSubjects(@AuthenticationPrincipal User user,
+                                                 @PathVariable UUID teacherId) {
         try {
-            return ResponseEntity.ok(adminService.getTeacherSubjects(teacherId));
+            return ResponseEntity.ok(adminService.getTeacherSubjects(teacherId, resolveSchoolId(user)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         }
     }
 
     @GetMapping("/teachers/{teacherId}/available-subjects")
-    public ResponseEntity<?> getAvailableSubjectsForTeacher(@PathVariable UUID teacherId) {
+    public ResponseEntity<?> getAvailableSubjectsForTeacher(@AuthenticationPrincipal User user,
+                                                             @PathVariable UUID teacherId) {
         try {
-            return ResponseEntity.ok(adminService.getAvailableSubjectsForTeacher(teacherId));
+            return ResponseEntity.ok(adminService.getAvailableSubjectsForTeacher(teacherId, resolveSchoolId(user)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         }
     }
 
     @PostMapping("/teachers/{teacherId}/subjects")
-    public ResponseEntity<?> assignSubjectToTeacher(@PathVariable UUID teacherId,
+    public ResponseEntity<?> assignSubjectToTeacher(@AuthenticationPrincipal User user,
+                                                     @PathVariable UUID teacherId,
                                                      @RequestBody Map<String, Object> body) {
         var subjectIdStr = (String) body.get("subjectId");
         if (subjectIdStr == null) {
@@ -253,7 +280,7 @@ public class AdminController {
         }
 
         try {
-            var result = adminService.assignSubjectToTeacher(teacherId, subjectId);
+            var result = adminService.assignSubjectToTeacher(teacherId, subjectId, resolveSchoolId(user));
             return ResponseEntity.status(201).body(result);
         } catch (IllegalArgumentException e) {
             var status = e.getMessage().contains("already assigned") ? 409 : 404;
@@ -262,10 +289,11 @@ public class AdminController {
     }
 
     @DeleteMapping("/teachers/{teacherId}/subjects/{subjectId}")
-    public ResponseEntity<?> removeSubjectFromTeacher(@PathVariable UUID teacherId,
+    public ResponseEntity<?> removeSubjectFromTeacher(@AuthenticationPrincipal User user,
+                                                       @PathVariable UUID teacherId,
                                                        @PathVariable UUID subjectId) {
         try {
-            var result = adminService.removeSubjectFromTeacher(teacherId, subjectId);
+            var result = adminService.removeSubjectFromTeacher(teacherId, subjectId, resolveSchoolId(user));
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -310,7 +338,8 @@ public class AdminController {
     }
 
     @PutMapping("/subjects/{subjectId}")
-    public ResponseEntity<?> updateSubject(@PathVariable UUID subjectId,
+    public ResponseEntity<?> updateSubject(@AuthenticationPrincipal User user,
+                                            @PathVariable UUID subjectId,
                                             @RequestBody Map<String, Object> body) {
         var subjectName = (String) body.get("subjectName");
         var gradeLevel = body.get("gradeLevel");
@@ -327,7 +356,7 @@ public class AdminController {
         }
 
         try {
-            var updated = adminService.updateSubject(subjectId, subjectName.trim(), gl);
+            var updated = adminService.updateSubject(subjectId, resolveSchoolId(user), subjectName.trim(), gl);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -335,9 +364,10 @@ public class AdminController {
     }
 
     @DeleteMapping("/subjects/{subjectId}")
-    public ResponseEntity<?> deleteSubject(@PathVariable UUID subjectId) {
+    public ResponseEntity<?> deleteSubject(@AuthenticationPrincipal User user,
+                                            @PathVariable UUID subjectId) {
         try {
-            adminService.deleteSubject(subjectId);
+            adminService.deleteSubject(subjectId, resolveSchoolId(user));
             return ResponseEntity.ok(Map.of("message", "Subject deleted"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
@@ -353,7 +383,8 @@ public class AdminController {
     }
 
     @PostMapping("/rubrics")
-    public ResponseEntity<?> createRubric(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> createRubric(@AuthenticationPrincipal User user,
+                                           @RequestBody Map<String, Object> body) {
         var subjectIdStr = (String) body.get("subjectId");
         var competencyDesc = (String) body.get("competencyDesc");
         var strand = (String) body.get("strand");
@@ -372,7 +403,7 @@ public class AdminController {
         }
 
         try {
-            var created = adminService.createRubric(subjectId, competencyDesc.trim(),
+            var created = adminService.createRubric(subjectId, resolveSchoolId(user), competencyDesc.trim(),
                     strand != null ? strand.trim() : "",
                     subStrand != null ? subStrand.trim() : "",
                     ratingScale != null ? ratingScale.trim() : "Below / Approaching / Meeting / Exceeding");
@@ -383,7 +414,8 @@ public class AdminController {
     }
 
     @PutMapping("/rubrics/{rubricId}")
-    public ResponseEntity<?> updateRubric(@PathVariable UUID rubricId,
+    public ResponseEntity<?> updateRubric(@AuthenticationPrincipal User user,
+                                           @PathVariable UUID rubricId,
                                            @RequestBody Map<String, Object> body) {
         var subjectIdStr = (String) body.get("subjectId");
         var competencyDesc = (String) body.get("competencyDesc");
@@ -399,7 +431,7 @@ public class AdminController {
         }
 
         try {
-            var updated = adminService.updateRubric(rubricId, subjectId,
+            var updated = adminService.updateRubric(rubricId, subjectId, resolveSchoolId(user),
                     competencyDesc != null ? competencyDesc.trim() : "",
                     strand != null ? strand.trim() : "",
                     subStrand != null ? subStrand.trim() : "",
@@ -411,9 +443,10 @@ public class AdminController {
     }
 
     @DeleteMapping("/rubrics/{rubricId}")
-    public ResponseEntity<?> deleteRubric(@PathVariable UUID rubricId) {
+    public ResponseEntity<?> deleteRubric(@AuthenticationPrincipal User user,
+                                           @PathVariable UUID rubricId) {
         try {
-            adminService.deleteRubric(rubricId);
+            adminService.deleteRubric(rubricId, resolveSchoolId(user));
             return ResponseEntity.ok(Map.of("message", "Rubric deleted"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -462,7 +495,8 @@ public class AdminController {
     }
 
     @PutMapping("/terms/{termId}")
-    public ResponseEntity<?> updateTermStatus(@PathVariable UUID termId,
+    public ResponseEntity<?> updateTermStatus(@AuthenticationPrincipal User user,
+                                               @PathVariable UUID termId,
                                                @RequestBody Map<String, Object> body) {
         var status = (String) body.get("status");
         if (status == null || status.isBlank()) {
@@ -475,7 +509,7 @@ public class AdminController {
         }
 
         try {
-            var updated = adminService.updateTermStatus(termId, status);
+            var updated = adminService.updateTermStatus(termId, resolveSchoolId(user), status);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -483,9 +517,10 @@ public class AdminController {
     }
 
     @DeleteMapping("/terms/{termId}")
-    public ResponseEntity<?> deleteTerm(@PathVariable UUID termId) {
+    public ResponseEntity<?> deleteTerm(@AuthenticationPrincipal User user,
+                                         @PathVariable UUID termId) {
         try {
-            adminService.deleteTerm(termId);
+            adminService.deleteTerm(termId, resolveSchoolId(user));
             return ResponseEntity.ok(Map.of("message", "Term deleted"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
@@ -577,7 +612,9 @@ public class AdminController {
                 .header("Content-Disposition", "attachment; filename=\"school_report.pdf\"")
                 .body(pdfBytes);
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Report generation failed: " + e.getMessage()));
+            // log the detail server-side, keep the client message generic
+            System.err.println("[schoolReport] failed: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Report generation failed. Try again later."));
         }
     }
 
@@ -592,7 +629,8 @@ public class AdminController {
                 .header("Content-Disposition", "attachment; filename=\"compliance_report.pdf\"")
                 .body(pdfBytes);
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Report generation failed: " + e.getMessage()));
+            System.err.println("[complianceReport] failed: " + e.getMessage());
+            return ResponseEntity.status(500).body(Map.of("error", "Report generation failed. Try again later."));
         }
     }
 }

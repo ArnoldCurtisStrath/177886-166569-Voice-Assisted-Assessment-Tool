@@ -121,11 +121,13 @@ public class UserService {
 
     /**
      * Creates a new user and their role-specific profile in one transaction.
+     * The school comes from the caller (admin's own school), never from the request.
      * @param req the creation request with all needed fields
+     * @param adminSchoolId the school the new user must belong to
      * @return the created user info
      */
     @Transactional
-    public Map<String, Object> createUser(CreateUserRequest req) {
+    public Map<String, Object> createUser(CreateUserRequest req, UUID adminSchoolId) {
         // check duplicate email
         if (userRepo.findByEmail(req.email.toLowerCase()).isPresent()) {
             throw new IllegalArgumentException("A user with this email already exists");
@@ -140,11 +142,8 @@ public class UserService {
         user.setCreatedAt(LocalDateTime.now());
         user = userRepo.save(user);
 
-        // resolve school (required for ADMIN, TEACHER, STUDENT)
-        School school = null;
-        if (req.schoolId != null) {
-            school = schoolRepo.findById(UUID.fromString(req.schoolId)).orElse(null);
-        }
+        var school = schoolRepo.findById(adminSchoolId)
+                .orElseThrow(() -> new IllegalArgumentException("School not found"));
 
         // create the profile row based on role
         switch (user.getRole()) {
@@ -166,10 +165,10 @@ public class UserService {
                 teacher.setFullName(req.fullName);
                 teacher = teacherRepo.save(teacher);
 
-                // assign to a class if one was picked
+                // assign to a class if one was picked (only if it's our school's class)
                 if (req.classId != null && !req.classId.isBlank()) {
                     var cls = classRepo.findById(UUID.fromString(req.classId)).orElse(null);
-                    if (cls != null) {
+                    if (cls != null && cls.getSchool().getSchoolId().equals(adminSchoolId)) {
                         var assignment = new TeacherClassAssignment();
                         assignment.setTeacher(teacher);
                         assignment.setClassRoom(cls);
@@ -194,10 +193,10 @@ public class UserService {
                 student.setDateOfBirth(req.dateOfBirth != null ? req.dateOfBirth : LocalDate.of(2015, 1, 1));
                 student = studentRepo.save(student);
 
-                // assign to a class if one was picked
+                // assign to a class if one was picked (only if it's our school's class)
                 if (req.classId != null && !req.classId.isBlank()) {
                     var cls = classRepo.findById(UUID.fromString(req.classId)).orElse(null);
-                    if (cls != null) {
+                    if (cls != null && cls.getSchool().getSchoolId().equals(adminSchoolId)) {
                         var enrollment = new StudentEnrollment();
                         enrollment.setStudent(student);
                         enrollment.setClassRoom(cls);
@@ -239,14 +238,32 @@ public class UserService {
         return stats;
     }
 
+    // which school does a user's profile belong to — used by admin ownership checks
+    private UUID resolveUserSchoolId(User user) {
+        return switch (user.getRole()) {
+            case ADMIN -> adminRepo.findByUser(user)
+                    .map(a -> a.getSchool() != null ? a.getSchool().getSchoolId() : null).orElse(null);
+            case TEACHER -> teacherRepo.findByUser(user)
+                    .map(t -> t.getSchool() != null ? t.getSchool().getSchoolId() : null).orElse(null);
+            case PARENT -> parentRepo.findByUser(user)
+                    .map(p -> p.getSchool() != null ? p.getSchool().getSchoolId() : null).orElse(null);
+            case STUDENT -> studentRepo.findByUser(user)
+                    .map(s -> s.getSchool() != null ? s.getSchool().getSchoolId() : null).orElse(null);
+        };
+    }
+
     /**
      * Updates an existing user's fields. Only updates what's provided (null = skip).
      * Role cannot be changed — the profile table wouldn't match.
      */
     @Transactional
-    public Map<String, Object> updateUser(UUID userId, UpdateUserRequest req) {
+    public Map<String, Object> updateUser(UUID userId, UpdateUserRequest req, UUID adminSchoolId) {
         var user = userRepo.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        // admins only manage their own school's users
+        if (!adminSchoolId.equals(resolveUserSchoolId(user))) {
+            throw new IllegalArgumentException("User not found");
+        }
 
         // email — check duplicate if changing
         if (req.email != null && !req.email.isBlank()) {
@@ -328,9 +345,13 @@ public class UserService {
      * Deletes a user and their profile row. Cascades through junction tables first.
      */
     @Transactional
-    public void deleteUser(UUID userId) {
+    public void deleteUser(UUID userId, UUID adminSchoolId) {
         var user = userRepo.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        // admins only delete their own school's users
+        if (!adminSchoolId.equals(resolveUserSchoolId(user))) {
+            throw new IllegalArgumentException("User not found");
+        }
 
         switch (user.getRole()) {
             case PARENT -> {
@@ -366,11 +387,17 @@ public class UserService {
     // parent-student linking
 
     @Transactional
-    public Map<String, Object> linkParentToStudent(UUID parentId, UUID studentId) {
+    public Map<String, Object> linkParentToStudent(UUID parentId, UUID studentId, UUID adminSchoolId) {
         var parent = parentRepo.findById(parentId)
                 .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
+        if (!adminSchoolId.equals(parent.getSchool().getSchoolId())) {
+            throw new IllegalArgumentException("Parent not found");
+        }
         var student = studentRepo.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        if (!adminSchoolId.equals(student.getSchool().getSchoolId())) {
+            throw new IllegalArgumentException("Student not found");
+        }
 
         if (parentLinkRepo.existsByParentAndStudent(parent, student)) {
             throw new IllegalArgumentException("This student is already linked to this parent");
@@ -391,11 +418,17 @@ public class UserService {
     }
 
     @Transactional
-    public void unlinkParentFromStudent(UUID parentId, UUID studentId) {
+    public void unlinkParentFromStudent(UUID parentId, UUID studentId, UUID adminSchoolId) {
         var parent = parentRepo.findById(parentId)
                 .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
+        if (!adminSchoolId.equals(parent.getSchool().getSchoolId())) {
+            throw new IllegalArgumentException("Parent not found");
+        }
         var student = studentRepo.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        if (!adminSchoolId.equals(student.getSchool().getSchoolId())) {
+            throw new IllegalArgumentException("Student not found");
+        }
 
         if (!parentLinkRepo.existsByParentAndStudent(parent, student)) {
             throw new IllegalArgumentException("This student is not linked to this parent");
@@ -404,9 +437,12 @@ public class UserService {
         parentLinkRepo.deleteByParentAndStudent(parent, student);
     }
 
-    public List<Map<String, Object>> getLinkedStudents(UUID parentId) {
+    public List<Map<String, Object>> getLinkedStudents(UUID parentId, UUID adminSchoolId) {
         var parent = parentRepo.findById(parentId)
                 .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
+        if (!adminSchoolId.equals(parent.getSchool().getSchoolId())) {
+            throw new IllegalArgumentException("Parent not found");
+        }
 
         var links = parentLinkRepo.findByParent(parent);
         var result = new ArrayList<Map<String, Object>>();
@@ -423,8 +459,14 @@ public class UserService {
         return result;
     }
 
-    public List<Map<String, Object>> getAvailableStudentsForParent(UUID parentId, UUID schoolId) {
-        var rows = parentLinkRepo.findAvailableStudentsForParent(parentId, schoolId);
+    public List<Map<String, Object>> getAvailableStudentsForParent(UUID parentId, UUID adminSchoolId) {
+        var parent = parentRepo.findById(parentId)
+                .orElseThrow(() -> new IllegalArgumentException("Parent not found"));
+        if (!adminSchoolId.equals(parent.getSchool().getSchoolId())) {
+            throw new IllegalArgumentException("Parent not found");
+        }
+
+        var rows = parentLinkRepo.findAvailableStudentsForParent(parentId, adminSchoolId);
         var result = new ArrayList<Map<String, Object>>();
 
         for (var row : rows) {

@@ -62,14 +62,14 @@ class TeacherClassAssignmentTest {
         teacherReq.role = "TEACHER";
         teacherReq.fullName = "TCA Test Teacher";
         teacherReq.schoolId = school.getSchoolId().toString();
-        var teacherResult = userService.createUser(teacherReq);
+        var teacherResult = userService.createUser(teacherReq, school.getSchoolId());
         teacherUserId = UUID.fromString((String) teacherResult.get("userId"));
         teacher = teacherRepo.findByUser(userRepo.findById(teacherUserId).get()).get();
     }
 
     @Test
     void testAssignTeacherToClass() {
-        var result = adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId());
+        var result = adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId(), school.getSchoolId());
         assertEquals(teacher.getTeacherId().toString(), result.get("teacherId"));
         assertTrue(result.containsKey("assignmentId"));
 
@@ -78,18 +78,18 @@ class TeacherClassAssignmentTest {
 
     @Test
     void testAssignDuplicateFails() {
-        adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId());
+        adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId(), school.getSchoolId());
 
         assertThrows(IllegalArgumentException.class, () -> {
-            adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId());
+            adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId(), school.getSchoolId());
         });
     }
 
     @Test
     void testListTeachersInClass() {
-        adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId());
+        adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId(), school.getSchoolId());
 
-        var teachers = adminService.getTeachersInClass(cls.getClassId());
+        var teachers = adminService.getTeachersInClass(cls.getClassId(), school.getSchoolId());
         assertEquals(1, teachers.size());
         assertEquals("TCA Test Teacher", teachers.get(0).get("fullName"));
         assertEquals("tca-teacher@test.com", teachers.get(0).get("email"));
@@ -97,10 +97,10 @@ class TeacherClassAssignmentTest {
 
     @Test
     void testRemoveTeacherFromClass() {
-        adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId());
+        adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId(), school.getSchoolId());
         assertTrue(tcaRepo.existsByTeacherAndClassRoom(teacher, cls));
 
-        var result = adminService.removeTeacherFromClass(cls.getClassId(), teacher.getTeacherId());
+        var result = adminService.removeTeacherFromClass(cls.getClassId(), teacher.getTeacherId(), school.getSchoolId());
         assertEquals("Teacher removed from class", result.get("message"));
 
         assertFalse(tcaRepo.existsByTeacherAndClassRoom(teacher, cls));
@@ -109,23 +109,23 @@ class TeacherClassAssignmentTest {
     @Test
     void testRemoveNonexistentAssignment() {
         assertThrows(IllegalArgumentException.class, () -> {
-            adminService.removeTeacherFromClass(cls.getClassId(), teacher.getTeacherId());
+            adminService.removeTeacherFromClass(cls.getClassId(), teacher.getTeacherId(), school.getSchoolId());
         });
     }
 
     @Test
     void testAvailableTeachersExcludesAssigned() {
         // teacher not assigned yet, should appear in available
-        var available = adminService.getAvailableTeachersForClass(cls.getClassId());
+        var available = adminService.getAvailableTeachersForClass(cls.getClassId(), school.getSchoolId());
         boolean found = available.stream()
                 .anyMatch(t -> teacher.getTeacherId().toString().equals(t.get("teacherId")));
         assertTrue(found, "Unassigned teacher should appear in available list");
 
         // assign the teacher
-        adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId());
+        adminService.assignTeacherToClass(cls.getClassId(), teacher.getTeacherId(), school.getSchoolId());
 
         // now they shouldn't appear
-        available = adminService.getAvailableTeachersForClass(cls.getClassId());
+        available = adminService.getAvailableTeachersForClass(cls.getClassId(), school.getSchoolId());
         found = available.stream()
                 .anyMatch(t -> teacher.getTeacherId().toString().equals(t.get("teacherId")));
         assertFalse(found, "Assigned teacher should NOT appear in available list");
@@ -149,7 +149,7 @@ class TeacherClassAssignmentTest {
         req.schoolId = school.getSchoolId().toString();
         req.classId = cls2.getClassId().toString();
 
-        var result = userService.createUser(req);
+        var result = userService.createUser(req, school.getSchoolId());
         var newUserId = UUID.fromString((String) result.get("userId"));
         var newTeacher = teacherRepo.findByUser(userRepo.findById(newUserId).get()).get();
 
@@ -169,7 +169,7 @@ class TeacherClassAssignmentTest {
         req.schoolId = school.getSchoolId().toString();
         // no classId
 
-        var result = userService.createUser(req);
+        var result = userService.createUser(req, school.getSchoolId());
         var newUserId = UUID.fromString((String) result.get("userId"));
         var newTeacher = teacherRepo.findByUser(userRepo.findById(newUserId).get()).get();
 

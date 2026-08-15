@@ -72,6 +72,14 @@ public class AdminService {
         return result;
     }
 
+    // ownership guard — other schools' entities look identical to "not found"
+    // so UUIDs can't be probed across schools
+    private void verifyOwnership(UUID entitySchoolId, UUID adminSchoolId, String message) {
+        if (entitySchoolId == null || !entitySchoolId.equals(adminSchoolId)) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
     @Transactional
     public Map<String, Object> createClass(UUID schoolId, int gradeLevel, String streamName) {
         var school = schoolRepo.findById(schoolId).orElseThrow(
@@ -93,9 +101,10 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> updateClass(UUID classId, int gradeLevel, String streamName) {
+    public Map<String, Object> updateClass(UUID classId, UUID adminSchoolId, int gradeLevel, String streamName) {
         var cls = classRepo.findById(classId).orElseThrow(
                 () -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
 
         cls.setGradeLevel(gradeLevel);
         cls.setStreamName(streamName);
@@ -112,18 +121,19 @@ public class AdminService {
     }
 
     @Transactional
-    public void deleteClass(UUID classId) {
-        if (!classRepo.existsById(classId)) {
-            throw new IllegalArgumentException("Class not found");
-        }
-        classRepo.deleteById(classId);
+    public void deleteClass(UUID classId, UUID adminSchoolId) {
+        var cls = classRepo.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
+        classRepo.delete(cls);
     }
 
     // -- STUDENT ENROLLMENTS --
 
-    public List<Map<String, Object>> getStudentsInClass(UUID classId) {
-        var cls = classRepo.findById(classId).orElse(null);
-        if (cls == null) return List.of();
+    public List<Map<String, Object>> getStudentsInClass(UUID classId, UUID adminSchoolId) {
+        var cls = classRepo.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
 
         var enrollments = enrollmentRepo.findByClassRoom(cls);
         var result = new ArrayList<Map<String, Object>>();
@@ -140,11 +150,13 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> addStudentToClass(UUID classId, UUID studentId) {
+    public Map<String, Object> addStudentToClass(UUID classId, UUID studentId, UUID adminSchoolId) {
         var cls = classRepo.findById(classId).orElseThrow(
                 () -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
         var student = studentRepo.findById(studentId).orElseThrow(
                 () -> new IllegalArgumentException("Student not found"));
+        verifyOwnership(student.getSchool().getSchoolId(), adminSchoolId, "Student not found");
 
         if (enrollmentRepo.existsByClassRoomAndStudent(cls, student)) {
             throw new IllegalArgumentException("Student is already enrolled in this class");
@@ -165,11 +177,13 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> removeStudentFromClass(UUID classId, UUID studentId) {
+    public Map<String, Object> removeStudentFromClass(UUID classId, UUID studentId, UUID adminSchoolId) {
         var cls = classRepo.findById(classId).orElseThrow(
                 () -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
         var student = studentRepo.findById(studentId).orElseThrow(
                 () -> new IllegalArgumentException("Student not found"));
+        verifyOwnership(student.getSchool().getSchoolId(), adminSchoolId, "Student not found");
 
         if (!enrollmentRepo.existsByClassRoomAndStudent(cls, student)) {
             throw new IllegalArgumentException("Student is not enrolled in this class");
@@ -182,9 +196,10 @@ public class AdminService {
         return map;
     }
 
-    public List<Map<String, Object>> getUnenrolledStudents(UUID classId) {
-        var cls = classRepo.findById(classId).orElse(null);
-        if (cls == null) return List.of();
+    public List<Map<String, Object>> getUnenrolledStudents(UUID classId, UUID adminSchoolId) {
+        var cls = classRepo.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
 
         var schoolId = cls.getSchool().getSchoolId();
         var students = enrollmentRepo.findUnenrolledBySchoolAndClass(schoolId, classId);
@@ -201,9 +216,10 @@ public class AdminService {
 
     // -- TEACHER ASSIGNMENTS --
 
-    public List<Map<String, Object>> getTeachersInClass(UUID classId) {
-        var cls = classRepo.findById(classId).orElse(null);
-        if (cls == null) return List.of();
+    public List<Map<String, Object>> getTeachersInClass(UUID classId, UUID adminSchoolId) {
+        var cls = classRepo.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
 
         var assignments = tcaRepo.findByClassRoom(cls);
         var result = new ArrayList<Map<String, Object>>();
@@ -221,11 +237,13 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> assignTeacherToClass(UUID classId, UUID teacherId) {
+    public Map<String, Object> assignTeacherToClass(UUID classId, UUID teacherId, UUID adminSchoolId) {
         var cls = classRepo.findById(classId).orElseThrow(
                 () -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
         var teacher = teacherRepo.findById(teacherId).orElseThrow(
                 () -> new IllegalArgumentException("Teacher not found"));
+        verifyOwnership(teacher.getSchool().getSchoolId(), adminSchoolId, "Teacher not found");
 
         if (tcaRepo.existsByTeacherAndClassRoom(teacher, cls)) {
             throw new IllegalArgumentException("Teacher is already assigned to this class");
@@ -246,11 +264,13 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> removeTeacherFromClass(UUID classId, UUID teacherId) {
+    public Map<String, Object> removeTeacherFromClass(UUID classId, UUID teacherId, UUID adminSchoolId) {
         var cls = classRepo.findById(classId).orElseThrow(
                 () -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
         var teacher = teacherRepo.findById(teacherId).orElseThrow(
                 () -> new IllegalArgumentException("Teacher not found"));
+        verifyOwnership(teacher.getSchool().getSchoolId(), adminSchoolId, "Teacher not found");
 
         if (!tcaRepo.existsByTeacherAndClassRoom(teacher, cls)) {
             throw new IllegalArgumentException("Teacher is not assigned to this class");
@@ -263,9 +283,10 @@ public class AdminService {
         return map;
     }
 
-    public List<Map<String, Object>> getAvailableTeachersForClass(UUID classId) {
-        var cls = classRepo.findById(classId).orElse(null);
-        if (cls == null) return List.of();
+    public List<Map<String, Object>> getAvailableTeachersForClass(UUID classId, UUID adminSchoolId) {
+        var cls = classRepo.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("Class not found"));
+        verifyOwnership(cls.getSchool().getSchoolId(), adminSchoolId, "Class not found");
 
         var teachers = teacherRepo.findUnassignedByClass(classId);
         var result = new ArrayList<Map<String, Object>>();
@@ -281,9 +302,10 @@ public class AdminService {
 
     // -- TEACHER-SUBJECT ASSIGNMENTS --
 
-    public List<Map<String, Object>> getTeacherSubjects(UUID teacherId) {
+    public List<Map<String, Object>> getTeacherSubjects(UUID teacherId, UUID adminSchoolId) {
         var teacher = teacherRepo.findById(teacherId).orElseThrow(
                 () -> new IllegalArgumentException("Teacher not found"));
+        verifyOwnership(teacher.getSchool().getSchoolId(), adminSchoolId, "Teacher not found");
 
         var assignments = tsaRepo.findByTeacher(teacher);
         var result = new ArrayList<Map<String, Object>>();
@@ -300,9 +322,10 @@ public class AdminService {
         return result;
     }
 
-    public List<Map<String, Object>> getAvailableSubjectsForTeacher(UUID teacherId) {
+    public List<Map<String, Object>> getAvailableSubjectsForTeacher(UUID teacherId, UUID adminSchoolId) {
         var teacher = teacherRepo.findById(teacherId).orElseThrow(
                 () -> new IllegalArgumentException("Teacher not found"));
+        verifyOwnership(teacher.getSchool().getSchoolId(), adminSchoolId, "Teacher not found");
 
         var schoolId = teacher.getSchool().getSchoolId();
         var subjects = tsaRepo.findUnassignedSubjectsForTeacher(schoolId, teacherId);
@@ -319,11 +342,13 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> assignSubjectToTeacher(UUID teacherId, UUID subjectId) {
+    public Map<String, Object> assignSubjectToTeacher(UUID teacherId, UUID subjectId, UUID adminSchoolId) {
         var teacher = teacherRepo.findById(teacherId).orElseThrow(
                 () -> new IllegalArgumentException("Teacher not found"));
+        verifyOwnership(teacher.getSchool().getSchoolId(), adminSchoolId, "Teacher not found");
         var subject = subjectRepo.findById(subjectId).orElseThrow(
                 () -> new IllegalArgumentException("Subject not found"));
+        verifyOwnership(subject.getSchool().getSchoolId(), adminSchoolId, "Subject not found");
 
         if (tsaRepo.existsByTeacherAndSubject(teacher, subject)) {
             throw new IllegalArgumentException("Teacher is already assigned to this subject");
@@ -345,11 +370,13 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> removeSubjectFromTeacher(UUID teacherId, UUID subjectId) {
+    public Map<String, Object> removeSubjectFromTeacher(UUID teacherId, UUID subjectId, UUID adminSchoolId) {
         var teacher = teacherRepo.findById(teacherId).orElseThrow(
                 () -> new IllegalArgumentException("Teacher not found"));
+        verifyOwnership(teacher.getSchool().getSchoolId(), adminSchoolId, "Teacher not found");
         var subject = subjectRepo.findById(subjectId).orElseThrow(
                 () -> new IllegalArgumentException("Subject not found"));
+        verifyOwnership(subject.getSchool().getSchoolId(), adminSchoolId, "Subject not found");
 
         if (!tsaRepo.existsByTeacherAndSubject(teacher, subject)) {
             throw new IllegalArgumentException("Teacher is not assigned to this subject");
@@ -401,9 +428,10 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> updateSubject(UUID subjectId, String subjectName, int gradeLevel) {
+    public Map<String, Object> updateSubject(UUID subjectId, UUID adminSchoolId, String subjectName, int gradeLevel) {
         var subj = subjectRepo.findById(subjectId).orElseThrow(
                 () -> new IllegalArgumentException("Subject not found"));
+        verifyOwnership(subj.getSchool().getSchoolId(), adminSchoolId, "Subject not found");
 
         subj.setSubjectName(subjectName);
         subj.setGradeLevel(gradeLevel);
@@ -419,9 +447,10 @@ public class AdminService {
     }
 
     @Transactional
-    public void deleteSubject(UUID subjectId) {
+    public void deleteSubject(UUID subjectId, UUID adminSchoolId) {
         var subj = subjectRepo.findById(subjectId).orElseThrow(
                 () -> new IllegalArgumentException("Subject not found"));
+        verifyOwnership(subj.getSchool().getSchoolId(), adminSchoolId, "Subject not found");
 
         // check if rubrics exist — prevent deletion if so
         if (!rubricRepo.findBySubject(subj).isEmpty()) {
@@ -441,10 +470,11 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> createRubric(UUID subjectId, String competencyDesc,
+    public Map<String, Object> createRubric(UUID subjectId, UUID adminSchoolId, String competencyDesc,
                                               String strand, String subStrand, String ratingScale) {
         var subj = subjectRepo.findById(subjectId).orElseThrow(
                 () -> new IllegalArgumentException("Subject not found"));
+        verifyOwnership(subj.getSchool().getSchoolId(), adminSchoolId, "Subject not found");
 
         var rubric = new KnecRubric();
         rubric.setSubject(subj);
@@ -458,13 +488,15 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> updateRubric(UUID rubricId, UUID subjectId, String competencyDesc,
+    public Map<String, Object> updateRubric(UUID rubricId, UUID subjectId, UUID adminSchoolId, String competencyDesc,
                                               String strand, String subStrand, String ratingScale) {
         var rubric = rubricRepo.findById(rubricId).orElseThrow(
                 () -> new IllegalArgumentException("Rubric not found"));
+        verifyOwnership(rubric.getSubject().getSchool().getSchoolId(), adminSchoolId, "Rubric not found");
 
         var subj = subjectRepo.findById(subjectId).orElseThrow(
                 () -> new IllegalArgumentException("Subject not found"));
+        verifyOwnership(subj.getSchool().getSchoolId(), adminSchoolId, "Subject not found");
 
         rubric.setSubject(subj);
         rubric.setCompetencyDesc(competencyDesc);
@@ -477,11 +509,11 @@ public class AdminService {
     }
 
     @Transactional
-    public void deleteRubric(UUID rubricId) {
-        if (!rubricRepo.existsById(rubricId)) {
-            throw new IllegalArgumentException("Rubric not found");
-        }
-        rubricRepo.deleteById(rubricId);
+    public void deleteRubric(UUID rubricId, UUID adminSchoolId) {
+        var rubric = rubricRepo.findById(rubricId)
+                .orElseThrow(() -> new IllegalArgumentException("Rubric not found"));
+        verifyOwnership(rubric.getSubject().getSchool().getSchoolId(), adminSchoolId, "Rubric not found");
+        rubricRepo.delete(rubric);
     }
 
     private Map<String, Object> rubricToMap(KnecRubric r) {
@@ -542,9 +574,10 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> updateTermStatus(UUID termId, String status) {
+    public Map<String, Object> updateTermStatus(UUID termId, UUID adminSchoolId, String status) {
         var term = termRepo.findById(termId).orElseThrow(
                 () -> new IllegalArgumentException("Term not found"));
+        verifyOwnership(term.getSchool().getSchoolId(), adminSchoolId, "Term not found");
 
         if ("ACTIVE".equalsIgnoreCase(status)) {
             deactivateOtherTerms(term.getSchool());
@@ -563,11 +596,11 @@ public class AdminService {
     }
 
     @Transactional
-    public void deleteTerm(UUID termId) {
-        if (!termRepo.existsById(termId)) {
-            throw new IllegalArgumentException("Term not found");
-        }
-        termRepo.deleteById(termId);
+    public void deleteTerm(UUID termId, UUID adminSchoolId) {
+        var term = termRepo.findById(termId)
+                .orElseThrow(() -> new IllegalArgumentException("Term not found"));
+        verifyOwnership(term.getSchool().getSchoolId(), adminSchoolId, "Term not found");
+        termRepo.delete(term);
     }
 
     private void deactivateOtherTerms(School school) {

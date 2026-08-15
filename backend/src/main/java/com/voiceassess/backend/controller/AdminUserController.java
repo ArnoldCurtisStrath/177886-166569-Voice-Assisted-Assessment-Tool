@@ -36,14 +36,14 @@ public class AdminUserController {
 
     @GetMapping("/users")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> listUsers(@AuthenticationPrincipal User user,
-                                       @RequestParam(required = false) UUID schoolId) {
-        var resolvedId = schoolId != null ? schoolId : resolveSchoolId(user);
-        return ResponseEntity.ok(userService.getAllUsers(resolvedId));
+    public ResponseEntity<?> listUsers(@AuthenticationPrincipal User user) {
+        // school always comes from the session — never trust a client param
+        return ResponseEntity.ok(userService.getAllUsers(resolveSchoolId(user)));
     }
 
     @PostMapping("/users")
-    public ResponseEntity<?> createUser(@RequestBody UserService.CreateUserRequest req) {
+    public ResponseEntity<?> createUser(@AuthenticationPrincipal User user,
+                                        @RequestBody UserService.CreateUserRequest req) {
         // basic validation
         if (req.email == null || req.email.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
@@ -62,7 +62,7 @@ public class AdminUserController {
         }
 
         try {
-            var created = userService.createUser(req);
+            var created = userService.createUser(req, resolveSchoolId(user));
             return ResponseEntity.status(201).body(created);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
@@ -70,14 +70,15 @@ public class AdminUserController {
     }
 
     @PutMapping("/users/{userId}")
-    public ResponseEntity<?> updateUser(@PathVariable UUID userId,
+    public ResponseEntity<?> updateUser(@AuthenticationPrincipal User user,
+                                        @PathVariable UUID userId,
                                         @RequestBody UserService.UpdateUserRequest req) {
         if (req.password != null && !req.password.isBlank()
                 && (req.confirmPassword == null || !req.password.equals(req.confirmPassword))) {
             return ResponseEntity.badRequest().body(Map.of("error", "Passwords do not match"));
         }
         try {
-            var updated = userService.updateUser(userId, req);
+            var updated = userService.updateUser(userId, req, resolveSchoolId(user));
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -85,9 +86,10 @@ public class AdminUserController {
     }
 
     @DeleteMapping("/users/{userId}")
-    public ResponseEntity<?> deleteUser(@PathVariable UUID userId) {
+    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal User user,
+                                        @PathVariable UUID userId) {
         try {
-            userService.deleteUser(userId);
+            userService.deleteUser(userId, resolveSchoolId(user));
             return ResponseEntity.ok(Map.of("message", "User deleted"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -97,10 +99,11 @@ public class AdminUserController {
     // parent-student linking
 
     @PostMapping("/parents/{parentId}/link-student/{studentId}")
-    public ResponseEntity<?> linkStudent(@PathVariable UUID parentId,
+    public ResponseEntity<?> linkStudent(@AuthenticationPrincipal User user,
+                                          @PathVariable UUID parentId,
                                           @PathVariable UUID studentId) {
         try {
-            var result = userService.linkParentToStudent(parentId, studentId);
+            var result = userService.linkParentToStudent(parentId, studentId, resolveSchoolId(user));
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -108,10 +111,11 @@ public class AdminUserController {
     }
 
     @DeleteMapping("/parents/{parentId}/unlink-student/{studentId}")
-    public ResponseEntity<?> unlinkStudent(@PathVariable UUID parentId,
+    public ResponseEntity<?> unlinkStudent(@AuthenticationPrincipal User user,
+                                            @PathVariable UUID parentId,
                                             @PathVariable UUID studentId) {
         try {
-            userService.unlinkParentFromStudent(parentId, studentId);
+            userService.unlinkParentFromStudent(parentId, studentId, resolveSchoolId(user));
             return ResponseEntity.ok(Map.of("message", "Student unlinked"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -119,19 +123,20 @@ public class AdminUserController {
     }
 
     @GetMapping("/parents/{parentId}/students")
-    public ResponseEntity<?> linkedStudents(@PathVariable UUID parentId) {
+    public ResponseEntity<?> linkedStudents(@AuthenticationPrincipal User user,
+                                             @PathVariable UUID parentId) {
         try {
-            return ResponseEntity.ok(userService.getLinkedStudents(parentId));
+            return ResponseEntity.ok(userService.getLinkedStudents(parentId, resolveSchoolId(user)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     @GetMapping("/parents/{parentId}/available-students")
-    public ResponseEntity<?> availableStudents(@PathVariable UUID parentId,
-                                                @RequestParam UUID schoolId) {
+    public ResponseEntity<?> availableStudents(@AuthenticationPrincipal User user,
+                                                @PathVariable UUID parentId) {
         try {
-            return ResponseEntity.ok(userService.getAvailableStudentsForParent(parentId, schoolId));
+            return ResponseEntity.ok(userService.getAvailableStudentsForParent(parentId, resolveSchoolId(user)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

@@ -179,12 +179,18 @@ public class TeacherController {
         if (teacherOpt.isEmpty()) {
             return ResponseEntity.status(404).body(Map.of("error", "Teacher profile not found"));
         }
+        var teacher = teacherOpt.get();
 
         var clsOpt = classRepo.findById(classId);
         if (clsOpt.isEmpty()) {
             return ResponseEntity.status(404).body(Map.of("error", "Class not found"));
         }
         var cls = clsOpt.get();
+
+        // teachers can only see classes they're assigned to
+        if (!tcaRepo.existsByTeacherAndClassRoom(teacher, cls)) {
+            return ResponseEntity.status(403).body(Map.of("error", "You don't have access to this class"));
+        }
 
         // get all completed assessments for this class
         var assessments = audioAssessmentRepo.findByClassRoomAndStatus(cls, "COMPLETED");
@@ -259,6 +265,18 @@ public class TeacherController {
         if (teacherOpt.isEmpty()) {
             return ResponseEntity.status(404).body(Map.of("error", "Teacher profile not found"));
         }
+        var teacher = teacherOpt.get();
+
+        // the class must exist AND be assigned to this teacher — check before
+        // branching on format so the pdf path is covered too
+        var clsOpt = classRepo.findById(classId);
+        if (clsOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Class not found"));
+        }
+        var cls = clsOpt.get();
+        if (!tcaRepo.existsByTeacherAndClassRoom(teacher, cls)) {
+            return ResponseEntity.status(403).body(Map.of("error", "You don't have access to this class"));
+        }
 
         if ("pdf".equalsIgnoreCase(format)) {
             try {
@@ -269,17 +287,11 @@ public class TeacherController {
                     .body(pdfBytes);
             } catch (Exception e) {
                 log.warn("PDF generation failed for class {}: {}", classId, e.getMessage());
-                return ResponseEntity.status(500).body(Map.of("error", "PDF generation failed: " + e.getMessage()));
+                return ResponseEntity.status(500).body(Map.of("error", "PDF generation failed. Try again later."));
             }
         }
 
         // default: CSV
-        var clsOpt = classRepo.findById(classId);
-        if (clsOpt.isEmpty()) {
-            return ResponseEntity.status(404).body(Map.of("error", "Class not found"));
-        }
-        var cls = clsOpt.get();
-
         var assessments = audioAssessmentRepo.findByClassRoomAndStatus(cls, "COMPLETED");
         var enrollments = enrollmentRepo.findByClassRoom(cls);
 
@@ -347,6 +359,17 @@ public class TeacherController {
         if (cls.isEmpty() || subj.isEmpty() || rubric.isEmpty()) {
             return ResponseEntity.status(400).body(Map.of("error", "Invalid class, subject, or rubric ID"));
         }
+        // teacher must be assigned to the class, and the curriculum must be
+        // the teacher's own school's — no cross-school assessments
+        if (!tcaRepo.existsByTeacherAndClassRoom(teacher, cls.get())) {
+            return ResponseEntity.status(403).body(Map.of("error", "You don't have access to this class"));
+        }
+        if (!subj.get().getSchool().getSchoolId().equals(teacher.getSchool().getSchoolId())) {
+            return ResponseEntity.status(400).body(Map.of("error", "Subject does not belong to your school"));
+        }
+        if (!rubric.get().getSubject().getSubjectId().equals(subjectId)) {
+            return ResponseEntity.status(400).body(Map.of("error", "Rubric does not match the selected subject"));
+        }
 
         var assessment = new AudioAssessment();
         assessment.setTeacher(teacher);
@@ -396,7 +419,7 @@ public class TeacherController {
             System.err.println("[uploadAudio] EXCEPTION: " + sw);
             log.error("Upload failed for audioId={}: {}", audioId, e.getMessage(), e);
             return ResponseEntity.status(500).body(Map.of(
-                "error", "Internal error: " + e.getMessage()
+                "error", "Upload failed. Check the file and try again."
             ));
         }
     }
@@ -405,7 +428,7 @@ public class TeacherController {
     public ResponseEntity<?> handleMultipartException(MultipartException e) {
         System.err.println("[uploadAudio] MULTIPART EXCEPTION: " + e.getMessage());
         e.printStackTrace();
-        return ResponseEntity.status(400).body(Map.of("error", "Invalid file upload: " + e.getMessage()));
+        return ResponseEntity.status(400).body(Map.of("error", "Invalid file upload. The file may be too large or the wrong type."));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
@@ -419,7 +442,7 @@ public class TeacherController {
         var sw = new StringWriter();
         e.printStackTrace(new PrintWriter(sw));
         System.err.println("[TeacherController] UNHANDLED EXCEPTION: " + sw);
-        return ResponseEntity.status(500).body(Map.of("error", "Server error: " + e.getMessage()));
+        return ResponseEntity.status(500).body(Map.of("error", "Something went wrong on the server. Try again."));
     }
 
     @GetMapping("/assessments/{audioId}/staging")
