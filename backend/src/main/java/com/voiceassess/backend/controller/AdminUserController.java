@@ -5,6 +5,7 @@ import com.voiceassess.backend.repository.AdministratorRepository;
 import com.voiceassess.backend.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -26,7 +27,7 @@ public class AdminUserController {
     }
 
     private UUID resolveSchoolId(User user) {
-        var adminOpt = adminRepo.findByUser(user);
+        var adminOpt = adminRepo.findByUserUserId(user.getUserId());
         if (adminOpt.isPresent() && adminOpt.get().getSchool() != null) {
             return adminOpt.get().getSchool().getSchoolId();
         }
@@ -34,9 +35,11 @@ public class AdminUserController {
     }
 
     @GetMapping("/users")
-    public ResponseEntity<?> listUsers(@AuthenticationPrincipal User user) {
-        var schoolId = resolveSchoolId(user);
-        return ResponseEntity.ok(userService.getAllUsers(schoolId));
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> listUsers(@AuthenticationPrincipal User user,
+                                       @RequestParam(required = false) UUID schoolId) {
+        var resolvedId = schoolId != null ? schoolId : resolveSchoolId(user);
+        return ResponseEntity.ok(userService.getAllUsers(resolvedId));
     }
 
     @PostMapping("/users")
@@ -135,6 +138,7 @@ public class AdminUserController {
     }
 
     @GetMapping("/stats")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> stats(@AuthenticationPrincipal User user) {
         var schoolId = resolveSchoolId(user);
         return ResponseEntity.ok(userService.getStats(schoolId));

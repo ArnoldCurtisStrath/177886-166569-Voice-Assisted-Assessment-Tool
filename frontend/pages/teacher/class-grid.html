@@ -100,10 +100,10 @@
             var rating = cell.ratingLevel || '';
             var conf = cell.confidence || '';
             var bg = getConfBg(conf);
-            rowTotal += score;
+            rowTotal += (typeof score === 'number') ? score : 0;
             rowCount++;
             html += '<td style="padding:var(--space-1);text-align:center;cursor:pointer;" class="grid-cell" data-audio-id="' + a.audioId + '" data-record-id="' + (cell.recordId || '') + '">';
-            html += '<div style="font-weight:600;font-size:0.9rem;">' + score.toFixed(1) + '</div>';
+            html += '<div style="font-weight:600;font-size:0.9rem;">' + (typeof score === 'number' ? score.toFixed(1) : '-') + '</div>';
             html += '<div class="text-xs text-muted">' + rating + '</div>';
             if (conf) {
               html += '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + bg + ';margin-top:2px;" title="Confidence: ' + conf + '"></span>';
@@ -123,16 +123,77 @@
       document.getElementById('grid-container').innerHTML = html;
       document.getElementById('grid-container').classList.remove('hidden');
 
-      // wire cell clicks to audit view
+      // wire cell clicks to an audit modal (the old teacher/audit page was removed)
       document.querySelectorAll('.grid-cell').forEach(function(cell) {
         cell.addEventListener('click', function() {
           var aid = cell.getAttribute('data-audio-id');
-          if (aid) {
-            localStorage.setItem('voiceassess_audit_audio', aid);
-            Router.navigate('teacher/audit');
-          }
+          if (aid) openAuditModal(aid);
         });
       });
+    }
+
+    // fetch and show the audit details for one assessment
+    function openAuditModal(audioId) {
+      var overlay = showModal('Loading assessment...',
+        '<p class="text-sm text-muted" style="text-align:center;padding:var(--space-4);">Fetching details...</p>');
+
+      API.get('/api/teacher/assessments/' + audioId + '/audit')
+        .then(function(data) {
+          // user closed the modal or navigated away while we fetched
+          if (!overlay.isConnected) return;
+          var title = escapeHtml(data.subjectName || 'Assessment') + ' — ' + escapeHtml(data.topic || '');
+          showModal(title, buildAuditBody(data));
+        })
+        .catch(function(err) {
+          if (!overlay.isConnected) return;
+          showModal('Assessment', '<p style="color:var(--color-error);">' + escapeHtml(err.message) + '</p>');
+        });
+    }
+
+    function buildAuditBody(data) {
+      var html = '';
+      html += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
+      html += '<span class="badge badge-primary">' + escapeHtml(data.status || '') + '</span>';
+      if (data.stagingStatus) {
+        html += ' <span class="badge badge-warning">' + escapeHtml(data.stagingStatus) + '</span>';
+      }
+      html += ' <span class="text-muted">' + escapeHtml(data.className || '') + ' · ' + escapeHtml(data.date || '') + '</span>';
+      html += '</div>';
+
+      // full transcript from the AI transcription
+      if (data.fullTranscript) {
+        html += '<h4 style="margin:var(--space-3) 0 var(--space-2);">Transcript</h4>';
+        html += '<div class="mono" style="white-space:pre-wrap;background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:var(--space-3);font-size:var(--text-sm);max-height:200px;overflow-y:auto;">' + escapeHtml(data.fullTranscript) + '</div>';
+      }
+
+      if (data.rubricDesc) {
+        html += '<h4 style="margin:var(--space-3) 0 var(--space-2);">Rubric</h4>';
+        html += '<p class="text-sm" style="margin-bottom:var(--space-1);"><strong>' + escapeHtml(data.strand || '') + '</strong> — ' + escapeHtml(data.subStrand || '') + '</p>';
+        html += '<p class="text-sm text-muted">' + escapeHtml(data.rubricDesc) + ' (' + escapeHtml(data.ratingScale || '') + ')</p>';
+      }
+
+      var records = data.records || [];
+      if (records.length > 0) {
+        html += '<h4 style="margin:var(--space-3) 0 var(--space-2);">Records (' + records.length + ')</h4>';
+        for (var i = 0; i < records.length; i++) {
+          var r = records[i];
+          html += '<div style="border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:var(--space-3);margin-bottom:var(--space-2);">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+          html += '<strong>' + escapeHtml(r.studentName || '') + '</strong>';
+          html += '<span>' + escapeHtml(r.ratingLevel || '') + ' · ' + (typeof r.score === 'number' ? r.score.toFixed(1) : '-');
+          if (r.confidence) html += ' · ' + escapeHtml(r.confidence);
+          html += '</span></div>';
+          if (r.evidence) html += '<p class="text-sm" style="margin-top:var(--space-2);">' + escapeHtml(r.evidence) + '</p>';
+          if (r.feedback) html += '<p class="text-sm text-muted" style="margin-top:var(--space-1);"><em>' + escapeHtml(r.feedback) + '</em></p>';
+          if (r.versions && r.versions.length > 1) {
+            html += '<p class="text-xs text-muted" style="margin-top:var(--space-2);">' + r.versions.length + ' versions — last edit by ' + escapeHtml(r.versions[0].editedBy || 'unknown') + '</p>';
+          }
+          html += '</div>';
+        }
+      } else {
+        html += '<p class="text-sm text-muted">No records for this assessment.</p>';
+      }
+      return html;
     }
 
     function getConfBg(conf) {
@@ -149,14 +210,14 @@
       e.preventDefault();
       var classId = localStorage.getItem('voiceassess_selected_class');
       if (!classId) return;
-      window.open(API.BASE + '/api/teacher/classes/' + classId + '/export?format=csv', '_blank');
+      API.downloadFile('/api/teacher/classes/' + classId + '/export?format=csv', 'class_grid.csv');
     });
 
     document.getElementById('export-pdf-btn').addEventListener('click', function(e) {
       e.preventDefault();
       var classId = localStorage.getItem('voiceassess_selected_class');
       if (!classId) return;
-      window.open(API.BASE + '/api/teacher/classes/' + classId + '/export?format=pdf', '_blank');
+      API.downloadFile('/api/teacher/classes/' + classId + '/export?format=pdf', 'class_grid.pdf');
     });
   })();
 </script>

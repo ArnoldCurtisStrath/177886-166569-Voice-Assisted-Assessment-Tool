@@ -12,5 +12,6 @@ import java.util.List;
 @Repository
 public interface AdministratorRepository extends JpaRepository<Administrator, UUID> {
     Optional<Administrator> findByUser(User user);
+    Optional<Administrator> findByUserUserId(UUID userId);
     List<Administrator> findBySchool(School school);
 }

@@ -38,7 +38,7 @@ public class AdminController {
 
     // resolve the admin's school, fall back to hardcoded seed school
     private UUID resolveSchoolId(User user) {
-        var adminOpt = adminRepo.findByUser(user);
+        var adminOpt = adminRepo.findByUserUserId(user.getUserId());
         if (adminOpt.isPresent() && adminOpt.get().getSchool() != null) {
             return adminOpt.get().getSchool().getSchoolId();
         }
@@ -48,9 +48,10 @@ public class AdminController {
     // -- CLASSES --
 
     @GetMapping("/classes")
-    public ResponseEntity<?> listClasses(@AuthenticationPrincipal User user) {
-        var schoolId = resolveSchoolId(user);
-        return ResponseEntity.ok(adminService.getAllClasses(schoolId));
+    public ResponseEntity<?> listClasses(@AuthenticationPrincipal User user,
+                                         @RequestParam(required = false) UUID schoolId) {
+        var resolvedId = schoolId != null ? schoolId : resolveSchoolId(user);
+        return ResponseEntity.ok(adminService.getAllClasses(resolvedId));
     }
 
     @PostMapping("/classes")

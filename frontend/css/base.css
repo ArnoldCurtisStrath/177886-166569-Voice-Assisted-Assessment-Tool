@@ -134,6 +134,9 @@ h4 { font-size: var(--text-base); }
 .text-muted     { color: var(--text-muted); }
 .text-primary   { color: var(--color-primary); }
 
+/* generic show/hide utility — several pages toggle this class */
+.hidden { display: none !important; }
+
 .font-semibold { font-weight: 600; }
 .mono { font-family: var(--font-mono); }
 

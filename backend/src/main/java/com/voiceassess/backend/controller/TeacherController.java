@@ -568,8 +568,7 @@ public class TeacherController {
         }
         var teacher = teacherOpt.get();
 
-        var stagings = stagingRepo.findByAudioAssessment_TeacherAndStatusIn(
-            teacher, List.of("PENDING_REVIEW", "EDITED"));
+        var stagings = stagingRepo.findByAudioAssessment_Teacher(teacher);
 
         var result = new ArrayList<Map<String, Object>>();
         for (var s : stagings) {
@@ -1286,15 +1285,21 @@ public class TeacherController {
     private String buildFeedbackText(String strengths, String areas) {
         var sb = new StringBuilder();
         if (strengths != null && !strengths.isBlank()) {
-            sb.append("Strengths: ").append(strengths);
+            sb.append("Strengths: ").append(sanitizeFeedback(strengths));
         }
         if (areas != null && !areas.isBlank()) {
             if (sb.length() > 0) sb.append("\n");
-            sb.append("Areas to improve: ").append(areas);
+            sb.append("Areas to improve: ").append(sanitizeFeedback(areas));
         }
         if (sb.length() == 0) {
             sb.append("No specific feedback from AI.");
         }
         return sb.toString();
+    }
+
+    // strip em/en dashes from LLM output — they scream "AI wrote this"
+    private String sanitizeFeedback(String text) {
+        if (text == null) return "";
+        return text.replace('\u2014', '-').replace('\u2013', '-');
     }
 }

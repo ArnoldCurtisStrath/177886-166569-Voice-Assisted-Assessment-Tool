@@ -16,9 +16,7 @@ const Router = {
     'teacher/record':{ title: 'Assessment Audio',role:'TEACHER',file: 'pages/teacher/recording.html' },
     'teacher/review':{ title: 'Pending Reviews',role: 'TEACHER',file: 'pages/teacher/review.html' },
     'teacher/class': { title: 'Class Grid',     role: 'TEACHER',file: 'pages/teacher/class-grid.html' },
-    'teacher/audit':{ title: 'Assessment Audit',role:'TEACHER',file: 'pages/teacher/audit.html' },
     'teacher/appeals':{title: 'Appeals',       role:'TEACHER',file: 'pages/teacher/appeals.html' },
-    'teacher/transcription':{ title: 'Transcription',role:'TEACHER',file: 'pages/teacher/transcription.html' },
     'parent':       { title: 'My Children',     role: 'PARENT', file: 'pages/parent/dashboard.html' },
     'parent/child': { title: 'Student Progress',role: 'PARENT', file: 'pages/parent/child-progress.html' },
     'student':      { title: 'My Progress',     role: 'STUDENT',file: 'pages/student/dashboard.html' },
@@ -26,6 +24,9 @@ const Router = {
   },
 
   currentHash: '',
+
+  // bumped on every navigation so stale template fetches can be discarded
+  _routeSeq: 0,
 
   /**
    * Start the router — listen for hash changes and render the current route.
@@ -73,7 +74,12 @@ const Router = {
 
     // check auth for role-restricted pages
     if (route.role && !AuthStore.isAuthorized(route.role)) {
-      // user not authorized for this page — redirect to their dashboard
+      // not signed in at all — remember where they were headed so
+      // login can take them back there after authenticating
+      if (!AuthStore.isLoggedIn) {
+        sessionStorage.setItem('voiceassess_intended_route', location.hash);
+      }
+      // wrong role or signed out — send them to their dashboard (login if none)
       this.navigate(AuthStore.getDashboardRoute());
       return;
     }
@@ -84,13 +90,8 @@ const Router = {
       return;
     }
 
-    // if not logged in and trying to access a restricted page, redirect to login
-    if (route.role && !AuthStore.isLoggedIn) {
-      this.navigate('login');
-      return;
-    }
-
     this.currentHash = hash;
+    var mySeq = ++this._routeSeq;
     document.title = route.title + ' — VoiceAssess';
 
     // load and render the page template
@@ -99,6 +100,8 @@ const Router = {
 
     try {
       const html = await this._fetchTemplate(route.file);
+      // a newer navigation happened while we were fetching — throw this one away
+      if (mySeq !== this._routeSeq) return;
       container.innerHTML = html;
 
       // innerHTML doesn't execute <script> tags — eval each one manually
@@ -130,7 +133,7 @@ const Router = {
    * Fetch an HTML template file and return its content as a string.
    */
   async _fetchTemplate(filePath) {
-    const resp = await fetch(filePath);
+    const resp = await fetch(filePath, { cache: 'no-store' });
     if (!resp.ok) throw new Error('Failed to load template: ' + filePath);
     return resp.text();
   },
@@ -200,10 +203,10 @@ const Router = {
         { route: 'admin/rubrics', label: 'Rubrics', icon: 'R' },
         { route: 'admin/terms', label: 'Terms', icon: 'T' },
         { route: 'admin/compliance', label: 'Compliance', icon: '%' },
-        { route: 'admin/logs', label: 'Error Logs', icon: '!' }
+        { route: 'admin/logs', label: 'Error Logs', icon: 'L' }
       ],
 
-      // 5 teacher pages — assessment workflow
+      // teacher pages — assessment workflow
       TEACHER: [
         { route: 'teacher', label: 'Dashboard', icon: '=' },
         { route: 'teacher/curate', label: 'New Assessment', icon: '+' },
@@ -269,13 +272,14 @@ const Router = {
         { route: 'admin', icon: '=', label: 'Home' },
         { route: 'admin/users', icon: '#', label: 'Users' },
         { route: 'admin/classes', icon: '[', label: 'Classes' },
-        { route: 'admin/subjects', icon: 'S', label: 'Subjects' }
+        { route: 'admin/subjects', icon: 'S', label: 'Subjects' },
+        { route: 'admin/logs', icon: 'L', label: 'Logs' }
       ],
       TEACHER: [
         { route: 'teacher', icon: '=', label: 'Home' },
         { route: 'teacher/curate', icon: '+', label: 'Assess' },
         { route: 'teacher/review', icon: '?', label: 'Review' },
-        { route: 'teacher/class', icon: '[', label: 'Grid' }
+        { route: 'teacher/appeals', icon: '!', label: 'Appeals' }
       ],
       PARENT: [
         { route: 'parent', icon: '#', label: 'Children' },

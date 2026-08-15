@@ -59,7 +59,14 @@
 
         AuthStore.login(email, password)
           .then(function(user) {
-            // redirect to the appropriate dashboard
+            // if they were sent here from a deep link, take them back there
+            var intended = sessionStorage.getItem('voiceassess_intended_route');
+            sessionStorage.removeItem('voiceassess_intended_route');
+            if (intended && intended.indexOf('#') === 0) {
+              Router.navigate(intended.replace(/^#/, ''));
+              return;
+            }
+            // otherwise go to the role dashboard
             var dashboard = user.role === 'ADMIN' ? '#admin' :
                            user.role === 'TEACHER' ? '#teacher' :
                            user.role === 'PARENT' ? '#parent' : '#student';

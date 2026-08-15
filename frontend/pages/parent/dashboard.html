@@ -142,7 +142,7 @@
       listEl.innerHTML = '<div class="list-stack">' + items.map(function(a) {
         return '<div class="list-item clickable" data-record-id="' + (a.recordId || '') + '" data-child-id="' + (a.childId || '') + '">' +
           '<div class="list-item-body">' +
-            '<div class="list-item-title">' + a.studentName + ' — ' + a.subjectName + '</div>' +
+            '<div class="list-item-title">' + a.studentName + ' \u00B7 ' + a.subjectName + '</div>' +
             '<div class="list-item-subtitle">' + a.topic + ' &middot; ' + a.date + ' &middot; ' + a.ratingLevel + '</div>' +
           '</div>' +
           '<span style="font-weight:600;">' + ((a.score || 0) / 4.0 * 100).toFixed(0) + '%</span>' +
@@ -199,7 +199,7 @@
           }
 
           bodyHtml += '</div>';
-          showModal(data.subjectName + ' — ' + data.studentName, bodyHtml, '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>');
+          showModal(data.subjectName + ' \u00B7 ' + data.studentName, bodyHtml, '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>');
         })
         .catch(function() { showToast('Failed to load assessment detail.', 'error'); });
     }

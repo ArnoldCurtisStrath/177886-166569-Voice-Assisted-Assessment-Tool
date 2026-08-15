@@ -50,47 +50,73 @@ public class UserService {
 
     /**
      * Returns users scoped to a school, with profile info merged in.
-     * Each entry has: userId, email, role, isActive, fullName, lastLogin, createdAt.
+     * Uses per-profile findBySchool queries to avoid lazy-loading the school
+     * association on every user during filtering.
      */
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getAllUsers(UUID schoolId) {
         var school = schoolRepo.findById(schoolId).orElse(null);
         if (school == null) return List.of();
 
-        var users = userRepo.findAll();
         var result = new ArrayList<Map<String, Object>>();
 
-        for (var user : users) {
-            // only include users whose profile belongs to this school
-            var userSchool = resolveUserSchool(user);
-            if (userSchool == null || !userSchool.getSchoolId().equals(schoolId)) {
-                continue;
-            }
-
-            var map = new LinkedHashMap<String, Object>();
-            map.put("userId", user.getUserId().toString());
-            map.put("email", user.getEmail());
-            map.put("role", user.getRole().name());
-            map.put("isActive", user.isActive());
-            map.put("fullName", resolveFullName(user));
-            map.put("lastLogin", user.getLastLogin());
-            map.put("createdAt", user.getCreatedAt());
-
-            switch (user.getRole()) {
-                case ADMIN -> adminRepo.findByUser(user).ifPresent(a -> map.put("adminId", a.getAdminId().toString()));
-                case TEACHER -> teacherRepo.findByUser(user).ifPresent(t -> map.put("teacherId", t.getTeacherId().toString()));
-                case PARENT -> parentRepo.findByUser(user).ifPresent(p -> {
-                    map.put("parentId", p.getParentId().toString());
-                    map.put("phoneNumber", p.getPhoneNumber());
-                });
-                case STUDENT -> studentRepo.findByUser(user).ifPresent(s -> {
-                    map.put("studentId", s.getStudentId().toString());
-                    map.put("dateOfBirth", s.getDateOfBirth() != null ? s.getDateOfBirth().toString() : "");
-                });
-            }
-
-            result.add(map);
+        // admins
+        for (var a : adminRepo.findBySchool(school)) {
+            result.add(buildUserMap(a.getUser(), "ADMIN",
+                    a.getFullName(), null, null,
+                    a.getAdminId().toString(), null, null, null));
         }
+
+        // teachers
+        for (var t : teacherRepo.findBySchool(school)) {
+            result.add(buildUserMap(t.getUser(), "TEACHER",
+                    t.getFullName(), null, null,
+                    null, t.getTeacherId().toString(), null, null));
+        }
+
+        // students
+        for (var s : studentRepo.findBySchool(school)) {
+            result.add(buildUserMap(s.getUser(), "STUDENT",
+                    s.getFullName(),
+                    s.getDateOfBirth() != null ? s.getDateOfBirth().toString() : "",
+                    null,
+                    null, null, s.getStudentId().toString(), null));
+        }
+
+        // parents
+        for (var p : parentRepo.findBySchool(school)) {
+            result.add(buildUserMap(p.getUser(), "PARENT",
+                    p.getFullName(), null, p.getPhoneNumber(),
+                    null, null, null, p.getParentId().toString()));
+        }
+
         return result;
+    }
+
+    private Map<String, Object> buildUserMap(User user, String role,
+                                              String fullName, String dateOfBirth,
+                                              String phoneNumber,
+                                              String adminId, String teacherId,
+                                              String studentId, String parentId) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("userId", user.getUserId().toString());
+        map.put("email", user.getEmail());
+        map.put("role", role);
+        map.put("isActive", user.isActive());
+        map.put("fullName", fullName != null ? fullName : role);
+        map.put("lastLogin", user.getLastLogin());
+        map.put("createdAt", user.getCreatedAt());
+
+        if (adminId != null) map.put("adminId", adminId);
+        if (teacherId != null) map.put("teacherId", teacherId);
+        if (studentId != null) map.put("studentId", studentId);
+        if (parentId != null) {
+            map.put("parentId", parentId);
+            if (phoneNumber != null) map.put("phoneNumber", phoneNumber);
+        }
+        if (dateOfBirth != null && !dateOfBirth.isBlank()) map.put("dateOfBirth", dateOfBirth);
+
+        return map;
     }
 
     /**

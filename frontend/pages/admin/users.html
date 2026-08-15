@@ -165,6 +165,10 @@
 
 <script>
   (function() {
+    // guard against stale callbacks from previous page instances
+    window._usersLoadGen = (window._usersLoadGen || 0) + 1;
+    var myLoadGen = window._usersLoadGen;
+
     var users = [];
     var activeFilter = 'all';
     var searchQuery = '';
@@ -249,12 +253,23 @@
       if (loadingEl) loadingEl.style.display = '';
       if (emptyEl) emptyEl.style.display = 'none';
 
-      API.get('/api/admin/users')
+      var schoolId = (AuthStore.user && AuthStore.user.schoolId) || '';
+
+      API.get('/api/admin/users?schoolId=' + schoolId)
         .then(function(data) {
+          if (myLoadGen !== window._usersLoadGen) return;
           users = data || [];
           renderUsers();
+
+          // auto-open create form from dashboard quick-action — deferred until users are loaded
+          var preSelectRole = localStorage.getItem('voiceassess_create_role');
+          if (preSelectRole) {
+            localStorage.removeItem('voiceassess_create_role');
+            openCreateForm(preSelectRole);
+          }
         })
         .catch(function(err) {
+          if (myLoadGen !== window._usersLoadGen) return;
           users = [];
           renderUsers();
           if (typeof showToast === 'function') {
@@ -773,13 +788,6 @@
       if (!u || !u.teacherId) return;
       openSubjectsModal(u.teacherId, u.fullName);
     });
-
-    // auto-open create from dashboard quick-action
-    var preSelectRole = localStorage.getItem('voiceassess_create_role');
-    if (preSelectRole) {
-      localStorage.removeItem('voiceassess_create_role');
-      openCreateForm(preSelectRole);
-    }
 
     loadUsers();
   })();

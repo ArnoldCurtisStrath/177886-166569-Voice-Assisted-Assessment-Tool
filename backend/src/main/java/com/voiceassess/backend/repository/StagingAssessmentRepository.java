@@ -14,4 +14,5 @@ public interface StagingAssessmentRepository extends JpaRepository<StagingAssess
     List<StagingAssessment> findByStatus(String status);
     Optional<StagingAssessment> findByAudioAssessment(AudioAssessment audioAssessment);
     List<StagingAssessment> findByAudioAssessment_TeacherAndStatusIn(Teacher teacher, List<String> statuses);
+    List<StagingAssessment> findByAudioAssessment_Teacher(Teacher teacher);
 }

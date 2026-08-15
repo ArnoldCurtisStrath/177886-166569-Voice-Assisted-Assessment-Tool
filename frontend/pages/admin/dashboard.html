@@ -187,7 +187,7 @@
     // school report download
     document.getElementById('download-school-report').addEventListener('click', function(e) {
       e.preventDefault();
-      window.open(API.BASE + '/api/admin/reports/school', '_blank');
+      API.downloadFile('/api/admin/reports/school', 'school_report.pdf');
     });
   })();
 </script>

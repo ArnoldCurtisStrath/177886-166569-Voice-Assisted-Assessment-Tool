@@ -158,11 +158,6 @@
             bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-2);font-style:italic;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">"' + data.evidence + '"</div>';
           }
 
-          if (data.feedback) {
-            bodyHtml += '<div style="margin-bottom:var(--space-2);"><div class="text-sm" style="font-weight:600;margin-bottom:var(--space-1);">Teacher Feedback</div>';
-            bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + data.feedback + '</div></div>';
-          }
-
           // appeal resolution section
           if (data.appealStatus && data.appealStatus !== 'PENDING') {
             var appealColor = data.appealStatus === 'UPHELD' || data.appealStatus === 'ADJUSTED' ? 'var(--color-success)' : 'var(--color-error)';
@@ -202,9 +197,9 @@
 
           bodyHtml += '</div>';
 
-          showModal(data.subjectName + ' — ' + data.topic, bodyHtml,
+          showModal(data.subjectName + ' \u00B7 ' + data.topic, bodyHtml,
             '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>' +
-            '<button class="btn btn-sm" style="background:var(--color-warning);color:white;border:none;" id="appeal-btn" data-audio-id="' + data.audioId + '">Submit Appeal</button>');
+            (data.appealStatus ? '' : '<button class="btn btn-sm" style="background:var(--color-warning);color:white;border:none;" id="appeal-btn" data-audio-id="' + data.audioId + '">Submit Appeal</button>'));
 
           setTimeout(function() {
             document.querySelectorAll('.modal-close-btn').forEach(function(b) {

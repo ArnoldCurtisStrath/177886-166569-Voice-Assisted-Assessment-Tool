@@ -14,7 +14,7 @@
       <div class="stat-value" id="stat-pending">-</div>
       <div class="stat-label">Pending</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" id="stat-reviewed-card" style="cursor:pointer;">
       <div class="stat-value" id="stat-reviewed">-</div>
       <div class="stat-label">Reviewed</div>
     </div>
@@ -135,6 +135,14 @@
     var pendingCard = document.getElementById('stat-pending-card');
     if (pendingCard) {
       pendingCard.addEventListener('click', function() {
+        Router.navigate('teacher/review');
+      });
+    }
+
+    // navigate to review page (reviewed tab) when clicking reviewed stat
+    var reviewedCard = document.getElementById('stat-reviewed-card');
+    if (reviewedCard) {
+      reviewedCard.addEventListener('click', function() {
         Router.navigate('teacher/review');
       });
     }

@@ -2,7 +2,9 @@ package com.voiceassess.backend.service;
 
 import com.voiceassess.backend.model.Administrator;
 import com.voiceassess.backend.model.AuthenticationLog;
+import com.voiceassess.backend.model.KnecRubric;
 import com.voiceassess.backend.model.School;
+import com.voiceassess.backend.model.Subject;
 import com.voiceassess.backend.model.User;
 import com.voiceassess.backend.repository.*;
 import com.voiceassess.backend.security.JwtUtil;
@@ -20,12 +22,17 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
+    private static final UUID TEMPLATE_SCHOOL_ID =
+            UUID.fromString("a1000000-0000-0000-0000-000000000001");
+
     private final UserRepository userRepo;
     private final AdministratorRepository adminRepo;
     private final TeacherRepository teacherRepo;
     private final ParentRepository parentRepo;
     private final StudentRepository studentRepo;
     private final SchoolRepository schoolRepo;
+    private final SubjectRepository subjectRepo;
+    private final KnecRubricRepository rubricRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationLogRepository authLogRepo;
@@ -33,6 +40,7 @@ public class AuthService {
     public AuthService(UserRepository userRepo, AdministratorRepository adminRepo,
                        TeacherRepository teacherRepo, ParentRepository parentRepo,
                        StudentRepository studentRepo, SchoolRepository schoolRepo,
+                       SubjectRepository subjectRepo, KnecRubricRepository rubricRepo,
                        PasswordEncoder passwordEncoder,
                        JwtUtil jwtUtil, AuthenticationLogRepository authLogRepo) {
         this.userRepo = userRepo;
@@ -41,6 +49,8 @@ public class AuthService {
         this.parentRepo = parentRepo;
         this.studentRepo = studentRepo;
         this.schoolRepo = schoolRepo;
+        this.subjectRepo = subjectRepo;
+        this.rubricRepo = rubricRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.authLogRepo = authLogRepo;
@@ -153,6 +163,9 @@ public class AuthService {
         school.setSchoolName(trimmedSchool);
         school = schoolRepo.save(school);
 
+        // copy the standard subjects and rubrics from the template school
+        seedDefaultCurriculum(school);
+
         // create the user (auth row)
         var user = new User();
         user.setEmail(normalizedEmail);
@@ -188,6 +201,35 @@ public class AuthService {
                 school.getSchoolName(),
                 school.getKnecCode()
         );
+    }
+
+    /**
+     * Clones the 3 standard subjects (English, Kiswahili, Science) and their
+     * rubrics from the seed school into the newly registered school.
+     */
+    private void seedDefaultCurriculum(School newSchool) {
+        var template = schoolRepo.findById(TEMPLATE_SCHOOL_ID).orElse(null);
+        if (template == null) return;
+
+        var templateSubjects = subjectRepo.findBySchool(template);
+        for (var ts : templateSubjects) {
+            var cloned = new Subject();
+            cloned.setSubjectName(ts.getSubjectName());
+            cloned.setGradeLevel(ts.getGradeLevel());
+            cloned.setSchool(newSchool);
+            cloned = subjectRepo.save(cloned);
+
+            var templateRubrics = rubricRepo.findBySubject(ts);
+            for (var tr : templateRubrics) {
+                var rubric = new KnecRubric();
+                rubric.setCompetencyDesc(tr.getCompetencyDesc());
+                rubric.setStrand(tr.getStrand());
+                rubric.setSubStrand(tr.getSubStrand());
+                rubric.setRatingScale(tr.getRatingScale());
+                rubric.setSubject(cloned);
+                rubricRepo.save(rubric);
+            }
+        }
     }
 
     public record RegisterResult(String token, UUID userId, String fullName,

@@ -14,6 +14,11 @@ var AuthStore = {
     try {
       var parsed = JSON.parse(saved);
       if (parsed.user && parsed.token) {
+        // drop expired sessions so the router doesn't let them into dashboards
+        if (this._isExpired(parsed.token)) {
+          localStorage.removeItem('voiceassess_auth');
+          return;
+        }
         this.user = parsed.user;
         this.token = parsed.token;
         this.isLoggedIn = true;
@@ -21,6 +26,25 @@ var AuthStore = {
     } catch (e) {
       // corrupted data — clear it
       localStorage.removeItem('voiceassess_auth');
+    }
+  },
+
+  /**
+   * Check the JWT exp claim without trusting the saved user object.
+   */
+  _isExpired(token) {
+    try {
+      var parts = token.split('.');
+      if (parts.length < 2) return true;
+      // base64url -> base64 (pad it — atob chokes on unpadded strings)
+      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4 !== 0) b64 += '=';
+      var payload = JSON.parse(atob(b64));
+      if (!payload.exp) return true;
+      return payload.exp * 1000 < Date.now();
+    } catch (e) {
+      // unreadable token — treat as expired
+      return true;
     }
   },
 

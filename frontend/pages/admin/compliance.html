@@ -150,7 +150,7 @@
     document.getElementById('compliance-refresh').addEventListener('click', loadCompliance);
 
     document.getElementById('compliance-pdf-btn').addEventListener('click', function() {
-      window.open(API.BASE + '/api/admin/reports/compliance', '_blank');
+      API.downloadFile('/api/admin/reports/compliance', 'compliance_report.pdf');
     });
 
     loadCompliance();

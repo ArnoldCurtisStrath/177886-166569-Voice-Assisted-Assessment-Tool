@@ -6,7 +6,7 @@
   </div>
 
   <div class="tabs" style="margin-bottom: var(--space-4);">
-    <button class="tab tab-active" data-review-filter="all">All</button>
+    <button class="tab tab-active" data-review-filter="pending">Pending</button>
     <button class="tab" data-review-filter="flagged">Flagged</button>
     <button class="tab" data-review-filter="reviewed">Reviewed</button>
   </div>
@@ -23,7 +23,7 @@
 <script>
   (function() {
     var reviews = [];
-    var activeFilter = 'all';
+    var activeFilter = 'pending';
 
     // load from API
     function loadReviews() {
@@ -40,7 +40,7 @@
 
     function renderReviews() {
       var filtered;
-      if (activeFilter === 'all') {
+      if (activeFilter === 'pending') {
         filtered = reviews.filter(function(r) { return r.status === 'PENDING_REVIEW' || r.status === 'EDITED'; });
       } else if (activeFilter === 'flagged') {
         filtered = reviews.filter(function(r) { return r.lowConfidenceCount > 0 && (r.status === 'PENDING_REVIEW' || r.status === 'EDITED'); });
@@ -171,6 +171,35 @@
             bodyHtml += '<div class="text-xs text-muted" style="margin-top:var(--space-2);border-top:1px solid var(--color-border);padding-top:var(--space-2);">' + data.overallSummary + '</div>';
           }
 
+          // existing records from DB (auto-created during AI parse)
+          var existingRecs = data.existingRecords;
+          if (existingRecs && existingRecs.length > 0) {
+            var recsLabel = (data.status === 'APPROVED' || data.status === 'REJECTED') ? 'Finalized Records' : 'Auto-generated Records';
+            bodyHtml += '<div style="margin-top:var(--space-3);">';
+            bodyHtml += '<div style="font-weight:600;font-size:0.9rem;margin-bottom:var(--space-2);">' + recsLabel + '</div>';
+            for (var ei = 0; ei < existingRecs.length; ei++) {
+              var er = existingRecs[ei];
+              bodyHtml += '<div class="card" style="margin-bottom:var(--space-1);">';
+              bodyHtml += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+              bodyHtml += '<span style="font-weight:600;">' + (er.studentName || 'Unknown') + '</span>';
+              bodyHtml += '<span style="font-weight:700;">' + (er.score != null ? er.score.toFixed(1) : '-') + '</span>';
+              bodyHtml += '</div>';
+              bodyHtml += '<div class="text-xs text-muted">' + (er.ratingLevel || '-') + ' &middot; confidence: ' + (er.confidence || '-') + '</div>';
+              bodyHtml += '</div>';
+            }
+            bodyHtml += '</div>';
+          }
+
+          // raw AI JSON (if parsing failed, or for transparency)
+          if (data.rawPayload) {
+            bodyHtml += '<details style="margin-top:var(--space-2);"><summary class="text-xs" style="cursor:pointer;color:var(--color-muted);">Raw AI JSON (parse error)</summary>';
+            bodyHtml += '<pre class="text-xs" style="background:var(--color-bg);padding:var(--space-2);max-height:200px;overflow:auto;white-space:pre-wrap;border-radius:var(--radius-sm);margin-top:var(--space-1);">' + data.rawPayload + '</pre>';
+            bodyHtml += '</details>';
+          }
+
+          // container for audit records (populated async for reviewed items)
+          bodyHtml += '<div id="audit-records-container" style="margin-top:var(--space-3);"></div>';
+
           bodyHtml += '</div>';
 
           var isPending = data.status === 'PENDING_REVIEW' || data.status === 'EDITED';
@@ -181,7 +210,12 @@
               '<button class="btn btn-sm modal-reject-btn" style="background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);" data-sid="' + stagingId + '">Reject</button>'
             : '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>';
 
-          showModal(data.subjectName + ' — ' + data.topic, bodyHtml, footer);
+          showModal(data.subjectName + ' \u00B7 ' + data.topic, bodyHtml, footer);
+
+          // for reviewed items, load full audit with version history
+          if (!isPending && data.audioId) {
+            loadAuditRecords(data.audioId);
+          }
 
           // wire detail modal buttons
           setTimeout(function() {
@@ -198,6 +232,55 @@
         })
         .catch(function(err) {
           showToast('Failed to load review detail.', 'error');
+        });
+    }
+
+    function loadAuditRecords(audioId) {
+      API.get('/api/teacher/assessments/' + audioId + '/audit')
+        .then(function(audit) {
+          var records = audit.records || [];
+          var container = document.getElementById('audit-records-container');
+          if (!container) return;
+
+          if (records.length === 0) {
+            container.innerHTML = '<div class="text-xs text-muted">No finalized records found.</div>';
+            return;
+          }
+
+          var html = '<div style="font-weight:600;font-size:0.9rem;margin-bottom:var(--space-2);">Records &amp; Version History</div>';
+          for (var i = 0; i < records.length; i++) {
+            var r = records[i];
+            html += '<div class="card" style="margin-bottom:var(--space-2);">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-1);">';
+            html += '<span style="font-weight:600;">' + r.studentName + '</span>';
+            html += '<span style="font-size:1.1rem;font-weight:700;">' + (r.score != null ? r.score.toFixed(1) : '-') + '</span>';
+            html += '</div>';
+            html += '<div class="text-xs text-muted">' + (r.ratingLevel || '-') + ' &middot; ' + (r.confidence || '-') + '</div>';
+            if (r.evidence) {
+              html += '<div class="text-xs" style="font-style:italic;margin-top:var(--space-1);">"' + r.evidence + '"</div>';
+            }
+            if (r.feedback) {
+              html += '<div class="text-xs" style="margin-top:var(--space-1);white-space:pre-wrap;">' + r.feedback + '</div>';
+            }
+            // version history from audit endpoint
+            if (r.versions && r.versions.length > 0) {
+              html += '<details style="margin-top:var(--space-2);"><summary class="text-xs" style="cursor:pointer;">Version History (' + r.versions.length + ')</summary>';
+              for (var j = 0; j < r.versions.length; j++) {
+                var v = r.versions[j];
+                html += '<div class="text-xs" style="margin-top:var(--space-1);padding:var(--space-1);background:var(--color-bg);border-radius:var(--radius-sm);">';
+                html += 'v' + v.versionNumber + (v.isOriginal ? ' (original)' : ' (edited)') + ' by ' + (v.editedBy || '') + ' &mdash; ' + (v.editTimestamp || '');
+                html += '</div>';
+              }
+              html += '</details>';
+            }
+            html += '</div>';
+          }
+
+          container.innerHTML = html;
+        })
+        .catch(function() {
+          var container = document.getElementById('audit-records-container');
+          if (container) container.innerHTML = '<div class="text-xs text-muted">Could not load records.</div>';
         });
     }
 
