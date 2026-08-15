@@ -96,6 +96,8 @@
     var audioBlob = null;
     var audioUrl = null;
     var micStream = null;
+    var audioCtx = null;
+    var micRequesting = false;
     var analyser = null;
     var timerInterval = null;
     var seconds = 0;
@@ -282,12 +284,42 @@
         mediaRecorder.stop();
       }
       // the onstop handler will set state to 'stopped'
+      releaseMic();
+    }
+
+    // stop everything holding the mic — safe to call more than once
+    function releaseMic() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      mediaRecorder = null;
+      if (micStream) {
+        micStream.getTracks().forEach(function(t) { t.stop(); });
+        micStream = null;
+      }
+      if (audioCtx) {
+        audioCtx.close();
+        audioCtx = null;
+      }
+      analyser = null;
+      stopWave();
     }
 
     // mic button click — main toggle
     micBtn.addEventListener('click', function() {
       if (state === 'idle') {
-        startRecording();
+        if (!mediaRecorder) {
+          if (micRequesting) return; // still waiting on permission
+          micRequesting = true;
+          requestMic().then(function() {
+            micRequesting = false;
+            startRecording();
+          }).catch(function() {
+            micRequesting = false;
+          });
+        } else {
+          startRecording();
+        }
       } else if (state === 'recording') {
         pauseRecording();
       } else if (state === 'paused') {
@@ -326,13 +358,14 @@
       hasFile = false;
       selectedFile = null;
       fileNameDisplay.style.display = 'none';
+      releaseMic();
       setUI('idle');
     });
 
     // cancel — go back to curation
     document.getElementById('btn-cancel').addEventListener('click', function() {
       if (state === 'recording' || state === 'paused') stopRecording();
-      if (micStream) micStream.getTracks().forEach(function(t) { t.stop(); });
+      releaseMic();
       if (audioUrl) URL.revokeObjectURL(audioUrl);
       Router.navigate('teacher/curate');
     });
@@ -445,11 +478,13 @@
       if (percentEl) percentEl.textContent = '100%';
 
       // store the result so the transcription page can display it
+      var recDuration = formatTime(seconds);
       sessionStorage.setItem('transcriptionResult', JSON.stringify({
         transcript: data.transcript || '',
         topic: data.topic || '',
         subject: data.subject || '',
         className: data.className || '',
+        duration: recDuration,
         status: data.status || 'UPLOADED',
         message: data.message || '',
         audioId: data.audioId || '',
@@ -471,18 +506,18 @@
         showToast('AI assessment skipped: ' + data.aiError, 'warning');
       }
 
-      // navigate to transcription page to show the result
+      // navigate to review so teacher sees the new assessment under Pending
       setTimeout(function() {
-        Router.navigate('teacher/transcription');
+        Router.navigate('teacher/review');
       }, 1500);
     }
 
-    // initialize — request mic access and set up MediaRecorder
+    // initialize — guard checks only, mic is requested on the first Start tap
     function initMic() {
       if (!audioId) {
         statusBadge.textContent = 'NO ASSESSMENT';
         statusBadge.className = 'badge badge-error';
-        micStatus.textContent = 'No assessment found. Go back and curate first.';
+        micStatus.innerHTML = 'No assessment found. <a href="#teacher/curate" style="color:var(--color-primary);font-weight:600;">Go back and curate first.</a>';
         micStatus.style.color = 'var(--color-error)';
         micBtn.disabled = true;
         micBtn.style.opacity = '0.5';
@@ -501,12 +536,24 @@
         return;
       }
 
-      navigator.mediaDevices.getUserMedia({ audio: true })
+      micStatus.textContent = 'Microphone: Ready';
+      micStatus.style.color = 'var(--color-success)';
+    }
+
+    // request mic access and set up the recorder — called on the first Start tap
+    function requestMic() {
+      return navigator.mediaDevices.getUserMedia({ audio: true })
         .then(function(stream) {
+          // page may have been left while the permission prompt was up
+          if (!micBtn.isConnected) {
+            stream.getTracks().forEach(function(t) { t.stop(); });
+            return;
+          }
+
           micStream = stream;
 
           // set up analyser for waveform
-          var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           analyser = audioCtx.createAnalyser();
           analyser.fftSize = 256;
           var source = audioCtx.createMediaStreamSource(stream);
@@ -539,6 +586,7 @@
 
           mediaRecorder.onerror = function() {
             showToast('Recording error. Please try again.', 'error');
+            releaseMic();
             setUI('idle');
           };
 
@@ -552,6 +600,7 @@
           micBtn.style.opacity = '0.5';
           statusBadge.textContent = 'NO ACCESS';
           statusBadge.className = 'badge badge-warning';
+          throw err;
         });
     }
 
@@ -631,6 +680,11 @@
     window.addEventListener('online', function() {
       showToast('Back online — retrying pending uploads...', 'info');
       retryPendingUploads();
+    });
+
+    // leaving the page mid-recording — drop the mic so it doesn't keep running
+    window.addEventListener('hashchange', function() {
+      releaseMic();
     });
 
     // init the offline queue and check for pending items on load
