@@ -43,6 +43,7 @@
   <div class="recording-controls" id="review-controls" style="display: none;">
     <button class="btn btn-secondary btn-sm" id="btn-play">Play</button>
     <button class="btn btn-ghost btn-sm" id="btn-re-record">Record Again</button>
+    <button class="btn btn-warning btn-sm" id="btn-retry-transcription" style="display:none;">Retry Transcription</button>
   </div>
 
   <!-- Hidden audio element for playback -->
@@ -77,6 +78,7 @@
     <div class="progress-bar">
       <div class="progress-fill" id="upload-bar" style="width: 0%;"></div>
     </div>
+    <button class="btn btn-ghost btn-sm" id="btn-cancel-upload" style="display:none;margin-top:var(--space-2);">Cancel Upload</button>
   </div>
 
   <!-- Bottom Buttons -->
@@ -103,6 +105,7 @@
     var seconds = 0;
     var hasFile = false;
     var selectedFile = null;
+    var lastTranscribed = true; // whether the last upload transcribed OK (retry button state)
 
     // DOM refs
     var micBtn = document.getElementById('mic-btn');
@@ -138,10 +141,10 @@
       return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
     }
 
-    // start the timer display
+    // start (or restart after pause) the timer display.
+    // seconds accumulate across pause/resume — only a fresh recording resets them
     function startTimer() {
-      seconds = 0;
-      timerEl.textContent = formatTime(seconds);
+      if (timerInterval) return;
       timerInterval = setInterval(function() {
         seconds++;
         timerEl.textContent = formatTime(seconds);
@@ -149,7 +152,7 @@
         if (seconds === 270) {
           showToast('Recording limit approaching — 30 seconds remaining.', 'warning');
         }
-        // auto-stop at 5:00
+        // auto-stop at 5:00 of TOTAL recording time
         if (seconds >= 300) {
           stopRecording();
           showToast('Recording auto-stopped at 5 minutes.', 'info');
@@ -211,9 +214,11 @@
         statusBadge.className = 'badge badge-neutral';
         micStatus.textContent = 'Microphone: Ready';
         micStatus.style.color = 'var(--color-success)';
+        audioPlayback.src = '';
         resetTimer();
         stopWave();
         uploadBtn.disabled = !hasFile;
+        hideRetryBtn();
       } else if (state === 'recording') {
         micBtn.classList.add('mic-recording');
         micLabel.textContent = 'Recording...';
@@ -226,6 +231,7 @@
         if (!timerInterval) startTimer();
         startWave();
         uploadBtn.disabled = true;
+        hideRetryBtn();
       } else if (state === 'paused') {
         micBtn.classList.add('mic-paused');
         micLabel.textContent = 'Paused';
@@ -237,6 +243,7 @@
         pauseTimer();
         stopWave();
         uploadBtn.disabled = true;
+        hideRetryBtn();
       } else if (state === 'stopped') {
         micBtn.style.backgroundColor = 'var(--color-accent)';
         micLabel.textContent = 'Review Recording';
@@ -250,13 +257,29 @@
         stopWave();
         uploadBtn.disabled = false;
         hasFile = true;
+        showRetryBtn();
       }
     }
 
-    // actually start the MediaRecorder
+    // the retry-transcription button only appears when the last upload
+    // came back with transcribed:false (207)
+    function showRetryBtn() {
+      var btn = document.getElementById('btn-retry-transcription');
+      if (btn) btn.style.display = lastTranscribed ? 'none' : '';
+    }
+
+    function hideRetryBtn() {
+      var btn = document.getElementById('btn-retry-transcription');
+      if (btn) btn.style.display = 'none';
+    }
+
+    // actually start the MediaRecorder — a fresh recording starts the timer at zero
     function startRecording() {
       if (!mediaRecorder || state === 'recording') return;
       audioChunks = [];
+      seconds = 0;
+      timerEl.textContent = formatTime(0);
+      lastTranscribed = true; // fresh recording — no retry state
       mediaRecorder.start(100); // collect data every 100ms
       setUI('recording');
     }
@@ -307,7 +330,18 @@
 
     // mic button click — main toggle
     micBtn.addEventListener('click', function() {
-      if (state === 'idle') {
+      if (state === 'idle' || state === 'stopped') {
+        // stopped = start fresh (same as Record Again, but via the mic tap)
+        if (state === 'stopped') {
+          if (audioUrl) URL.revokeObjectURL(audioUrl);
+          audioBlob = null;
+          audioUrl = null;
+          audioChunks = [];
+          hasFile = false;
+          selectedFile = null;
+          fileNameDisplay.style.display = 'none';
+          audioPlayback.src = '';
+        }
         if (!mediaRecorder) {
           if (micRequesting) return; // still waiting on permission
           micRequesting = true;
@@ -388,10 +422,25 @@
       }
     });
 
-    // upload & transcribe button
-    uploadBtn.addEventListener('click', function() {
+    // upload & transcribe button — also used by the retry-transcription button
+    uploadBtn.addEventListener('click', startUpload);
+
+    var abortUpload = null;
+    var uploadCancelled = false;
+
+    function startUpload() {
       if (!audioId) {
         showToast('No assessment found. Please curate first.', 'error');
+        return;
+      }
+
+      // nothing usable recorded — don't upload garbage
+      if (audioBlob && audioBlob.size === 0) {
+        showToast('Nothing recorded. Record again or upload a file.', 'error');
+        return;
+      }
+      if (selectedFile && selectedFile.size === 0) {
+        showToast('That file is empty. Pick a different one.', 'error');
         return;
       }
 
@@ -416,29 +465,44 @@
       micBtn.style.pointerEvents = 'none';
       statusBadge.textContent = 'UPLOADING...';
       statusBadge.className = 'badge badge-warning';
+      hideRetryBtn();
 
       var progressEl = document.getElementById('upload-progress');
       var percentEl = document.getElementById('upload-percent');
       var barEl = document.getElementById('upload-bar');
       var statusText = document.getElementById('upload-status-text');
+      var cancelBtn = document.getElementById('btn-cancel-upload');
       progressEl.style.display = 'block';
       statusText.textContent = 'Uploading...';
+      if (cancelBtn) cancelBtn.style.display = '';
+      abortUpload = null;
+      uploadCancelled = false;
 
-      // save to offline queue first, then attempt upload
+      // save to offline queue first, then attempt upload. a failed enqueue
+      // (IndexedDB unavailable) must NOT block an online upload
       var queueId = null;
       OfflineQueue.enqueue(currentBlob, audioId, currentFileName)
-        .then(function(id) {
-          queueId = id;
-          return doUpload(formData, progressEl, percentEl, barEl, statusText);
+        .then(function(id) { queueId = id; })
+        .catch(function() { queueId = null; })
+        .then(function() {
+          return doUpload(formData, progressEl, percentEl, barEl, statusText, function(abort) {
+            abortUpload = abort;
+          });
         })
         .then(function(data) {
           // success — mark as completed
           if (queueId) OfflineQueue.updateStatus(queueId, 'completed');
+          if (cancelBtn) cancelBtn.style.display = 'none';
           handleUploadSuccess(data);
         })
         .catch(function(err) {
-          // failure — mark as failed for retry
-          if (queueId) {
+          if (cancelBtn) cancelBtn.style.display = 'none';
+          if (uploadCancelled) {
+            // user cancelled — drop the queued copy so it doesn't resurface later
+            if (queueId) OfflineQueue.remove(queueId);
+            showToast('Upload cancelled.', 'info');
+          } else if (queueId) {
+            // failure — mark as failed for retry
             OfflineQueue.updateStatus(queueId, 'failed').then(function() {
               OfflineQueue.removeCompleted(); // cleanup old completed items
             });
@@ -453,10 +517,28 @@
           statusBadge.textContent = 'RECORDING COMPLETE';
           statusBadge.className = 'badge badge-success';
         });
+    }
+
+    // let the teacher bail out of a slow upload
+    document.getElementById('btn-cancel-upload').addEventListener('click', function() {
+      if (abortUpload) {
+        uploadCancelled = true;
+        abortUpload();
+      }
+    });
+
+    // re-post the same recording when transcription failed (207 response)
+    document.getElementById('btn-retry-transcription').addEventListener('click', function() {
+      if (!audioBlob && !selectedFile) {
+        showToast('No recording to retry. Record again first.', 'error');
+        return;
+      }
+      showToast('Retrying transcription...', 'info');
+      startUpload();
     });
 
     // the actual upload call — returns a promise
-    function doUpload(formData, progressEl, percentEl, barEl, statusText) {
+    function doUpload(formData, progressEl, percentEl, barEl, statusText, onCancel) {
       return API.uploadFormData('/api/teacher/assessments/' + audioId + '/upload', formData, function(pct) {
         barEl.style.width = pct + '%';
         percentEl.textContent = pct + '%';
@@ -465,7 +547,7 @@
           statusBadge.textContent = 'TRANSCRIBING...';
           statusBadge.className = 'badge badge-primary';
         }
-      });
+      }, onCancel);
     }
 
     function handleUploadSuccess(data) {
@@ -476,6 +558,16 @@
       statusBadge.className = 'badge badge-success';
       if (barEl) barEl.style.width = '100%';
       if (percentEl) percentEl.textContent = '100%';
+
+      // transcription failed (207) — offer a one-tap retry
+      lastTranscribed = data.transcribed !== false;
+      if (!lastTranscribed) {
+        uploadBtn.disabled = false;
+        micBtn.style.pointerEvents = 'auto';
+        showRetryBtn();
+        showToast('Audio uploaded, but transcription failed. Retry when ready.', 'warning');
+        return;
+      }
 
       // store the result so the transcription page can display it
       var recDuration = formatTime(seconds);
@@ -506,9 +598,12 @@
         showToast('AI assessment skipped: ' + data.aiError, 'warning');
       }
 
-      // navigate to review so teacher sees the new assessment under Pending
+      // navigate to review so teacher sees the new assessment under Pending —
+      // but only if they're still on this page
       setTimeout(function() {
-        Router.navigate('teacher/review');
+        if (location.hash.indexOf('teacher/record') !== -1) {
+          Router.navigate('teacher/review');
+        }
       }, 1500);
     }
 
@@ -594,10 +689,31 @@
           micStatus.style.color = 'var(--color-success)';
         })
         .catch(function(err) {
-          micStatus.textContent = 'Microphone access denied. Upload a file instead.';
+          var msg = 'Microphone access denied. Upload a file instead.';
+          var disableMic = true;
+          if (err && err.name === 'NotFoundError') {
+            msg = 'No microphone found. Upload a file instead.';
+          } else if (err && err.name === 'NotReadableError') {
+            msg = 'Microphone is in use by another app. Close it and try again.';
+            disableMic = false;
+          } else if (err && err.name === 'SecurityError') {
+            msg = 'Microphone blocked by browser settings. Upload a file instead.';
+          } else if (err && err.name === 'NotAllowedError') {
+            msg = 'Microphone access denied. Upload a file instead.';
+          } else {
+            // unknown error — allow a retry in case it was transient
+            msg = 'Could not start the microphone. Try again or upload a file.';
+            disableMic = false;
+          }
+          micStatus.textContent = msg;
           micStatus.style.color = 'var(--color-warning)';
-          micBtn.disabled = true;
-          micBtn.style.opacity = '0.5';
+          if (disableMic) {
+            micBtn.disabled = true;
+            micBtn.style.opacity = '0.5';
+          } else {
+            micBtn.disabled = false;
+            micBtn.style.opacity = '1';
+          }
           statusBadge.textContent = 'NO ACCESS';
           statusBadge.className = 'badge badge-warning';
           throw err;
@@ -676,16 +792,13 @@
       });
     }
 
-    // listen for browser coming back online
-    window.addEventListener('online', function() {
-      showToast('Back online — retrying pending uploads...', 'info');
-      retryPendingUploads();
-    });
-
-    // leaving the page mid-recording — drop the mic so it doesn't keep running
-    window.addEventListener('hashchange', function() {
-      releaseMic();
-    });
+    // hooks for the app-level listeners in index.html (registered once there —
+    // binding them here per visit used to stack N copies after N visits)
+    window.releaseMic = releaseMic;
+    window.retryPendingUploads = retryPendingUploads;
+    window.recordingPageActive = function() {
+      return state === 'recording' || state === 'paused';
+    };
 
     // init the offline queue and check for pending items on load
     OfflineQueue.init().then(function() {

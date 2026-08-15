@@ -124,6 +124,44 @@
             Router.navigate('profile');
           });
         }
+
+        // ---- app-level listeners (registered once, not per page) ----
+        // the recording page used to bind these on every visit, so a few
+        // visits stacked N copies and fired N parallel retries
+
+        // browser came back online — retry anything the recording page queued
+        window.addEventListener('online', function() {
+          showToast('Back online — retrying pending uploads...', 'info');
+          if (window.retryPendingUploads) window.retryPendingUploads();
+        });
+
+        // in-app navigation guard: a stray tap on a nav link must not kill a
+        // live recording. intercept the click so the hash never changes when
+        // the teacher backs out — restoring the hash would re-render the page
+        // and lose the recording anyway.
+        document.addEventListener('click', function(e) {
+          if (!window.recordingPageActive || !window.recordingPageActive()) return;
+          var navTarget = e.target.closest('a[href^="#"], .sidebar-link, .bottom-nav-item, #logout-btn, #topbar-avatar');
+          if (!navTarget) return;
+          var target = navTarget.getAttribute('href') || navTarget.getAttribute('data-route') || '';
+          if (target.indexOf('teacher/record') !== -1) return; // staying put
+          if (!confirm('Leave this page? Your current recording will be lost.')) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        });
+
+        // leaving the record page by any other route (browser back/forward) —
+        // drop the mic so it doesn't keep running, and clear page hooks so
+        // stale closures can't fire on later pages
+        window.addEventListener('hashchange', function() {
+          var onRecordPage = location.hash.indexOf('teacher/record') !== -1;
+          if (onRecordPage) return;
+          if (window.releaseMic) window.releaseMic();
+          window.releaseMic = null;
+          window.recordingPageActive = null;
+          window.retryPendingUploads = null;
+        });
       });
 
       /* ---- Toast Helper (simple notification system) ---- */

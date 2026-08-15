@@ -81,7 +81,9 @@ var OfflineQueue = {
   },
 
   /**
-   * Returns all items that are still pending (queued or failed).
+   * Returns all items that still need attention:
+   * queued, failed, or stuck in 'uploading' for over 10 minutes
+   * (a page that died mid-upload leaves its item in that state).
    */
   getPending: function() {
     var self = this;
@@ -91,12 +93,14 @@ var OfflineQueue = {
       var txn = self._db.transaction([self.STORE], 'readonly');
       var store = txn.objectStore(self.STORE);
       var results = [];
+      var staleAfter = Date.now() - 10 * 60 * 1000;
       var cursorReq = store.openCursor();
       cursorReq.onsuccess = function(e) {
         var cursor = e.target.result;
         if (cursor) {
           var item = cursor.value;
-          if (item.status === 'queued' || item.status === 'failed') {
+          if (item.status === 'queued' || item.status === 'failed' ||
+              (item.status === 'uploading' && item.createdAt < staleAfter)) {
             results.push(item);
           }
           cursor.continue();
@@ -107,6 +111,22 @@ var OfflineQueue = {
       cursorReq.onerror = function(e) {
         reject(e.target.error);
       };
+    });
+  },
+
+  /**
+   * Remove an item entirely (e.g. the user cancels an upload).
+   */
+  remove: function(id) {
+    var self = this;
+    if (!this._db) return Promise.reject(new Error('DB not initialized'));
+
+    return new Promise(function(resolve, reject) {
+      var txn = self._db.transaction([self.STORE], 'readwrite');
+      var store = txn.objectStore(self.STORE);
+      var req = store.delete(id);
+      req.onsuccess = function() { resolve(); };
+      req.onerror = function(e) { reject(e.target.error); };
     });
   },
 

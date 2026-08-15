@@ -1125,8 +1125,10 @@ public class TeacherController {
             return ResponseEntity.status(207).body(resp);
         }
 
-        // store transcript in staging — snippet for previews, full for audit
-        var staging = new StagingAssessment();
+        // store transcript in staging — snippet for previews, full for audit.
+        // a re-upload reuses the existing row instead of crashing on the
+        // unique (audio_id, rubric_id) constraint
+        var staging = stagingRepo.findByAudioAssessment(assessment).orElseGet(StagingAssessment::new);
         staging.setAudioAssessment(assessment);
         staging.setRubric(assessment.getRubric());
         staging.setTranscriptSnippet(transcript.length() > 200 ? transcript.substring(0, 200) + "..." : transcript);
@@ -1164,7 +1166,10 @@ public class TeacherController {
             aiError = "No students enrolled in this class — cannot run AI assessment";
         }
 
-        var job = new PendingAudioJob();
+        // re-uploads update the existing completed job rather than duplicating
+        // it (pending_audio_jobs has a unique audio_id + job_type key)
+        var job = pendingJobRepo.findByAudioAssessmentAndJobType(assessment, "TRANSCRIPTION")
+                .orElseGet(PendingAudioJob::new);
         job.setAudioAssessment(assessment);
         job.setJobType("TRANSCRIPTION");
         job.setStatus("COMPLETED");
