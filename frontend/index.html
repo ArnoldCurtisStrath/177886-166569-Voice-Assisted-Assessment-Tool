@@ -110,8 +110,18 @@
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', function() {
+            if (!confirm('Log out of VoiceAssess?')) return;
             AuthStore.logout();
             Router.navigate('login');
+          });
+        }
+
+        // topbar avatar opens the account page
+        const topbarAvatar = document.getElementById('topbar-avatar');
+        if (topbarAvatar) {
+          topbarAvatar.style.cursor = 'pointer';
+          topbarAvatar.addEventListener('click', function() {
+            Router.navigate('profile');
           });
         }
       });

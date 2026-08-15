@@ -87,6 +87,17 @@ var AuthStore = {
   },
 
   /**
+   * Merge updated fields into the stored session (used after profile edits).
+   */
+  updateUser(patch) {
+    if (!this.user) return;
+    this.user = Object.assign({}, this.user, patch);
+    if (this.token) {
+      localStorage.setItem('voiceassess_auth', JSON.stringify({ user: this.user, token: this.token }));
+    }
+  },
+
+  /**
    * Returns headers needed for authenticated API calls.
    */
   getAuthHeaders() {

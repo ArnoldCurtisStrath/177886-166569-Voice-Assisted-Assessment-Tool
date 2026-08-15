@@ -20,7 +20,9 @@ const Router = {
     'parent':       { title: 'My Children',     role: 'PARENT', file: 'pages/parent/dashboard.html' },
     'parent/child': { title: 'Student Progress',role: 'PARENT', file: 'pages/parent/child-progress.html' },
     'student':      { title: 'My Progress',     role: 'STUDENT',file: 'pages/student/dashboard.html' },
-    'student/appeal':{title: 'My Appeals',     role: 'STUDENT',file: 'pages/student/appeal.html' }
+    'student/appeal':{title: 'My Appeals',     role: 'STUDENT',file: 'pages/student/appeal.html' },
+    // account page works for every logged-in role — auth flag means "any session"
+    'profile':      { title: 'My Account',      role: null, auth: true, file: 'pages/profile.html' }
   },
 
   currentHash: '',
@@ -81,6 +83,13 @@ const Router = {
       }
       // wrong role or signed out — send them to their dashboard (login if none)
       this.navigate(AuthStore.getDashboardRoute());
+      return;
+    }
+
+    // any-role pages (profile) still need a session
+    if (route.auth && !AuthStore.isLoggedIn) {
+      sessionStorage.setItem('voiceassess_intended_route', location.hash);
+      this.navigate('login');
       return;
     }
 
@@ -164,8 +173,8 @@ const Router = {
     const sidebarEl = document.getElementById('sidebar');
     const bottomNav = document.getElementById('bottom-nav');
 
-    if (!route.role) {
-      // login page — hide all navigation
+    if (!route.role && !route.auth) {
+      // public pages (login/register) — hide all navigation
       if (topbar) topbar.style.display = 'none';
       if (sidebarEl) sidebarEl.style.display = 'none';
       if (bottomNav) bottomNav.style.display = 'none';
@@ -203,7 +212,8 @@ const Router = {
         { route: 'admin/rubrics', label: 'Rubrics', icon: 'R' },
         { route: 'admin/terms', label: 'Terms', icon: 'T' },
         { route: 'admin/compliance', label: 'Compliance', icon: '%' },
-        { route: 'admin/logs', label: 'Error Logs', icon: 'L' }
+        { route: 'admin/logs', label: 'Error Logs', icon: 'L' },
+        { route: 'profile', label: 'My Account', icon: '@' }
       ],
 
       // teacher pages — assessment workflow
@@ -212,19 +222,22 @@ const Router = {
         { route: 'teacher/curate', label: 'New Assessment', icon: '+' },
         { route: 'teacher/review', label: 'Pending Reviews', icon: '?' },
         { route: 'teacher/class', label: 'Class Grid', icon: '[' },
-        { route: 'teacher/appeals', label: 'Appeals', icon: '!' }
+        { route: 'teacher/appeals', label: 'Appeals', icon: '!' },
+        { route: 'profile', label: 'My Account', icon: '@' }
       ],
 
       // 2 parent pages — child progress tracking
       PARENT: [
         { route: 'parent', label: 'My Children', icon: '#' },
-        { route: 'parent/child', label: 'Progress', icon: '%' }
+        { route: 'parent/child', label: 'Progress', icon: '%' },
+        { route: 'profile', label: 'My Account', icon: '@' }
       ],
 
       // 2 student pages — own progress + appeals
       STUDENT: [
         { route: 'student', label: 'My Progress', icon: '%' },
-        { route: 'student/appeal', label: 'Appeal', icon: '!' }
+        { route: 'student/appeal', label: 'Appeal', icon: '!' },
+        { route: 'profile', label: 'My Account', icon: '@' }
       ]
     };
 
@@ -253,6 +266,13 @@ const Router = {
       const names = AuthStore.user.fullName.split(' ');
       const initials = names.map(n => n.charAt(0)).join('').slice(0, 2).toUpperCase();
       userAvatarEl.textContent = initials;
+    }
+    // same initials in the topbar avatar (clickable to the profile page)
+    const topbarAvatarEl = document.getElementById('topbar-avatar');
+    if (topbarAvatarEl && AuthStore.user) {
+      const names = (AuthStore.user.fullName || '?').split(' ');
+      const initials = names.map(n => n.charAt(0)).join('').slice(0, 2).toUpperCase();
+      topbarAvatarEl.textContent = initials;
     }
   },
 

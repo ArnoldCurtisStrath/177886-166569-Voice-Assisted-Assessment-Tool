@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -129,6 +131,100 @@ public class AuthService {
                     .orElse(null);
             case PARENT, STUDENT -> null;
         };
+    }
+
+    /**
+     * Profile payload for /api/auth/me — reads the role-specific profile table
+     * so all four roles can share one endpoint.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> profile(User principal) {
+        var resp = new LinkedHashMap<String, Object>();
+        resp.put("userId", principal.getUserId().toString());
+        resp.put("email", principal.getEmail());
+        resp.put("role", principal.getRole().name());
+
+        switch (principal.getRole()) {
+            case ADMIN -> adminRepo.findByUserUserId(principal.getUserId())
+                    .ifPresent(a -> {
+                        resp.put("fullName", a.getFullName());
+                        if (a.getContactPhone() != null) resp.put("phone", a.getContactPhone());
+                        if (a.getSchool() != null) {
+                            resp.put("schoolId", a.getSchool().getSchoolId().toString());
+                            resp.put("schoolName", a.getSchool().getSchoolName());
+                        }
+                    });
+            case TEACHER -> teacherRepo.findByUser(principal)
+                    .ifPresent(t -> {
+                        resp.put("fullName", t.getFullName());
+                        if (t.getSchool() != null) {
+                            resp.put("schoolId", t.getSchool().getSchoolId().toString());
+                            resp.put("schoolName", t.getSchool().getSchoolName());
+                        }
+                    });
+            case PARENT -> parentRepo.findByUser(principal)
+                    .ifPresent(p -> {
+                        resp.put("fullName", p.getFullName());
+                        if (p.getPhoneNumber() != null) resp.put("phone", p.getPhoneNumber());
+                        if (p.getSchool() != null) {
+                            resp.put("schoolId", p.getSchool().getSchoolId().toString());
+                            resp.put("schoolName", p.getSchool().getSchoolName());
+                        }
+                    });
+            case STUDENT -> studentRepo.findByUser(principal)
+                    .ifPresent(s -> {
+                        resp.put("fullName", s.getFullName());
+                        if (s.getSchool() != null) {
+                            resp.put("schoolId", s.getSchool().getSchoolId().toString());
+                            resp.put("schoolName", s.getSchool().getSchoolName());
+                        }
+                    });
+        }
+        return resp;
+    }
+
+    /**
+     * Update own name and phone (where the profile table has a phone column).
+     * Email is intentionally not editable — the school admin owns that.
+     */
+    @Transactional
+    public Map<String, Object> updateProfile(User principal, String fullName, String phone) {
+        var name = fullName.trim();
+        switch (principal.getRole()) {
+            case ADMIN -> adminRepo.findByUserUserId(principal.getUserId()).ifPresent(a -> {
+                a.setFullName(name);
+                if (phone != null) a.setContactPhone(phone.trim().isEmpty() ? null : phone.trim());
+                adminRepo.save(a);
+            });
+            case TEACHER -> teacherRepo.findByUser(principal).ifPresent(t -> {
+                t.setFullName(name);
+                teacherRepo.save(t);
+            });
+            case PARENT -> parentRepo.findByUser(principal).ifPresent(p -> {
+                p.setFullName(name);
+                if (phone != null) p.setPhoneNumber(phone.trim().isEmpty() ? null : phone.trim());
+                parentRepo.save(p);
+            });
+            case STUDENT -> studentRepo.findByUser(principal).ifPresent(s -> {
+                s.setFullName(name);
+                studentRepo.save(s);
+            });
+        }
+        return profile(principal);
+    }
+
+    /**
+     * Verify the current password, then swap in the new one.
+     */
+    @Transactional
+    public void changePassword(User principal, String currentPassword, String newPassword) {
+        var user = userRepo.findById(principal.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepo.save(user);
     }
 
     /**

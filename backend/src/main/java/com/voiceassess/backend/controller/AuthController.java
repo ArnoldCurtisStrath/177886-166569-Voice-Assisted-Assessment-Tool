@@ -1,8 +1,10 @@
 package com.voiceassess.backend.controller;
 
+import com.voiceassess.backend.model.User;
 import com.voiceassess.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -15,6 +17,65 @@ public class AuthController {
 
     public AuthController(AuthService authService) {
         this.authService = authService;
+    }
+
+    /**
+     * Own profile — works for every role from the JWT principal.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<?> me(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        return ResponseEntity.ok(authService.profile(user));
+    }
+
+    /**
+     * Update own name / phone. Email stays locked to the school admin.
+     */
+    @PutMapping("/me")
+    public ResponseEntity<?> updateMe(@AuthenticationPrincipal User user,
+                                      @RequestBody Map<String, String> body) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        var fullName = body.get("fullName");
+        if (fullName == null || fullName.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Full name is required"));
+        }
+        return ResponseEntity.ok(authService.updateProfile(user, fullName, body.get("phone")));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@AuthenticationPrincipal User user,
+                                            @RequestBody Map<String, String> body) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+        var current = body.get("currentPassword");
+        var newPassword = body.get("newPassword");
+        var confirm = body.get("confirmPassword");
+
+        if (current == null || current.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Current password is required"));
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("error", "New password must be at least 6 characters"));
+        }
+        // BCrypt silently truncates past 72 bytes — stop it early
+        if (newPassword.length() > 72) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Password is too long (max 72 characters)"));
+        }
+        if (!newPassword.equals(confirm)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Passwords do not match"));
+        }
+
+        try {
+            authService.changePassword(user, current, newPassword);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+        return ResponseEntity.ok(Map.of("message", "Password updated"));
     }
 
     @PostMapping("/login")

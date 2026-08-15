@@ -1,0 +1,232 @@
+<!-- VoiceAssess — My Account (all roles) -->
+<div class="animate-fade-in">
+  <div class="section-header">
+    <span class="section-title">My Account</span>
+  </div>
+
+  <div class="empty-state" id="profile-loading">
+    <div class="empty-state-icon">@</div>
+    <h4>Loading your account...</h4>
+  </div>
+
+  <div class="empty-state" id="profile-error" style="display:none;">
+    <div class="empty-state-icon">!</div>
+    <h4>Could not load your account</h4>
+    <p id="profile-error-msg" class="text-sm text-muted"></p>
+    <button class="btn btn-secondary" id="profile-retry" style="margin-top:var(--space-3);">Try Again</button>
+  </div>
+
+  <div id="profile-content" style="display:none;">
+
+    <div class="card" style="padding:var(--space-4);display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4);">
+      <div class="avatar avatar-lg" id="profile-avatar" style="background-color:var(--color-primary);color:#fff;font-size:var(--text-xl);font-weight:700;">?</div>
+      <div>
+        <div class="text-lg" id="profile-name" style="font-weight:700;">...</div>
+        <div style="margin-top:var(--space-1);">
+          <span class="badge badge-primary" id="profile-role">...</span>
+          <span class="text-sm text-muted" id="profile-school" style="margin-left:var(--space-2);"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:var(--space-4);margin-bottom:var(--space-4);">
+      <h4 style="margin-bottom:var(--space-3);">Personal Details</h4>
+
+      <div class="form-group">
+        <label for="pf-fullname">Full name</label>
+        <input type="text" id="pf-fullname" class="input" autocomplete="name">
+      </div>
+
+      <div class="form-group">
+        <label for="pf-email">Email address</label>
+        <input type="email" id="pf-email" class="input" readonly style="background:var(--color-bg);">
+        <p class="text-xs text-muted" style="margin-top:var(--space-1);">Email changes are handled by your school administrator.</p>
+      </div>
+
+      <div class="form-group" id="pf-phone-group" style="display:none;">
+        <label for="pf-phone">Phone number</label>
+        <input type="tel" id="pf-phone" class="input" placeholder="+254...">
+      </div>
+
+      <div id="pf-error" style="display:none;padding:var(--space-3);background:#FDEDEC;border:1px solid var(--color-error);border-radius:var(--radius-sm);color:#8B1A1A;font-size:var(--text-sm);margin-bottom:var(--space-3);"></div>
+
+      <button class="btn btn-primary" id="pf-save">Save Changes</button>
+    </div>
+
+    <div class="card" style="padding:var(--space-4);">
+      <h4 style="margin-bottom:var(--space-3);">Change Password</h4>
+
+      <div class="form-group">
+        <label for="pw-current">Current password</label>
+        <div style="display:flex;gap:var(--space-2);">
+          <input type="password" id="pw-current" class="input" autocomplete="current-password">
+          <button type="button" class="btn btn-ghost btn-sm pw-toggle" data-target="pw-current" style="flex-shrink:0;">Show</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="pw-new">New password</label>
+        <div style="display:flex;gap:var(--space-2);">
+          <input type="password" id="pw-new" class="input" autocomplete="new-password">
+          <button type="button" class="btn btn-ghost btn-sm pw-toggle" data-target="pw-new" style="flex-shrink:0;">Show</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="pw-confirm">Confirm new password</label>
+        <div style="display:flex;gap:var(--space-2);">
+          <input type="password" id="pw-confirm" class="input" autocomplete="new-password">
+          <button type="button" class="btn btn-ghost btn-sm pw-toggle" data-target="pw-confirm" style="flex-shrink:0;">Show</button>
+        </div>
+      </div>
+
+      <p class="text-xs text-muted" style="margin-bottom:var(--space-3);">New password must be at least 6 characters.</p>
+
+      <div id="pw-error" style="display:none;padding:var(--space-3);background:#FDEDEC;border:1px solid var(--color-error);border-radius:var(--radius-sm);color:#8B1A1A;font-size:var(--text-sm);margin-bottom:var(--space-3);"></div>
+
+      <button class="btn btn-primary" id="pw-save">Update Password</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  (function() {
+    var contentEl = document.getElementById('profile-content');
+    var loadingEl = document.getElementById('profile-loading');
+    var errorEl = document.getElementById('profile-error');
+
+    function loadProfile() {
+      loadingEl.style.display = '';
+      errorEl.style.display = 'none';
+      contentEl.style.display = 'none';
+
+      API.get('/api/auth/me')
+        .then(function(data) {
+          loadingEl.style.display = 'none';
+          contentEl.style.display = '';
+          fillForm(data);
+        })
+        .catch(function(err) {
+          loadingEl.style.display = 'none';
+          errorEl.style.display = '';
+          document.getElementById('profile-error-msg').textContent = err.message || 'Unknown error';
+        });
+    }
+
+    function fillForm(data) {
+      var role = data.role || '';
+      document.getElementById('profile-name').textContent = data.fullName || 'User';
+      document.getElementById('profile-avatar').textContent = initials(data.fullName);
+      document.getElementById('profile-role').textContent = role.toLowerCase();
+      document.getElementById('profile-school').textContent = data.schoolName || '';
+
+      document.getElementById('pf-fullname').value = data.fullName || '';
+      document.getElementById('pf-email').value = data.email || '';
+      document.getElementById('pf-phone').value = data.phone || '';
+
+      // teachers and students don't have a phone field on the backend
+      var phoneGroup = document.getElementById('pf-phone-group');
+      phoneGroup.style.display = (role === 'ADMIN' || role === 'PARENT') ? '' : 'none';
+    }
+
+    function initials(name) {
+      var parts = String(name || '?').split(' ').filter(Boolean);
+      if (parts.length === 0) return '?';
+      return parts.map(function(p) { return p.charAt(0); }).join('').slice(0, 2).toUpperCase();
+    }
+
+    // save personal details
+    document.getElementById('pf-save').addEventListener('click', function() {
+      var btn = this;
+      var errEl = document.getElementById('pf-error');
+      var fullName = document.getElementById('pf-fullname').value.trim();
+
+      errEl.style.display = 'none';
+      if (!fullName) {
+        errEl.textContent = 'Full name is required.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      API.put('/api/auth/me', {
+        fullName: fullName,
+        phone: document.getElementById('pf-phone').value.trim() || null
+      })
+        .then(function(data) {
+          btn.disabled = false;
+          btn.textContent = 'Save Changes';
+          showToast('Details updated.', 'success');
+          // keep the sidebar + topbar initials in sync with the new name
+          AuthStore.updateUser({ fullName: data.fullName });
+          document.getElementById('profile-name').textContent = data.fullName;
+          document.getElementById('profile-avatar').textContent = initials(data.fullName);
+          var sidebarName = document.getElementById('sidebar-user-name');
+          if (sidebarName) sidebarName.textContent = data.fullName;
+          var topbarAvatar = document.getElementById('topbar-avatar');
+          if (topbarAvatar) topbarAvatar.textContent = initials(data.fullName);
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Save Changes';
+          errEl.textContent = err.message || 'Could not save. Try again.';
+          errEl.style.display = 'block';
+        });
+    });
+
+    // password show/hide toggles
+    document.querySelectorAll('.pw-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var input = document.getElementById(btn.getAttribute('data-target'));
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.textContent = show ? 'Hide' : 'Show';
+      });
+    });
+
+    // update password
+    document.getElementById('pw-save').addEventListener('click', function() {
+      var btn = this;
+      var errEl = document.getElementById('pw-error');
+      var current = document.getElementById('pw-current').value;
+      var next = document.getElementById('pw-new').value;
+      var confirm = document.getElementById('pw-confirm').value;
+
+      errEl.style.display = 'none';
+      if (!current) { errEl.textContent = 'Enter your current password.'; errEl.style.display = 'block'; return; }
+      if (!next || next.length < 6) { errEl.textContent = 'New password must be at least 6 characters.'; errEl.style.display = 'block'; return; }
+      if (next !== confirm) { errEl.textContent = 'New passwords do not match.'; errEl.style.display = 'block'; return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+
+      API.post('/api/auth/change-password', {
+        currentPassword: current,
+        newPassword: next,
+        confirmPassword: confirm
+      })
+        .then(function() {
+          btn.disabled = false;
+          btn.textContent = 'Update Password';
+          document.getElementById('pw-current').value = '';
+          document.getElementById('pw-new').value = '';
+          document.getElementById('pw-confirm').value = '';
+          showToast('Password updated.', 'success');
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Update Password';
+          errEl.textContent = err.message || 'Could not update password.';
+          errEl.style.display = 'block';
+        });
+    });
+
+    document.getElementById('profile-retry').addEventListener('click', loadProfile);
+
+    loadProfile();
+  })();
+</script>

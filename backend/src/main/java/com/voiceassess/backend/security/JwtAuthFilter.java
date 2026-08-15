@@ -19,7 +19,8 @@ import java.util.Optional;
 /**
  * Intercepts every API request, pulls the Bearer token,
  * validates it, and sets the authenticated user in the security context.
- * Skips /api/auth/** paths (those are public).
+ * Only login and register are fully public — /me and /change-password
+ * still need the token parsed so the controller gets a principal.
  */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -39,8 +40,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         var path = request.getRequestURI();
 
-        // skip auth endpoints
-        if (path.startsWith("/api/auth/")) {
+        // the two public endpoints — everything else under /api/auth needs the token
+        if (path.equals("/api/auth/login") || path.equals("/api/auth/register")) {
             chain.doFilter(request, response);
             return;
         }
