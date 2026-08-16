@@ -30,6 +30,9 @@ public class TeacherController {
 
     private static final Logger log = LoggerFactory.getLogger(TeacherController.class);
 
+    private static final Set<String> VALID_RATINGS = Set.of("Below Expectations", "Approaching Expectations",
+        "Meeting Expectations", "Exceeding Expectations");
+
     private final TeacherRepository teacherRepo;
     private final TeacherClassAssignmentRepository tcaRepo;
     private final AudioAssessmentRepository audioAssessmentRepo;
@@ -760,13 +763,11 @@ public class TeacherController {
         }
 
         // validate rating levels
-        var validRatings = Set.of("Below Expectations", "Approaching Expectations",
-            "Meeting Expectations", "Exceeding Expectations");
         for (var entry : editedAssessment) {
             var rating = (String) entry.get("ratingLevel");
-            if (rating == null || !validRatings.contains(rating)) {
+            if (rating == null || !VALID_RATINGS.contains(rating)) {
                 return ResponseEntity.status(400).body(Map.of(
-                    "error", "Invalid rating level: " + rating + ". Must be one of: " + validRatings));
+                    "error", "Invalid rating level: " + rating + ". Must be one of: " + VALID_RATINGS));
             }
         }
 
@@ -782,6 +783,44 @@ public class TeacherController {
         var recordMap = new HashMap<UUID, AssessmentRecord>();
         for (var r : existingRecords) {
             recordMap.put(r.getStudent().getStudentId(), r);
+        }
+
+        // no-op guard: identical edits shouldn't create versions or flip the status
+        boolean unchanged = editedAssessment.size() == recordMap.size();
+        if (unchanged) {
+            for (var entry : editedAssessment) {
+                var studentIdStr = (String) entry.get("studentId");
+                if (studentIdStr == null) { unchanged = false; break; }
+                UUID studentId;
+                try {
+                    studentId = UUID.fromString(studentIdStr);
+                } catch (IllegalArgumentException e) {
+                    unchanged = false;
+                    break;
+                }
+                var rec = recordMap.get(studentId);
+                if (rec == null) { unchanged = false; break; }
+                var rating = (String) entry.getOrDefault("ratingLevel", "Meeting Expectations");
+                var confidence = (String) entry.getOrDefault("confidence", "medium");
+                var evidence = (String) entry.getOrDefault("evidence", "");
+                var strengths = (String) entry.getOrDefault("strengths", "");
+                var areas = (String) entry.getOrDefault("areasForImprovement", "");
+                if (!rating.equals(rec.getRatingLevel()) || !confidence.equals(rec.getConfidence())
+                        || !evidence.equals(rec.getEvidence() == null ? "" : rec.getEvidence())) {
+                    unchanged = false;
+                    break;
+                }
+                var fbOpt = feedbackRepo.findByAssessmentRecord(rec);
+                var curFb = fbOpt.isPresent() ? fbOpt.get().getQualitativeFeedback() : "";
+                if (!curFb.equals(buildFeedbackText(strengths, areas))) {
+                    unchanged = false;
+                    break;
+                }
+            }
+        }
+        if (unchanged) {
+            return ResponseEntity.ok(Map.of("message", "No changes detected — records left as-is.",
+                "recordsUpdated", 0, "recordsCreated", 0));
         }
 
         int updatedCount = 0;
@@ -941,11 +980,9 @@ public class TeacherController {
         }
         var teacher = teacherOpt.get();
 
-        // get all appeals where status is PENDING
-        var allPending = appealRepo.findByStatus("PENDING");
+        // all appeals for this teacher — pending and resolved, frontend splits them
         var result = new ArrayList<Map<String, Object>>();
-
-        for (var ap : allPending) {
+        for (var ap : appealRepo.findAll()) {
             // only show appeals for this teacher's assessments
             if (!ap.getAudioAssessment().getTeacher().getTeacherId().equals(teacher.getTeacherId())) {
                 continue;
@@ -961,6 +998,9 @@ public class TeacherController {
             map.put("reason", ap.getReason());
             map.put("submittedAt", ap.getSubmittedAt() != null ? ap.getSubmittedAt().toString() : "");
             map.put("status", ap.getStatus());
+            map.put("resolvedAt", ap.getResolvedAt() != null ? ap.getResolvedAt().toString() : "");
+            map.put("resolutionNote", ap.getResolutionNote() != null ? ap.getResolutionNote() : "");
+            map.put("resolvedBy", ap.getResolvedBy() != null ? ap.getResolvedBy().getFullName() : "");
 
             // include current score/rating/feedback so the adjust form can pre-populate
             var records = recordRepo.findByAudioAssessment(a);
@@ -976,6 +1016,8 @@ public class TeacherController {
 
             result.add(map);
         }
+        // newest first
+        result.sort((m1, m2) -> ((String) m2.get("submittedAt")).compareTo((String) m1.get("submittedAt")));
 
         return ResponseEntity.ok(result);
     }
@@ -1000,6 +1042,28 @@ public class TeacherController {
             return ResponseEntity.status(400).body(Map.of("error", "Invalid action. Use UPHELD, ADJUSTED, or DISMISSED."));
         }
 
+        // validate the edited data BEFORE persisting anything — a bad score
+        // shouldn't resolve the appeal at all
+        @SuppressWarnings("unchecked")
+        var editedData = (Map<String, Object>) body.get("editedData");
+        if ("ADJUSTED".equals(action)) {
+            if (editedData == null) {
+                return ResponseEntity.status(400).body(Map.of("error", "editedData is required when adjusting a score"));
+            }
+            var scoreObj = editedData.get("score");
+            if (!(scoreObj instanceof Number)) {
+                return ResponseEntity.status(400).body(Map.of("error", "Score must be a number"));
+            }
+            float newScore = ((Number) scoreObj).floatValue();
+            if (Float.isNaN(newScore) || newScore < 1.0f || newScore > 4.0f) {
+                return ResponseEntity.status(400).body(Map.of("error", "Score must be between 1.0 and 4.0"));
+            }
+            var ratingObj = editedData.get("ratingLevel");
+            if (ratingObj instanceof String rs && !VALID_RATINGS.contains(rs)) {
+                return ResponseEntity.status(400).body(Map.of("error", "Invalid rating level: " + rs));
+            }
+        }
+
         appeal.setStatus(action);
         appeal.setResolvedBy(teacherOpt.get());
         appeal.setResolvedAt(java.time.LocalDateTime.now());
@@ -1014,45 +1078,41 @@ public class TeacherController {
 
         if ("ADJUSTED".equals(action)) {
             // update the assessment records with edited data
-            @SuppressWarnings("unchecked")
-            var editedData = (Map<String, Object>) body.get("editedData");
-            if (editedData != null) {
-                var records = recordRepo.findByAudioAssessment(appeal.getAudioAssessment());
-                for (var r : records) {
-                    if (r.getStudent().getStudentId().equals(appeal.getStudent().getStudentId())) {
-                        // save version snapshot
-                        var existingVersions = versionRepo.findByAssessmentRecordOrderByVersionNumberDesc(r);
-                        int nextVer = existingVersions.isEmpty() ? 1 : existingVersions.get(0).getVersionNumber() + 1;
+            float newScore = ((Number) editedData.get("score")).floatValue();
+            var ratingObj = editedData.get("ratingLevel");
+            var records = recordRepo.findByAudioAssessment(appeal.getAudioAssessment());
+            for (var r : records) {
+                if (r.getStudent().getStudentId().equals(appeal.getStudent().getStudentId())) {
+                    // save version snapshot
+                    var existingVersions = versionRepo.findByAssessmentRecordOrderByVersionNumberDesc(r);
+                    int nextVer = existingVersions.isEmpty() ? 1 : existingVersions.get(0).getVersionNumber() + 1;
 
-                        var version = new AssessmentVersion();
-                        version.setAssessmentRecord(r);
-                        version.setVersionNumber(nextVer);
-                        version.setJsonData("{\"score\":" + r.getScore()
-                            + ",\"ratingLevel\":\"" + r.getRatingLevel() + "\"}");
-                        version.setEditedBy(teacherOpt.get());
-                        version.setOriginal(existingVersions.isEmpty());
-                        versionRepo.save(version);
+                    var version = new AssessmentVersion();
+                    version.setAssessmentRecord(r);
+                    version.setVersionNumber(nextVer);
+                    version.setJsonData("{\"score\":" + r.getScore()
+                        + ",\"ratingLevel\":\"" + r.getRatingLevel() + "\"}");
+                    version.setEditedBy(teacherOpt.get());
+                    version.setOriginal(existingVersions.isEmpty());
+                    versionRepo.save(version);
 
-                        // update record
-                        if (editedData.get("score") instanceof Number) {
-                            r.setScore(((Number) editedData.get("score")).floatValue());
-                        }
-                        if (editedData.get("ratingLevel") instanceof String) {
-                            r.setRatingLevel((String) editedData.get("ratingLevel"));
-                        }
-                        recordRepo.save(r);
-
-                        // update feedback
-                        if (editedData.get("feedback") instanceof String) {
-                            var fbOpt = feedbackRepo.findByAssessmentRecord(r);
-                            if (fbOpt.isPresent()) {
-                                var fb = fbOpt.get();
-                                fb.setQualitativeFeedback((String) editedData.get("feedback"));
-                                feedbackRepo.save(fb);
-                            }
-                        }
-                        break;
+                    // update record
+                    r.setScore(newScore);
+                    if (ratingObj instanceof String) {
+                        r.setRatingLevel((String) ratingObj);
                     }
+                    recordRepo.save(r);
+
+                    // update feedback
+                    if (editedData.get("feedback") instanceof String) {
+                        var fbOpt = feedbackRepo.findByAssessmentRecord(r);
+                        if (fbOpt.isPresent()) {
+                            var fb = fbOpt.get();
+                            fb.setQualitativeFeedback((String) editedData.get("feedback"));
+                            feedbackRepo.save(fb);
+                        }
+                    }
+                    break;
                 }
             }
         }

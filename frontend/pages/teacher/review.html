@@ -24,6 +24,7 @@
   (function() {
     var reviews = [];
     var activeFilter = 'pending';
+    var busy = false;
 
     // load from API
     function loadReviews() {
@@ -217,18 +218,16 @@
             loadAuditRecords(data.audioId);
           }
 
-          // wire detail modal buttons
-          setTimeout(function() {
-            document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-              b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
-            });
-            var appBtn = document.querySelector('.modal-approve-btn');
-            if (appBtn) appBtn.addEventListener('click', function() { doApprove(stagingId); });
-            var edtBtn = document.querySelector('.modal-edit-btn');
-            if (edtBtn) edtBtn.addEventListener('click', function() { showEditForm(stagingId, data); });
-            var rejBtn = document.querySelector('.modal-reject-btn');
-            if (rejBtn) rejBtn.addEventListener('click', function() { doReject(stagingId); });
-          }, 50);
+          // wire detail modal buttons — showModal appends synchronously, no timer needed
+          document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+            b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+          });
+          var appBtn = document.querySelector('.modal-approve-btn');
+          if (appBtn) appBtn.addEventListener('click', function() { doApprove(stagingId); });
+          var edtBtn = document.querySelector('.modal-edit-btn');
+          if (edtBtn) edtBtn.addEventListener('click', function() { showEditForm(stagingId, data); });
+          var rejBtn = document.querySelector('.modal-reject-btn');
+          if (rejBtn) rejBtn.addEventListener('click', function() { doReject(stagingId); });
         })
         .catch(function(err) {
           showToast('Failed to load review detail.', 'error');
@@ -289,16 +288,17 @@
       var formHtml = '<div style="max-height:55vh;overflow-y:auto;">';
       for (var i = 0; i < items.length; i++) {
         var a = items[i];
+        var missingId = !a.studentId ? ' <span class="text-xs" style="color:var(--color-error);">(no record — skipped on save)</span>' : '';
         formHtml += '<div class="card" style="margin-bottom:var(--space-2);">';
-        formHtml += '<div style="font-weight:600;margin-bottom:var(--space-2);">' + (a.studentName || 'Student') + '</div>';
-        formHtml += '<div class="form-group"><label>Rating Level</label><select class="input edit-rating" data-student-id="' + (a.studentId || '') + '">';
+        formHtml += '<div style="font-weight:600;margin-bottom:var(--space-2);">' + (a.studentName || 'Student ' + (i + 1)) + missingId + '</div>';
+        formHtml += '<div class="form-group"><label>Rating Level</label><select class="input edit-rating" data-idx="' + i + '">';
         var ratings = ['Below Expectations', 'Approaching Expectations', 'Meeting Expectations', 'Exceeding Expectations'];
         for (var j = 0; j < ratings.length; j++) {
           formHtml += '<option value="' + ratings[j] + '"' + (a.ratingLevel === ratings[j] ? ' selected' : '') + '>' + ratings[j] + '</option>';
         }
         formHtml += '</select></div>';
-        formHtml += '<div class="form-group"><label>Strengths</label><textarea class="input edit-strengths" rows="2" data-student-id="' + (a.studentId || '') + '">' + (a.strengths || '') + '</textarea></div>';
-        formHtml += '<div class="form-group"><label>Areas to Improve</label><textarea class="input edit-areas" rows="2" data-student-id="' + (a.studentId || '') + '">' + (a.areasForImprovement || '') + '</textarea></div>';
+        formHtml += '<div class="form-group"><label>Strengths</label><textarea class="input edit-strengths" rows="2" data-idx="' + i + '">' + (a.strengths || '') + '</textarea></div>';
+        formHtml += '<div class="form-group"><label>Areas to Improve</label><textarea class="input edit-areas" rows="2" data-idx="' + i + '">' + (a.areasForImprovement || '') + '</textarea></div>';
         formHtml += '</div>';
       }
       formHtml += '</div>';
@@ -307,61 +307,82 @@
         '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
         '<button class="btn btn-primary btn-sm" id="save-edit-btn">Save Changes</button>');
 
-      setTimeout(function() {
-        document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-          b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
-        });
-        var saveBtn = document.getElementById('save-edit-btn');
-        if (saveBtn) {
-          saveBtn.addEventListener('click', function() {
-            var edited = [];
-            document.querySelectorAll('.edit-rating').forEach(function(sel) {
-              var sid = sel.getAttribute('data-student-id');
-              var rating = sel.value;
-              var strengthsEl = document.querySelector('.edit-strengths[data-student-id="' + sid + '"]');
-              var areasEl = document.querySelector('.edit-areas[data-student-id="' + sid + '"]');
-              var orig = findOriginal(items, sid);
-              edited.push({
-                studentId: sid,
-                studentName: orig ? orig.studentName : '',
-                ratingLevel: rating,
-                confidence: orig ? orig.confidence : 'medium',
-                evidence: orig ? orig.evidence : '',
-                strengths: strengthsEl ? strengthsEl.value : '',
-                areasForImprovement: areasEl ? areasEl.value : ''
-              });
-            });
-            doEdit(stagingId, edited);
+      document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+        b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+      });
+      var saveBtn = document.getElementById('save-edit-btn');
+      saveBtn.addEventListener('click', function() {
+        if (saveBtn.disabled) return;
+        saveBtn.disabled = true;
+
+        // rows are keyed by index — the old studentId-keyed lookup broke when
+        // the AI payload omitted ids (empty selector matched every row)
+        var edited = [];
+        var skipped = 0;
+        for (var i = 0; i < items.length; i++) {
+          var ratingEl = document.querySelector('.edit-rating[data-idx="' + i + '"]');
+          var strengthsEl = document.querySelector('.edit-strengths[data-idx="' + i + '"]');
+          var areasEl = document.querySelector('.edit-areas[data-idx="' + i + '"]');
+          var orig = items[i];
+          if (!orig.studentId) { skipped++; continue; }
+          edited.push({
+            studentId: orig.studentId,
+            studentName: orig.studentName || '',
+            ratingLevel: ratingEl ? ratingEl.value : (orig.ratingLevel || 'Meeting Expectations'),
+            confidence: orig.confidence || 'medium',
+            evidence: orig.evidence || '',
+            strengths: strengthsEl ? strengthsEl.value : '',
+            areasForImprovement: areasEl ? areasEl.value : ''
           });
         }
-      }, 50);
-    }
-
-    function findOriginal(items, studentId) {
-      for (var i = 0; i < items.length; i++) {
-        if (items[i].studentId === studentId) return items[i];
-      }
-      return null;
+        if (skipped > 0) showToast(skipped + ' student(s) without a record were left unchanged.', 'warning');
+        doEdit(stagingId, edited);
+      });
     }
 
     function doApprove(stagingId) {
-      API.post('/api/teacher/reviews/' + stagingId + '/approve')
-        .then(function() {
-          var o = document.querySelector('.modal-overlay'); if (o) o.remove();
-          showToast('Assessment approved and finalized.', 'success');
-          loadReviews();
-        })
-        .catch(function(err) { showToast('Approve failed: ' + (err.message || 'Unknown error'), 'error'); });
+      // approving finalizes the records — confirm first so a stray tap can't do it
+      showModal('Approve Assessment',
+        '<p class="text-sm">This will finalize the assessment and make it visible to students and parents.</p>',
+        '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+        '<button class="btn btn-sm" id="confirm-approve-btn" style="background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);">Approve</button>');
+
+      document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+        b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+      });
+      var btn = document.getElementById('confirm-approve-btn');
+      btn.addEventListener('click', function() {
+        if (busy || btn.disabled) return;
+        busy = true;
+        btn.disabled = true;
+        API.post('/api/teacher/reviews/' + stagingId + '/approve')
+          .then(function() {
+            busy = false;
+            var o = document.querySelector('.modal-overlay'); if (o) o.remove();
+            showToast('Assessment approved and finalized.', 'success');
+            loadReviews();
+          })
+          .catch(function(err) {
+            busy = false;
+            btn.disabled = false;
+            showToast('Approve failed: ' + (err.message || 'Unknown error'), 'error');
+          });
+      });
     }
 
     function doEdit(stagingId, edited) {
+      if (busy) return;
+      busy = true;
       var o = document.querySelector('.modal-overlay'); if (o) o.remove();
       API.post('/api/teacher/reviews/' + stagingId + '/edit', { assessment: edited })
         .then(function() {
           showToast('Assessment edited and finalized.', 'success');
           loadReviews();
         })
-        .catch(function(err) { showToast('Edit failed: ' + (err.message || 'Unknown error'), 'error'); });
+        .catch(function(err) {
+          showToast('Edit failed: ' + (err.message || 'Unknown error'), 'error');
+        })
+        .finally(function() { busy = false; });
     }
 
     function doReject(stagingId) {
@@ -369,21 +390,27 @@
         '<p class="text-sm">This assessment will be discarded. This cannot be undone.</p>',
         '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
         '<button class="btn btn-danger btn-sm" id="confirm-reject-btn">Reject</button>');
-      setTimeout(function() {
-        document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-          b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
-        });
-        var btn = document.getElementById('confirm-reject-btn');
-        if (btn) btn.addEventListener('click', function() {
-          API.post('/api/teacher/reviews/' + stagingId + '/reject')
-            .then(function() {
-              var o = document.querySelector('.modal-overlay'); if (o) o.remove();
-              showToast('Assessment rejected.', 'error');
-              loadReviews();
-            })
-            .catch(function(err) { showToast('Reject failed: ' + (err.message || 'Unknown error'), 'error'); });
-        });
-      }, 50);
+      document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+        b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+      });
+      var btn = document.getElementById('confirm-reject-btn');
+      btn.addEventListener('click', function() {
+        if (busy || btn.disabled) return;
+        busy = true;
+        btn.disabled = true;
+        API.post('/api/teacher/reviews/' + stagingId + '/reject')
+          .then(function() {
+            busy = false;
+            var o = document.querySelector('.modal-overlay'); if (o) o.remove();
+            showToast('Assessment rejected.', 'error');
+            loadReviews();
+          })
+          .catch(function(err) {
+            busy = false;
+            btn.disabled = false;
+            showToast('Reject failed: ' + (err.message || 'Unknown error'), 'error');
+          });
+      });
     }
 
     function wireActions() {

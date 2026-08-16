@@ -1,43 +1,84 @@
 <!-- VoiceAssess — Teacher Appeals -->
 <div class="animate-fade-in">
   <div class="section-header">
-    <span class="section-title">Pending Appeals</span>
+    <span class="section-title">Appeals</span>
     <span class="badge badge-warning" id="appeals-count">0</span>
+  </div>
+
+  <div class="tabs" style="margin-bottom: var(--space-4);">
+    <button class="tab tab-active" data-appeal-tab="pending">Pending</button>
+    <button class="tab" data-appeal-tab="resolved">Resolved</button>
   </div>
 
   <div class="list-stack" id="appeals-list" style="gap: var(--space-3);"></div>
 
   <div class="empty-state" id="appeals-empty" style="display:none;">
     <div class="empty-state-icon">~</div>
-    <h4>No pending appeals</h4>
-    <p>All student appeals have been resolved.</p>
+    <h4 id="appeals-empty-title">No pending appeals</h4>
+    <p id="appeals-empty-text">All student appeals have been resolved.</p>
   </div>
 </div>
 
 <script>
   (function() {
+    var appeals = [];
+    var activeTab = 'pending';
+    var busy = false;
+
     function loadAppeals() {
       API.get('/api/teacher/appeals')
         .then(function(data) {
-          renderAppeals(data);
+          appeals = data;
+          renderAppeals();
         })
         .catch(function() { showToast('Failed to load appeals.', 'error'); });
     }
 
-    function renderAppeals(items) {
+    function renderAppeals() {
+      var pending = appeals.filter(function(a) { return a.status === 'PENDING'; });
+      var resolved = appeals.filter(function(a) { return a.status !== 'PENDING'; });
+
       var listEl = document.getElementById('appeals-list');
       var emptyEl = document.getElementById('appeals-empty');
       var countEl = document.getElementById('appeals-count');
-      if (countEl) countEl.textContent = items.length;
+      if (countEl) countEl.textContent = pending.length;
+
+      var items = activeTab === 'pending' ? pending : resolved;
+      var emptyTitle = document.getElementById('appeals-empty-title');
+      var emptyText = document.getElementById('appeals-empty-text');
 
       if (!items || items.length === 0) {
         if (listEl) listEl.innerHTML = '';
         if (emptyEl) emptyEl.style.display = '';
+        if (activeTab === 'pending') {
+          emptyTitle.textContent = 'No pending appeals';
+          emptyText.textContent = 'All student appeals have been resolved.';
+        } else {
+          emptyTitle.textContent = 'No resolved appeals';
+          emptyText.textContent = 'Resolved appeals will appear here with their outcome.';
+        }
         return;
       }
       if (emptyEl) emptyEl.style.display = 'none';
 
       listEl.innerHTML = items.map(function(a) {
+        var buttons = '';
+        if (activeTab === 'pending') {
+          buttons = '<div style="display:flex;gap:var(--space-2);">' +
+            '<button class="btn btn-sm resolve-btn" data-action="UPHELD" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);border-radius:var(--radius-sm);">Uphold</button>' +
+            '<button class="btn btn-sm resolve-btn" data-action="ADJUSTED" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:transparent;color:var(--color-primary);border:1.5px solid var(--color-primary);border-radius:var(--radius-sm);">Adjust</button>' +
+            '<button class="btn btn-sm resolve-btn" data-action="DISMISSED" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);border-radius:var(--radius-sm);">Dismiss</button>' +
+            '</div>';
+        } else {
+          var outcomeColor = a.status === 'DISMISSED' ? 'var(--color-error)' : 'var(--color-success)';
+          buttons = '<div class="text-xs" style="margin-top:var(--space-2);padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);border-left:3px solid ' + outcomeColor + ';">' +
+            '<span style="font-weight:600;color:' + outcomeColor + ';">' + a.status.charAt(0) + a.status.slice(1).toLowerCase() + '</span>' +
+            ' &middot; resolved ' + (a.resolvedAt || '') +
+            (a.resolvedBy ? ' by ' + a.resolvedBy : '') +
+            (a.resolutionNote ? '<div style="margin-top:var(--space-1);">"' + a.resolutionNote + '"</div>' : '') +
+            '</div>';
+        }
+
         return '<div class="card">' +
           '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-2);">' +
             '<div>' +
@@ -47,11 +88,7 @@
             '<span class="text-xs text-muted">' + (a.submittedAt || '') + '</span>' +
           '</div>' +
           '<div class="text-sm" style="padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);margin-bottom:var(--space-2);">' + a.reason + '</div>' +
-          '<div style="display:flex;gap:var(--space-2);">' +
-            '<button class="btn btn-sm resolve-btn" data-action="UPHELD" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);border-radius:var(--radius-sm);">Uphold</button>' +
-            '<button class="btn btn-sm resolve-btn" data-action="ADJUSTED" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:transparent;color:var(--color-primary);border:1.5px solid var(--color-primary);border-radius:var(--radius-sm);">Adjust</button>' +
-            '<button class="btn btn-sm resolve-btn" data-action="DISMISSED" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);border-radius:var(--radius-sm);">Dismiss</button>' +
-          '</div>' +
+          buttons +
         '</div>';
       }).join('');
 
@@ -65,10 +102,36 @@
           if (action === 'ADJUSTED') {
             showAdjustForm(aid, curScore, curRating, curFb);
           } else {
-            var note = prompt('Add a note explaining your decision to the student (optional):');
-            doResolve(aid, action, null, note || '');
+            showResolveConfirm(aid, action);
           }
         });
+      });
+    }
+
+    // confirm modal with an optional note — replaces the old prompt()
+    function showResolveConfirm(appealId, action) {
+      var label = action === 'UPHELD' ? 'Uphold' : 'Dismiss';
+      var color = action === 'UPHELD' ? '#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success)' : '#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error)';
+      var message = action === 'UPHELD'
+        ? 'This keeps the current score and closes the appeal.'
+        : 'This keeps the current score and closes the appeal as dismissed.';
+
+      showModal(label + ' Appeal',
+        '<p class="text-sm" style="margin-bottom:var(--space-3);">' + message + '</p>' +
+        '<div class="form-group"><label>Note to Student (optional explanation)</label><textarea class="input" id="resolve-note" rows="2" placeholder="Explain your decision..."></textarea></div>',
+        '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
+        '<button class="btn btn-sm" id="confirm-resolve-btn" style="background:' + color + ';border-radius:var(--radius-sm);">' + label + '</button>');
+
+      document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+        b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+      });
+      var btn = document.getElementById('confirm-resolve-btn');
+      btn.addEventListener('click', function() {
+        if (busy || btn.disabled) return;
+        busy = true;
+        btn.disabled = true;
+        var note = document.getElementById('resolve-note').value;
+        doResolve(appealId, action, null, note);
       });
     }
 
@@ -95,19 +158,24 @@
         '<button class="btn btn-ghost btn-sm modal-close-btn">Cancel</button>' +
         '<button class="btn btn-primary btn-sm" id="save-adjust-btn">Save</button>');
 
-      setTimeout(function() {
-        document.querySelectorAll('.modal-close-btn').forEach(function(b) {
-          b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
-        });
-        var sb = document.getElementById('save-adjust-btn');
-        if (sb) sb.addEventListener('click', function() {
-          var score = parseFloat(document.getElementById('adj-score').value);
-          var rating = document.getElementById('adj-rating').value;
-          var feedback = document.getElementById('adj-feedback').value;
-          var note = document.getElementById('adj-note').value;
-          doResolve(appealId, 'ADJUSTED', { score: score, ratingLevel: rating, feedback: feedback }, note);
-        });
-      }, 50);
+      document.querySelectorAll('.modal-close-btn').forEach(function(b) {
+        b.addEventListener('click', function() { var o = document.querySelector('.modal-overlay'); if (o) o.remove(); });
+      });
+      var sb = document.getElementById('save-adjust-btn');
+      sb.addEventListener('click', function() {
+        if (busy || sb.disabled) return;
+        var score = parseFloat(document.getElementById('adj-score').value);
+        if (isNaN(score) || score < 1 || score > 4) {
+          showToast('Score must be between 1.0 and 4.0.', 'error');
+          return;
+        }
+        busy = true;
+        sb.disabled = true;
+        var rating = document.getElementById('adj-rating').value;
+        var feedback = document.getElementById('adj-feedback').value;
+        var note = document.getElementById('adj-note').value;
+        doResolve(appealId, 'ADJUSTED', { score: score, ratingLevel: rating, feedback: feedback }, note);
+      });
     }
 
     function doResolve(appealId, action, editedData, note) {
@@ -121,8 +189,21 @@
           showToast('Appeal resolved.', 'success');
           loadAppeals();
         })
-        .catch(function(err) { showToast('Failed: ' + (err.message || 'Unknown error'), 'error'); });
+        .catch(function(err) {
+          busy = false;
+          showToast('Failed: ' + (err.message || 'Unknown error'), 'error');
+        });
     }
+
+    // tab switch
+    document.querySelectorAll('[data-appeal-tab]').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('[data-appeal-tab]').forEach(function(t) { t.classList.remove('tab-active'); });
+        tab.classList.add('tab-active');
+        activeTab = tab.getAttribute('data-appeal-tab');
+        renderAppeals();
+      });
+    });
 
     loadAppeals();
   })();
