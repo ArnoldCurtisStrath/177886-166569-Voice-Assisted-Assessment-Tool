@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -123,7 +124,7 @@ public class TeacherController {
         // include the active term name
         var resp = new LinkedHashMap<String, Object>();
         resp.putAll(stats);
-        var activeTerms = termRepo.findBySchoolAndStatus(teacher.getSchool(), "active");
+        var activeTerms = termRepo.findBySchoolAndStatusIgnoreCase(teacher.getSchool(), "ACTIVE");
         if (!activeTerms.isEmpty()) {
             resp.put("activeTermName", activeTerms.get(0).getTermName());
         }
@@ -391,7 +392,7 @@ public class TeacherController {
         }
 
         // try to find the active term for this school
-        var terms = termRepo.findBySchoolAndStatus(teacher.getSchool(), "active");
+        var terms = termRepo.findBySchoolAndStatusIgnoreCase(teacher.getSchool(), "ACTIVE");
         if (!terms.isEmpty()) {
             assessment.setTerm(terms.get(0));
         }
@@ -407,6 +408,7 @@ public class TeacherController {
     }
 
     @PostMapping("/assessments/{audioId}/upload")
+    @Transactional
     public ResponseEntity<?> uploadAudio(@AuthenticationPrincipal User user,
                                           @PathVariable UUID audioId,
                                           @RequestParam(value = "file", required = false) MultipartFile file) {
@@ -425,27 +427,6 @@ public class TeacherController {
                 "error", "Upload failed. Check the file and try again."
             ));
         }
-    }
-
-    @ExceptionHandler(MultipartException.class)
-    public ResponseEntity<?> handleMultipartException(MultipartException e) {
-        System.err.println("[uploadAudio] MULTIPART EXCEPTION: " + e.getMessage());
-        e.printStackTrace();
-        return ResponseEntity.status(400).body(Map.of("error", "Invalid file upload. The file may be too large or the wrong type."));
-    }
-
-    @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<?> handleMissingParam(MissingServletRequestParameterException e) {
-        System.err.println("[uploadAudio] MISSING PARAM: " + e.getMessage());
-        return ResponseEntity.status(400).body(Map.of("error", "Missing parameter: " + e.getParameterName()));
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> handleAll(Exception e) {
-        var sw = new StringWriter();
-        e.printStackTrace(new PrintWriter(sw));
-        System.err.println("[TeacherController] UNHANDLED EXCEPTION: " + sw);
-        return ResponseEntity.status(500).body(Map.of("error", "Something went wrong on the server. Try again."));
     }
 
     @GetMapping("/assessments/{audioId}/staging")
@@ -715,6 +696,7 @@ public class TeacherController {
     }
 
     @PostMapping("/reviews/{stagingId}/approve")
+    @Transactional
     public ResponseEntity<?> approveReview(@AuthenticationPrincipal User user,
                                             @PathVariable UUID stagingId) {
         var stagingOpt = stagingRepo.findById(stagingId);
@@ -741,6 +723,7 @@ public class TeacherController {
     }
 
     @PostMapping("/reviews/{stagingId}/edit")
+    @Transactional
     public ResponseEntity<?> editReview(@AuthenticationPrincipal User user,
                                          @PathVariable UUID stagingId,
                                          @RequestBody Map<String, Object> body) {
@@ -937,6 +920,7 @@ public class TeacherController {
     }
 
     @PostMapping("/reviews/{stagingId}/reject")
+    @Transactional
     public ResponseEntity<?> rejectReview(@AuthenticationPrincipal User user,
                                            @PathVariable UUID stagingId,
                                            @RequestBody(required = false) Map<String, Object> body) {
@@ -1023,6 +1007,7 @@ public class TeacherController {
     }
 
     @PostMapping("/appeals/{appealId}/resolve")
+    @Transactional
     public ResponseEntity<?> resolveAppeal(@AuthenticationPrincipal User user,
                                             @PathVariable UUID appealId,
                                             @RequestBody Map<String, Object> body) {
@@ -1137,8 +1122,7 @@ public class TeacherController {
 
     private ResponseEntity<?> doUploadAudio(User user, UUID audioId, MultipartFile file) throws IOException {
         // find the assessment
-        var assessmentOpt = audioAssessmentRepo.findById(audioId);
-        if (assessmentOpt.isEmpty()) {
+        var assessmentOpt = audioAssessmentRepo.findById(audioId);        if (assessmentOpt.isEmpty()) {
             return ResponseEntity.status(404).body(Map.of("error", "Assessment not found"));
         }
         var assessment = assessmentOpt.get();

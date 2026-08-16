@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface AcademicTermRepository extends JpaRepository<AcademicTerm, UUID> {
     List<AcademicTerm> findBySchool(School school);
     List<AcademicTerm> findBySchoolAndStatus(School school, String status);
+    List<AcademicTerm> findBySchoolAndStatusIgnoreCase(School school, String status);
 }

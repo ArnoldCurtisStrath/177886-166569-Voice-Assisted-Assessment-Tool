@@ -88,6 +88,10 @@ public class AuthService {
         var schoolId = resolveSchoolId(user);
         var token = jwtUtil.generateToken(user);
 
+        // stamp last login — surfaced on the profile page
+        user.setLastLogin(java.time.LocalDateTime.now());
+        userRepo.save(user);
+
         writeLog(normalizedEmail, ipAddress, "SUCCESS");
 
         return Optional.of(new LoginResult(

@@ -68,6 +68,13 @@ public class StudentController {
 
         for (var r : records) {
             var a = r.getAudioAssessment();
+
+            // only finalized assessments are visible to students — the AI draft
+            // (audio status UPLOADED) is hidden until the teacher approves or edits it
+            if (!"COMPLETED".equals(a.getStatus())) {
+                continue;
+            }
+
             var map = new LinkedHashMap<String, Object>();
             map.put("recordId", r.getRecordId().toString());
             map.put("audioId", a.getAudioId().toString());
@@ -134,6 +141,12 @@ public class StudentController {
         }
 
         var a = record.getAudioAssessment();
+
+        // same privacy rule as the list — drafts aren't visible until finalized
+        if (!"COMPLETED".equals(a.getStatus())) {
+            return ResponseEntity.status(404).body(Map.of("error", "Assessment record not found"));
+        }
+
         var resp = new LinkedHashMap<String, Object>();
         resp.put("recordId", record.getRecordId().toString());
         resp.put("audioId", a.getAudioId().toString());
@@ -176,6 +189,7 @@ public class StudentController {
     }
 
     @PostMapping("/appeals")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<?> submitAppeal(@AuthenticationPrincipal User user,
                                            @RequestBody Map<String, Object> body) {
         var studentOpt = studentRepo.findByUser(user);
@@ -196,6 +210,11 @@ public class StudentController {
         var audioOpt = audioAssessmentRepo.findById(audioId);
         if (audioOpt.isEmpty()) {
             return ResponseEntity.status(404).body(Map.of("error", "Assessment not found"));
+        }
+
+        // can't appeal a draft — matches the visibility rule on the list
+        if (!"COMPLETED".equals(audioOpt.get().getStatus())) {
+            return ResponseEntity.status(403).body(Map.of("error", "This assessment is not finalized yet"));
         }
 
         // check student has a record for this assessment
