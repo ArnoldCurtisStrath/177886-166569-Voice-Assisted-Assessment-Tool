@@ -77,6 +77,10 @@ public class AdminUserController {
                 && (req.confirmPassword == null || !req.password.equals(req.confirmPassword))) {
             return ResponseEntity.badRequest().body(Map.of("error", "Passwords do not match"));
         }
+        // disabling your own account locks you out with no recovery
+        if (req.isActive != null && !req.isActive && userId.equals(user.getUserId())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "You cannot disable your own account"));
+        }
         try {
             var updated = userService.updateUser(userId, req, resolveSchoolId(user));
             return ResponseEntity.ok(updated);
@@ -88,6 +92,9 @@ public class AdminUserController {
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<?> deleteUser(@AuthenticationPrincipal User user,
                                         @PathVariable UUID userId) {
+        if (userId.equals(user.getUserId())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "You cannot delete your own account"));
+        }
         try {
             userService.deleteUser(userId, resolveSchoolId(user));
             return ResponseEntity.ok(Map.of("message", "User deleted"));

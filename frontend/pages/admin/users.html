@@ -388,6 +388,14 @@
       document.getElementById('user-dob').value = u.dateOfBirth || '';
 
       updateFormFields();
+
+      // you can't delete or disable your own account — the backend rejects it anyway
+      var isSelf = AuthStore.user && u.userId === AuthStore.user.id;
+      document.getElementById('user-modal-delete').style.display = isSelf ? 'none' : '';
+      if (isSelf) {
+        document.getElementById('user-active-group').style.display = 'none';
+      }
+
       document.getElementById('user-modal').style.display = 'flex';
     }
 

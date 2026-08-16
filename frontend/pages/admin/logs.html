@@ -17,11 +17,19 @@
     <div class="empty-state-icon">~</div>
     <h4>Loading logs...</h4>
   </div>
+
+  <div id="log-pagination" style="display:none;margin-top:var(--space-4);justify-content:center;gap:var(--space-3);align-items:center;">
+    <button class="btn btn-sm btn-ghost" id="logs-prev">Prev</button>
+    <span class="text-sm text-muted" id="log-page-info"></span>
+    <button class="btn btn-sm btn-ghost" id="logs-next">Next</button>
+  </div>
 </div>
 
 <script>
   (function() {
-    var logs = [];
+    var allLogs = [];
+    var pageSize = 20;
+    var page = 0;
     var expandedId = null;
 
     function loadLogs() {
@@ -30,13 +38,14 @@
       if (loadingEl) loadingEl.style.display = '';
       if (emptyEl) emptyEl.style.display = 'none';
 
-      API.get('/api/admin/logs?limit=100')
+      API.get('/api/admin/logs?limit=500')
         .then(function(data) {
-          logs = data || [];
+          allLogs = data || [];
+          page = 0;
           renderLogs();
         })
         .catch(function(err) {
-          logs = [];
+          allLogs = [];
           renderLogs();
           showToast('Failed to load logs: ' + err.message, 'error');
         });
@@ -45,7 +54,7 @@
     function formatTimestamp(ts) {
       try {
         var d = new Date(ts);
-        if (isNaN(d.getTime())) return ts;
+        if (isNaN(d.getTime())) return escapeHtml(ts);
         var months = ['Jan','Feb','Mar','Apr','May','Jun',
                       'Jul','Aug','Sep','Oct','Nov','Dec'];
         var dateStr = d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
@@ -54,7 +63,7 @@
         var secs = d.getSeconds().toString().padStart(2, '0');
         return dateStr + ', ' + hours + ':' + mins + ':' + secs;
       } catch (e) {
-        return ts;
+        return escapeHtml(ts);
       }
     }
 
@@ -72,35 +81,42 @@
       var emptyEl = document.getElementById('log-empty');
       var loadingEl = document.getElementById('log-loading');
       var countBadge = document.getElementById('log-count-badge');
+      var pagerEl = document.getElementById('log-pagination');
 
       if (loadingEl) loadingEl.style.display = 'none';
-      if (countBadge) countBadge.textContent = logs.length;
+      if (countBadge) countBadge.textContent = allLogs.length;
 
-      if (!logs.length) {
+      if (!allLogs.length) {
         if (listEl) listEl.innerHTML = '';
         if (emptyEl) emptyEl.style.display = '';
+        if (pagerEl) pagerEl.style.display = 'none';
         return;
       }
 
       if (emptyEl) emptyEl.style.display = 'none';
 
+      var totalPages = Math.ceil(allLogs.length / pageSize);
+      if (page >= totalPages) page = totalPages - 1;
+      var start = page * pageSize;
+      var pageLogs = allLogs.slice(start, start + pageSize);
+
       if (listEl) {
-        listEl.innerHTML = logs.map(function(l) {
+        listEl.innerHTML = pageLogs.map(function(l) {
           var isExpanded = expandedId === l.logId;
-          var msg = l.errorMessage || '';
+          var msg = escapeHtml(l.errorMessage || '');
           var shortMsg = msg.length > 120 ? msg.substring(0, 120) + '...' : msg;
 
           return (
-            '<div class="list-item clickable" data-log-id="' + l.logId + '">' +
+            '<div class="list-item clickable" data-log-id="' + escapeHtml(l.logId) + '">' +
               '<div class="list-item-body">' +
                 '<div class="list-item-title">' +
-                  '<span class="badge ' + errorBadgeClass(l.errorType) + '" style="margin-right:var(--space-2);">' + (l.errorType || 'UNKNOWN') + '</span>' +
+                  '<span class="badge ' + errorBadgeClass(l.errorType) + '" style="margin-right:var(--space-2);">' + escapeHtml(l.errorType || 'UNKNOWN') + '</span>' +
                   formatTimestamp(l.timestamp) +
                 '</div>' +
                 '<div class="list-item-subtitle" style="margin-top:var(--space-1);font-family:var(--font-mono);font-size:var(--text-xs);white-space:pre-wrap;">' +
                   (isExpanded ? msg : shortMsg) +
                 '</div>' +
-                (l.relatedEntity ? '<div class="list-item-subtitle" style="margin-top:var(--space-1);">Related: ' + l.relatedEntity + '</div>' : '') +
+                (l.relatedEntity ? '<div class="list-item-subtitle" style="margin-top:var(--space-1);">Related: ' + escapeHtml(l.relatedEntity) + '</div>' : '') +
               '</div>' +
               (msg.length > 120 ? '<div class="list-chevron" style="flex-shrink:0;">' + (isExpanded ? '&uarr;' : '&darr;') + '</div>' : '') +
             '</div>'
@@ -110,7 +126,7 @@
         listEl.querySelectorAll('.list-item').forEach(function(row) {
           row.addEventListener('click', function() {
             var lid = row.getAttribute('data-log-id');
-            var l = logs.find(function(x) { return x.logId === lid; });
+            var l = allLogs.find(function(x) { return x.logId === lid; });
             if (!l) return;
             if (l.errorMessage && l.errorMessage.length > 120) {
               expandedId = expandedId === lid ? null : lid;
@@ -119,9 +135,24 @@
           });
         });
       }
+
+      if (pagerEl) {
+        pagerEl.style.display = totalPages > 1 ? 'flex' : 'none';
+        document.getElementById('log-page-info').textContent =
+          'Page ' + (page + 1) + ' of ' + totalPages + ' (' + allLogs.length + ' logs)';
+        document.getElementById('logs-prev').disabled = page === 0;
+        document.getElementById('logs-next').disabled = page >= totalPages - 1;
+      }
     }
 
     document.getElementById('logs-refresh').addEventListener('click', loadLogs);
+    document.getElementById('logs-prev').addEventListener('click', function() {
+      if (page > 0) { page--; renderLogs(); }
+    });
+    document.getElementById('logs-next').addEventListener('click', function() {
+      page++;
+      renderLogs();
+    });
 
     loadLogs();
   })();

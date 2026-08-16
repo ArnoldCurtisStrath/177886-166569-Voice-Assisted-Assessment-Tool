@@ -92,6 +92,11 @@
       var filterEl = document.getElementById('rubric-subject-filter');
       var modalSelect = document.getElementById('rubric-subject');
 
+      // remember the current filter so a reload doesn't silently reset it
+      var prevFilter = activeFilter;
+      var stillExists = prevFilter === 'all' || subjects.some(function(s) { return s.subjectId === prevFilter; });
+      if (!stillExists) activeFilter = 'all';
+
       // keep the "All Subjects" option
       var filterHtml = '<option value="all">All Subjects</option>';
       var modalHtml = '';
@@ -103,6 +108,7 @@
       });
 
       filterEl.innerHTML = filterHtml;
+      filterEl.value = activeFilter;
       modalSelect.innerHTML = modalHtml;
     }
 

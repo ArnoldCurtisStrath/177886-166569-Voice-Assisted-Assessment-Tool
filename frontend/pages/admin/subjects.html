@@ -147,6 +147,8 @@
               '</div>' +
               '<div class="list-item-trailing">' +
                 '<span class="badge badge-primary">' + s.rubricCount + ' rubric(s)</span>' +
+                '<button class="btn btn-sm btn-ghost subject-edit-btn" data-subject-id="' + s.subjectId + '">Edit</button>' +
+                '<button class="btn btn-sm btn-ghost subject-delete-btn" data-subject-id="' + s.subjectId + '" style="color:var(--color-error);">Delete</button>' +
               '</div>' +
             '</div>'
           );
@@ -158,6 +160,24 @@
             var s = subjects.find(function(x) { return x.subjectId === sid; });
             if (!s) return;
             showRubricDetail(s);
+          });
+        });
+
+        listEl.querySelectorAll('.subject-edit-btn').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var sid = btn.getAttribute('data-subject-id');
+            var s = subjects.find(function(x) { return x.subjectId === sid; });
+            if (s) openEditForm(s);
+          });
+        });
+
+        listEl.querySelectorAll('.subject-delete-btn').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var sid = btn.getAttribute('data-subject-id');
+            var s = subjects.find(function(x) { return x.subjectId === sid; });
+            if (s) deleteSubject(s.subjectId);
           });
         });
       }
@@ -259,10 +279,21 @@
         });
     });
 
+    function deleteSubject(subjectId) {
+      if (!confirm('Delete this subject? Rubrics for this subject must be removed first.')) return;
+      API.del('/api/admin/subjects/' + subjectId)
+        .then(function() {
+          showToast('Subject deleted', 'success');
+          loadSubjects();
+          loadRubrics();
+        })
+        .catch(function(err) {
+          showToast('Failed to delete: ' + err.message, 'error');
+        });
+    }
+
     document.getElementById('subject-modal-delete').addEventListener('click', function() {
       if (!editingId) return;
-      if (!confirm('Delete this subject? Rubrics for this subject must be removed first.')) return;
-
       var btn = this;
       btn.disabled = true;
       btn.textContent = 'Deleting...';

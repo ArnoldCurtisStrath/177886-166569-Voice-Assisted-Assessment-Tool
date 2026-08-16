@@ -574,16 +574,27 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> updateTermStatus(UUID termId, UUID adminSchoolId, String status) {
+    public Map<String, Object> updateTerm(UUID termId, UUID adminSchoolId, String termName,
+                                          LocalDate startDate, LocalDate endDate, String status) {
         var term = termRepo.findById(termId).orElseThrow(
                 () -> new IllegalArgumentException("Term not found"));
         verifyOwnership(term.getSchool().getSchoolId(), adminSchoolId, "Term not found");
 
-        if ("ACTIVE".equalsIgnoreCase(status)) {
-            deactivateOtherTerms(term.getSchool());
+        if (termName != null && !termName.isBlank()) {
+            term.setTermName(termName.trim());
         }
-
-        term.setStatus(status.toUpperCase());
+        if (startDate != null) {
+            term.setStartDate(startDate);
+        }
+        if (endDate != null) {
+            term.setEndDate(endDate);
+        }
+        if (status != null && !status.isBlank()) {
+            if ("ACTIVE".equalsIgnoreCase(status)) {
+                deactivateOtherTerms(term.getSchool());
+            }
+            term.setStatus(status.toUpperCase());
+        }
         term = termRepo.save(term);
 
         var map = new LinkedHashMap<String, Object>();

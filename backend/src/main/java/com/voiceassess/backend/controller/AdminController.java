@@ -495,21 +495,30 @@ public class AdminController {
     }
 
     @PutMapping("/terms/{termId}")
-    public ResponseEntity<?> updateTermStatus(@AuthenticationPrincipal User user,
-                                               @PathVariable UUID termId,
-                                               @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> updateTerm(@AuthenticationPrincipal User user,
+                                         @PathVariable UUID termId,
+                                         @RequestBody Map<String, Object> body) {
         var status = (String) body.get("status");
-        if (status == null || status.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "status is required"));
+        if (status != null && !status.isBlank()) {
+            var upper = status.toUpperCase();
+            if (!"ACTIVE".equals(upper) && !"ARCHIVED".equals(upper) && !"UPCOMING".equals(upper)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "status must be ACTIVE, ARCHIVED, or UPCOMING"));
+            }
         }
 
-        var upper = status.toUpperCase();
-        if (!"ACTIVE".equals(upper) && !"ARCHIVED".equals(upper) && !"UPCOMING".equals(upper)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "status must be ACTIVE, ARCHIVED, or UPCOMING"));
+        LocalDate startDate = null, endDate = null;
+        var startStr = (String) body.get("startDate");
+        var endStr = (String) body.get("endDate");
+        try {
+            if (startStr != null && !startStr.isBlank()) startDate = LocalDate.parse(startStr);
+            if (endStr != null && !endStr.isBlank()) endDate = LocalDate.parse(endStr);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid date format. Use YYYY-MM-DD"));
         }
 
         try {
-            var updated = adminService.updateTermStatus(termId, resolveSchoolId(user), status);
+            var updated = adminService.updateTerm(termId, resolveSchoolId(user),
+                    (String) body.get("termName"), startDate, endDate, status);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
