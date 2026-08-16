@@ -105,8 +105,8 @@
         html +=
           '<div>' +
             '<div style="display:flex;justify-content:space-between;font-size:var(--text-sm);margin-bottom:var(--space-1);">' +
-              '<span style="font-weight:600;">' + item.subjectName + '</span>' +
-              '<span style="color:var(--text-muted);">' + item.count + '</span>' +
+              '<span style="font-weight:600;">' + escapeHtml(item.subjectName) + '</span>' +
+              '<span style="color:var(--text-muted);">' + escapeHtml(item.count) + '</span>' +
             '</div>' +
             '<div class="progress-bar">' +
               '<div class="progress-fill" style="width:' + pct + '%;"></div>' +

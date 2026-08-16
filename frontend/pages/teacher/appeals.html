@@ -65,29 +65,29 @@
         var buttons = '';
         if (activeTab === 'pending') {
           buttons = '<div style="display:flex;gap:var(--space-2);">' +
-            '<button class="btn btn-sm resolve-btn" data-action="UPHELD" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);border-radius:var(--radius-sm);">Uphold</button>' +
-            '<button class="btn btn-sm resolve-btn" data-action="ADJUSTED" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:transparent;color:var(--color-primary);border:1.5px solid var(--color-primary);border-radius:var(--radius-sm);">Adjust</button>' +
-            '<button class="btn btn-sm resolve-btn" data-action="DISMISSED" data-aid="' + a.appealId + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (a.currentRating || '') + '" data-feedback="' + (a.currentFeedback || '').replace(/"/g, '&quot;') + '" style="flex:1;background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);border-radius:var(--radius-sm);">Dismiss</button>' +
+            '<button class="btn btn-sm resolve-btn" data-action="UPHELD" data-aid="' + escapeHtml(a.appealId) + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (escapeHtml(a.currentRating || '')) + '" data-feedback="' + escapeHtml(a.currentFeedback || '') + '" style="flex:1;background:#E8F8EF;color:var(--color-success);border:1.5px solid var(--color-success);border-radius:var(--radius-sm);">Uphold</button>' +
+            '<button class="btn btn-sm resolve-btn" data-action="ADJUSTED" data-aid="' + escapeHtml(a.appealId) + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (escapeHtml(a.currentRating || '')) + '" data-feedback="' + escapeHtml(a.currentFeedback || '') + '" style="flex:1;background:transparent;color:var(--color-primary);border:1.5px solid var(--color-primary);border-radius:var(--radius-sm);">Adjust</button>' +
+            '<button class="btn btn-sm resolve-btn" data-action="DISMISSED" data-aid="' + escapeHtml(a.appealId) + '" data-score="' + (a.currentScore || 0) + '" data-rating="' + (escapeHtml(a.currentRating || '')) + '" data-feedback="' + escapeHtml(a.currentFeedback || '') + '" style="flex:1;background:#FDEDEC;color:var(--color-error);border:1.5px solid var(--color-error);border-radius:var(--radius-sm);">Dismiss</button>' +
             '</div>';
         } else {
           var outcomeColor = a.status === 'DISMISSED' ? 'var(--color-error)' : 'var(--color-success)';
           buttons = '<div class="text-xs" style="margin-top:var(--space-2);padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);border-left:3px solid ' + outcomeColor + ';">' +
             '<span style="font-weight:600;color:' + outcomeColor + ';">' + a.status.charAt(0) + a.status.slice(1).toLowerCase() + '</span>' +
-            ' &middot; resolved ' + (a.resolvedAt || '') +
-            (a.resolvedBy ? ' by ' + a.resolvedBy : '') +
-            (a.resolutionNote ? '<div style="margin-top:var(--space-1);">"' + a.resolutionNote + '"</div>' : '') +
+            ' &middot; resolved ' + (escapeHtml(a.resolvedAt || '')) +
+            (a.resolvedBy ? ' by ' + escapeHtml(a.resolvedBy) : '') +
+            (a.resolutionNote ? '<div style="margin-top:var(--space-1);">"' + escapeHtml(a.resolutionNote) + '"</div>' : '') +
             '</div>';
         }
 
         return '<div class="card">' +
           '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-2);">' +
             '<div>' +
-              '<div style="font-weight:600;">' + a.studentName + '</div>' +
-              '<div class="text-sm text-muted">' + a.subjectName + ' &middot; ' + a.topic + '</div>' +
+              '<div style="font-weight:600;">' + escapeHtml(a.studentName) + '</div>' +
+              '<div class="text-sm text-muted">' + escapeHtml(a.subjectName) + ' &middot; ' + escapeHtml(a.topic) + '</div>' +
             '</div>' +
-            '<span class="text-xs text-muted">' + (a.submittedAt || '') + '</span>' +
+            '<span class="text-xs text-muted">' + (escapeHtml(a.submittedAt || '')) + '</span>' +
           '</div>' +
-          '<div class="text-sm" style="padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);margin-bottom:var(--space-2);">' + a.reason + '</div>' +
+          '<div class="text-sm" style="padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);margin-bottom:var(--space-2);">' + escapeHtml(a.reason) + '</div>' +
           buttons +
         '</div>';
       }).join('');

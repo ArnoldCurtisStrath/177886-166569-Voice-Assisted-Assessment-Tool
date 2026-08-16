@@ -139,7 +139,7 @@
       if (pagerEl) {
         pagerEl.style.display = totalPages > 1 ? 'flex' : 'none';
         document.getElementById('log-page-info').textContent =
-          'Page ' + (page + 1) + ' of ' + totalPages + ' (' + allLogs.length + ' logs)';
+          'Page ' + (page + 1) + ' of ' + totalPages + ' (' + escapeHtml(allLogs.length) + ' logs)';
         document.getElementById('logs-prev').disabled = page === 0;
         document.getElementById('logs-next').disabled = page >= totalPages - 1;
       }

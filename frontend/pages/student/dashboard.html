@@ -120,21 +120,21 @@
         // show resolution note for resolved appeals
         var resolutionNoteHtml = '';
         if (a.appealResolutionNote) {
-          resolutionNoteHtml = '<div class="text-xs text-muted" style="margin-top:var(--space-1);font-style:italic;">"' + a.appealResolutionNote + '"</div>';
+          resolutionNoteHtml = '<div class="text-xs text-muted" style="margin-top:var(--space-1);font-style:italic;">"' + escapeHtml(a.appealResolutionNote) + '"</div>';
         }
         var resolvedByHtml = '';
         if (a.appealResolvedBy) {
-          resolvedByHtml = '<div class="text-xs text-muted" style="margin-top:var(--space-1);">Resolved by ' + a.appealResolvedBy + ' on ' + (a.appealResolvedAt || '') + '</div>';
+          resolvedByHtml = '<div class="text-xs text-muted" style="margin-top:var(--space-1);">Resolved by ' + escapeHtml(a.appealResolvedBy) + ' on ' + (escapeHtml(a.appealResolvedAt || '')) + '</div>';
         }
 
-        return '<div class="card assessment-item" data-record-id="' + a.recordId + '" data-audio-id="' + a.audioId + '" style="cursor:pointer;">' +
+        return '<div class="card assessment-item" data-record-id="' + escapeHtml(a.recordId) + '" data-audio-id="' + escapeHtml(a.audioId) + '" style="cursor:pointer;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;">' +
             '<div style="flex:1;min-width:0;">' +
-              '<div style="font-weight:600;">' + a.subjectName + '</div>' +
-              '<div class="text-sm text-muted">' + a.topic + ' &middot; ' + a.date + '</div>' +
+              '<div style="font-weight:600;">' + escapeHtml(a.subjectName) + '</div>' +
+              '<div class="text-sm text-muted">' + escapeHtml(a.topic) + ' &middot; ' + escapeHtml(a.date) + '</div>' +
               '<div style="margin-top:var(--space-1);">' +
-                '<span class="badge" style="font-size:0.7rem;">' + (a.ratingLevel || '-') + '</span>' +
-                (a.confidence ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + confColor + ';margin-left:var(--space-2);vertical-align:middle;" title="AI confidence: ' + a.confidence + '"></span>' : '') +
+                '<span class="badge" style="font-size:0.7rem;">' + (escapeHtml(a.ratingLevel || '-')) + '</span>' +
+                (a.confidence ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + confColor + ';margin-left:var(--space-2);vertical-align:middle;" title="AI confidence: ' + escapeHtml(a.confidence) + '"></span>' : '') +
               '</div>' +
             '</div>' +
               '<div style="text-align:right;">' +
@@ -164,18 +164,18 @@
           var bodyHtml = '<div style="max-height:55vh;overflow-y:auto;">';
 
           bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
-          bodyHtml += '<strong>' + data.subjectName + '</strong> &middot; ' + data.topic + '<br>';
-          bodyHtml += 'Date: ' + data.date + '<br>';
+          bodyHtml += '<strong>' + escapeHtml(data.subjectName) + '</strong> &middot; ' + escapeHtml(data.topic) + '<br>';
+          bodyHtml += 'Date: ' + escapeHtml(data.date) + '<br>';
           bodyHtml += '</div>';
 
           bodyHtml += '<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3);">';
           bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:2rem;font-weight:700;">' + scorePct + '%</div><div class="text-xs text-muted">Score</div></div>';
-          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;">' + (data.ratingLevel || '-') + '</div><div class="text-xs text-muted">Rating</div></div>';
-          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;color:' + getConfColor(data.confidence) + ';">' + (data.confidence || '-') + '</div><div class="text-xs text-muted">AI Confidence</div></div>';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;">' + (escapeHtml(data.ratingLevel || '-')) + '</div><div class="text-xs text-muted">Rating</div></div>';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;color:' + getConfColor(data.confidence) + ';">' + (escapeHtml(data.confidence || '-')) + '</div><div class="text-xs text-muted">AI Confidence</div></div>';
           bodyHtml += '</div>';
 
           if (data.evidence) {
-            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-2);font-style:italic;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">"' + data.evidence + '"</div>';
+            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-2);font-style:italic;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">"' + escapeHtml(data.evidence) + '"</div>';
           }
 
           // appeal resolution section
@@ -184,15 +184,15 @@
             bodyHtml += '<div style="margin-bottom:var(--space-2);padding:var(--space-3);border-left:3px solid ' + appealColor + ';background:var(--color-bg);border-radius:var(--radius-sm);">';
             bodyHtml += '<div class="text-sm" style="font-weight:600;margin-bottom:var(--space-1);color:' + appealColor + ';">Appeal ' + data.appealStatus.charAt(0) + data.appealStatus.slice(1).toLowerCase() + '</div>';
             // show the current (possibly adjusted) results
-            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-1);">Result: ' + (data.ratingLevel || '') + ' &middot; ' + (data.score || 0).toFixed(1) + '/4.0</div>';
+            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-1);">Result: ' + (escapeHtml(data.ratingLevel || '')) + ' &middot; ' + (data.score || 0).toFixed(1) + '/4.0</div>';
             if (data.feedback && data.feedback !== 'No feedback available.') {
-              bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-1);font-style:italic;white-space:pre-wrap;">"' + data.feedback + '"</div>';
+              bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-1);font-style:italic;white-space:pre-wrap;">"' + escapeHtml(data.feedback) + '"</div>';
             }
             if (data.appealResolutionNote) {
-              bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;margin-bottom:var(--space-1);padding:var(--space-1);border-left:2px solid var(--color-primary);">Teacher note: "' + data.appealResolutionNote + '"</div>';
+              bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;margin-bottom:var(--space-1);padding:var(--space-1);border-left:2px solid var(--color-primary);">Teacher note: "' + escapeHtml(data.appealResolutionNote) + '"</div>';
             }
             if (data.appealResolvedBy) {
-              bodyHtml += '<div class="text-xs text-muted">Resolved by ' + data.appealResolvedBy + ' on ' + (data.appealResolvedAt || '') + '</div>';
+              bodyHtml += '<div class="text-xs text-muted">Resolved by ' + escapeHtml(data.appealResolvedBy) + ' on ' + (escapeHtml(data.appealResolvedAt || '')) + '</div>';
             }
             bodyHtml += '</div>';
           } else if (data.appealStatus === 'PENDING') {
@@ -205,21 +205,21 @@
           // teacher feedback (show separately too if not already in appeal box)
           if (data.feedback && data.feedback !== 'No feedback available.' && !(data.appealStatus && data.appealStatus !== 'PENDING')) {
             bodyHtml += '<div style="margin-bottom:var(--space-2);"><div class="text-sm" style="font-weight:600;margin-bottom:var(--space-1);">Teacher Feedback</div>';
-            bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + data.feedback + '</div></div>';
+            bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + escapeHtml(data.feedback) + '</div></div>';
           }
 
           if (data.rubricDesc) {
             bodyHtml += '<div class="text-xs text-muted" style="margin-top:var(--space-2);border-top:1px solid var(--color-border);padding-top:var(--space-2);">';
-            bodyHtml += '<strong>Rubric:</strong> ' + data.rubricDesc + '<br>';
-            bodyHtml += '<strong>Scale:</strong> ' + (data.ratingScale || '');
+            bodyHtml += '<strong>Rubric:</strong> ' + escapeHtml(data.rubricDesc) + '<br>';
+            bodyHtml += '<strong>Scale:</strong> ' + (escapeHtml(data.ratingScale || ''));
             bodyHtml += '</div>';
           }
 
           bodyHtml += '</div>';
 
-          showModal(data.subjectName + ' \u00B7 ' + data.topic, bodyHtml,
+          showModal(escapeHtml(data.subjectName) + ' \u00B7 ' + escapeHtml(data.topic), bodyHtml,
             '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>' +
-            (data.appealStatus ? '' : '<button class="btn btn-sm" style="background:var(--color-warning);color:white;border:none;" id="appeal-btn" data-audio-id="' + data.audioId + '">Submit Appeal</button>'));
+            (data.appealStatus ? '' : '<button class="btn btn-sm" style="background:var(--color-warning);color:white;border:none;" id="appeal-btn" data-audio-id="' + escapeHtml(data.audioId) + '">Submit Appeal</button>'));
 
           setTimeout(function() {
             document.querySelectorAll('.modal-close-btn').forEach(function(b) {

@@ -222,11 +222,11 @@
       if (listEl) {
         listEl.innerHTML = filtered.map(function(u) {
           return (
-            '<div class="list-item clickable" data-user-id="' + u.userId + '">' +
+            '<div class="list-item clickable" data-user-id="' + escapeHtml(u.userId) + '">' +
               '<div class="avatar avatar-md">' + getInitials(u.fullName) + '</div>' +
               '<div class="list-item-body">' +
-                '<div class="list-item-title">' + (u.fullName || 'Unknown') + '</div>' +
-                '<div class="list-item-subtitle">' + u.email + '</div>' +
+                '<div class="list-item-title">' + (escapeHtml(u.fullName || 'Unknown')) + '</div>' +
+                '<div class="list-item-subtitle">' + escapeHtml(u.email) + '</div>' +
               '</div>' +
               '<div class="list-item-trailing">' +
                 '<span class="status-dot ' + (u.isActive ? 'active' : 'inactive') + '" title="' + (u.isActive ? 'Active' : 'Inactive') + '"></span>' +
@@ -548,8 +548,8 @@
           }
           listEl.innerHTML = data.map(function(s) {
             return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
-              '<div><strong>' + s.fullName + '</strong></div>' +
-              '<button class="btn btn-danger btn-sm unlink-btn" data-sid="' + s.studentId + '">Unlink</button>' +
+              '<div><strong>' + escapeHtml(s.fullName) + '</strong></div>' +
+              '<button class="btn btn-danger btn-sm unlink-btn" data-sid="' + escapeHtml(s.studentId) + '">Unlink</button>' +
             '</div>';
           }).join('');
 
@@ -591,8 +591,8 @@
 
           listEl.innerHTML = filtered.map(function(s) {
             return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
-              '<div><strong>' + s.fullName + '</strong></div>' +
-              '<button class="btn btn-primary btn-sm link-btn" data-sid="' + s.studentId + '">Link</button>' +
+              '<div><strong>' + escapeHtml(s.fullName) + '</strong></div>' +
+              '<button class="btn btn-primary btn-sm link-btn" data-sid="' + escapeHtml(s.studentId) + '">Link</button>' +
             '</div>';
           }).join('');
 
@@ -686,8 +686,8 @@
           }
           listEl.innerHTML = data.map(function(s) {
             return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
-              '<div><strong>' + s.subjectName + '</strong><br><span style="font-size:var(--text-xs);color:var(--text-muted);">Grade ' + s.gradeLevel + '</span></div>' +
-              '<button class="btn btn-danger btn-sm remove-subject-btn" data-sid="' + s.subjectId + '">Remove</button>' +
+              '<div><strong>' + escapeHtml(s.subjectName) + '</strong><br><span style="font-size:var(--text-xs);color:var(--text-muted);">Grade ' + escapeHtml(s.gradeLevel) + '</span></div>' +
+              '<button class="btn btn-danger btn-sm remove-subject-btn" data-sid="' + escapeHtml(s.subjectId) + '">Remove</button>' +
             '</div>';
           }).join('');
 
@@ -728,8 +728,8 @@
 
           listEl.innerHTML = filtered.map(function(s) {
             return '<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
-              '<div><strong>' + s.subjectName + '</strong><br><span style="font-size:var(--text-xs);color:var(--text-muted);">Grade ' + s.gradeLevel + '</span></div>' +
-              '<button class="btn btn-primary btn-sm assign-subject-btn" data-sid="' + s.subjectId + '">Assign</button>' +
+              '<div><strong>' + escapeHtml(s.subjectName) + '</strong><br><span style="font-size:var(--text-xs);color:var(--text-muted);">Grade ' + escapeHtml(s.gradeLevel) + '</span></div>' +
+              '<button class="btn btn-primary btn-sm assign-subject-btn" data-sid="' + escapeHtml(s.subjectId) + '">Assign</button>' +
             '</div>';
           }).join('');
 

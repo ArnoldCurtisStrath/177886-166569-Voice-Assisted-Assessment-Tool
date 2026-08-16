@@ -204,11 +204,11 @@
     if (gridEl) {
       gridEl.innerHTML = classes.map(function(c) {
         return (
-          '<div class="card card-hover class-card" data-class-id="' + c.classId + '">' +
+          '<div class="card card-hover class-card" data-class-id="' + escapeHtml(c.classId) + '">' +
             '<div style="display:flex;align-items:center;gap:var(--space-3);">' +
-              '<div class="avatar avatar-md" style="background-color:var(--color-primary);color:#fff;font-size:var(--text-xl);font-weight:700;">' + c.gradeLevel + '</div>' +
+              '<div class="avatar avatar-md" style="background-color:var(--color-primary);color:#fff;font-size:var(--text-xl);font-weight:700;">' + escapeHtml(c.gradeLevel) + '</div>' +
               '<div style="flex:1;min-width:0;">' +
-                '<div class="text-base" style="font-weight:700;">' + c.displayName + '</div>' +
+                '<div class="text-base" style="font-weight:700;">' + escapeHtml(c.displayName) + '</div>' +
                 '<div class="text-sm text-muted">' + (c.studentCount || 0) + ' student(s)</div>' +
               '</div>' +
             '</div>' +
@@ -275,14 +275,14 @@
         if (listEl) {
           listEl.innerHTML = students.map(function(s) {
             return (
-              '<div class="list-item" data-student-id="' + s.studentId + '">' +
+              '<div class="list-item" data-student-id="' + escapeHtml(s.studentId) + '">' +
                 '<div class="avatar avatar-sm">' + getInitials(s.fullName) + '</div>' +
                 '<div class="list-item-body">' +
-                  '<div class="list-item-title">' + s.fullName + '</div>' +
+                  '<div class="list-item-title">' + escapeHtml(s.fullName) + '</div>' +
                   '<div class="list-item-subtitle">Enrolled ' + (s.enrolledAt ? s.enrolledAt.substring(0, 10) : '') + '</div>' +
                 '</div>' +
                 '<div class="list-item-trailing">' +
-                  '<button class="btn btn-danger btn-sm btn-remove-student" data-student-id="' + s.studentId + '">Remove</button>' +
+                  '<button class="btn btn-danger btn-sm btn-remove-student" data-student-id="' + escapeHtml(s.studentId) + '">Remove</button>' +
                 '</div>' +
               '</div>'
             );
@@ -341,14 +341,14 @@
         if (listEl) {
           listEl.innerHTML = teachers.map(function(t) {
             return (
-              '<div class="list-item" data-teacher-id="' + t.teacherId + '">' +
+              '<div class="list-item" data-teacher-id="' + escapeHtml(t.teacherId) + '">' +
                 '<div class="avatar avatar-sm">' + getInitials(t.fullName) + '</div>' +
                 '<div class="list-item-body">' +
-                  '<div class="list-item-title">' + t.fullName + '</div>' +
-                  '<div class="list-item-subtitle">' + (t.email || '') + '</div>' +
+                  '<div class="list-item-title">' + escapeHtml(t.fullName) + '</div>' +
+                  '<div class="list-item-subtitle">' + (escapeHtml(t.email || '')) + '</div>' +
                 '</div>' +
                 '<div class="list-item-trailing">' +
-                  '<button class="btn btn-danger btn-sm btn-remove-teacher" data-teacher-id="' + t.teacherId + '">Remove</button>' +
+                  '<button class="btn btn-danger btn-sm btn-remove-teacher" data-teacher-id="' + escapeHtml(t.teacherId) + '">Remove</button>' +
                 '</div>' +
               '</div>'
             );
@@ -433,11 +433,11 @@
     if (listEl) {
       listEl.innerHTML = filtered.map(function(t) {
         return (
-          '<div class="list-item clickable assign-teacher-item" data-teacher-id="' + t.teacherId + '">' +
+          '<div class="list-item clickable assign-teacher-item" data-teacher-id="' + escapeHtml(t.teacherId) + '">' +
             '<div class="avatar avatar-sm">' + getInitials(t.fullName) + '</div>' +
             '<div class="list-item-body">' +
-              '<div class="list-item-title">' + t.fullName + '</div>' +
-              '<div class="list-item-subtitle">' + (t.email || '') + '</div>' +
+              '<div class="list-item-title">' + escapeHtml(t.fullName) + '</div>' +
+              '<div class="list-item-subtitle">' + (escapeHtml(t.email || '')) + '</div>' +
             '</div>' +
             '<div class="list-item-trailing">' +
               '<button class="btn btn-primary btn-sm btn-do-assign">+ Assign</button>' +
@@ -536,10 +536,10 @@
     if (listEl) {
       listEl.innerHTML = filtered.map(function(s) {
         return (
-          '<div class="list-item clickable add-student-item" data-student-id="' + s.studentId + '">' +
+          '<div class="list-item clickable add-student-item" data-student-id="' + escapeHtml(s.studentId) + '">' +
             '<div class="avatar avatar-sm">' + getInitials(s.fullName) + '</div>' +
             '<div class="list-item-body">' +
-              '<div class="list-item-title">' + s.fullName + '</div>' +
+              '<div class="list-item-title">' + escapeHtml(s.fullName) + '</div>' +
             '</div>' +
             '<div class="list-item-trailing">' +
               '<button class="btn btn-primary btn-sm btn-do-add">+ Add</button>' +

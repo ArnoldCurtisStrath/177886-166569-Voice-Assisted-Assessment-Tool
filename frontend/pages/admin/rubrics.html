@@ -102,7 +102,7 @@
       var modalHtml = '';
 
       subjects.forEach(function(s) {
-        var opt = '<option value="' + s.subjectId + '">' + s.subjectName + ' (Grade ' + s.gradeLevel + ')</option>';
+        var opt = '<option value="' + escapeHtml(s.subjectId) + '">' + escapeHtml(s.subjectName) + ' (Grade ' + escapeHtml(s.gradeLevel) + ')</option>';
         filterHtml += opt;
         modalHtml += opt;
       });
@@ -135,18 +135,18 @@
 
       if (listEl) {
         listEl.innerHTML = filtered.map(function(r) {
-          var desc = r.competencyDesc || '';
+          var desc = escapeHtml(r.competencyDesc || '');
           return (
-            '<div class="list-item clickable" data-rubric-id="' + r.rubricId + '">' +
+            '<div class="list-item clickable" data-rubric-id="' + escapeHtml(r.rubricId) + '">' +
               '<div class="list-item-body">' +
-                '<div class="list-item-title">' + r.strand + ' &gt; ' + r.subStrand + '</div>' +
+                '<div class="list-item-title">' + escapeHtml(r.strand) + ' &gt; ' + escapeHtml(r.subStrand) + '</div>' +
                 '<div class="list-item-subtitle">' +
                   (desc.length > 100 ? desc.substring(0, 100) + '...' : desc) +
                 '</div>' +
               '</div>' +
               '<div class="list-item-trailing">' +
-                '<span class="badge badge-neutral">' + r.subjectName + '</span>' +
-                '<span class="badge badge-primary">' + r.ratingScale + '</span>' +
+                '<span class="badge badge-neutral">' + escapeHtml(r.subjectName) + '</span>' +
+                '<span class="badge badge-primary">' + escapeHtml(r.ratingScale) + '</span>' +
               '</div>' +
             '</div>'
           );

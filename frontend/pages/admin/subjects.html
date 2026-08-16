@@ -139,16 +139,16 @@
       if (listEl) {
         listEl.innerHTML = filtered.map(function(s) {
           return (
-            '<div class="list-item clickable" data-subject-id="' + s.subjectId + '">' +
+            '<div class="list-item clickable" data-subject-id="' + escapeHtml(s.subjectId) + '">' +
               '<div class="avatar avatar-md">' + s.subjectName.charAt(0) + '</div>' +
               '<div class="list-item-body">' +
-                '<div class="list-item-title">' + s.subjectName + '</div>' +
-                '<div class="list-item-subtitle">Grade ' + s.gradeLevel + '</div>' +
+                '<div class="list-item-title">' + escapeHtml(s.subjectName) + '</div>' +
+                '<div class="list-item-subtitle">Grade ' + escapeHtml(s.gradeLevel) + '</div>' +
               '</div>' +
               '<div class="list-item-trailing">' +
-                '<span class="badge badge-primary">' + s.rubricCount + ' rubric(s)</span>' +
-                '<button class="btn btn-sm btn-ghost subject-edit-btn" data-subject-id="' + s.subjectId + '">Edit</button>' +
-                '<button class="btn btn-sm btn-ghost subject-delete-btn" data-subject-id="' + s.subjectId + '" style="color:var(--color-error);">Delete</button>' +
+                '<span class="badge badge-primary">' + escapeHtml(s.rubricCount) + ' rubric(s)</span>' +
+                '<button class="btn btn-sm btn-ghost subject-edit-btn" data-subject-id="' + escapeHtml(s.subjectId) + '">Edit</button>' +
+                '<button class="btn btn-sm btn-ghost subject-delete-btn" data-subject-id="' + escapeHtml(s.subjectId) + '" style="color:var(--color-error);">Delete</button>' +
               '</div>' +
             '</div>'
           );
@@ -195,11 +195,11 @@
         body.innerHTML = '<div style="display:flex;flex-direction:column;gap:var(--space-3);">' +
           rubrics.map(function(r) {
             return '<div style="padding:var(--space-3);border:1px solid var(--color-border);border-radius:var(--radius-sm);">' +
-              '<div style="font-weight:600;font-size:var(--text-sm);">' + r.strand + ' &gt; ' + r.subStrand + '</div>' +
+              '<div style="font-weight:600;font-size:var(--text-sm);">' + escapeHtml(r.strand) + ' &gt; ' + escapeHtml(r.subStrand) + '</div>' +
               '<div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-1);">' +
-                (r.competencyDesc.length > 120 ? r.competencyDesc.substring(0, 120) + '...' : r.competencyDesc) +
+                (escapeHtml(r.competencyDesc).length > 120 ? escapeHtml(r.competencyDesc).substring(0, 120) + '...' : escapeHtml(r.competencyDesc)) +
               '</div>' +
-              '<div style="margin-top:var(--space-1);"><span class="badge badge-neutral">' + r.ratingScale + '</span></div>' +
+              '<div style="margin-top:var(--space-1);"><span class="badge badge-neutral">' + escapeHtml(r.ratingScale) + '</span></div>' +
             '</div>';
           }).join('') +
         '</div>';

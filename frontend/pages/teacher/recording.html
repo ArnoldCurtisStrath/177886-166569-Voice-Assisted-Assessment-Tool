@@ -755,14 +755,14 @@
           return;
         }
 
-        showToast('Retrying ' + items.length + ' upload(s)...', 'info');
+        showToast('Retrying ' + escapeHtml(items.length) + ' upload(s)...', 'info');
         items.forEach(function(item, index) {
           // exponential backoff between retries: 1s, 3s, 9s
           var delay = Math.pow(3, Math.min(item.retryCount || 0, 2)) * 1000;
 
           if (item.retryCount >= 3) {
             // give up after 3 retries
-            showToast('Upload ' + item.fileName + ' failed after 3 retries', 'error');
+            showToast('Upload ' + escapeHtml(item.fileName) + ' failed after 3 retries', 'error');
             return;
           }
 
@@ -774,7 +774,7 @@
 
             OfflineQueue.updateStatus(item.id, 'uploading');
 
-            API.uploadFormData('/api/teacher/assessments/' + item.assessmentId + '/upload', fd)
+            API.uploadFormData('/api/teacher/assessments/' + escapeHtml(item.assessmentId) + '/upload', fd)
               .then(function() {
                 OfflineQueue.updateStatus(item.id, 'completed');
                 OfflineQueue.removeCompleted();

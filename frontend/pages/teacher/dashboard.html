@@ -86,7 +86,7 @@
         }
         el.innerHTML = subjects.map(function(s) {
           return '<span class="badge badge-primary" style="font-size:var(--text-xs);">' +
-            s.subjectName + ' (G' + s.gradeLevel + ')</span>';
+            escapeHtml(s.subjectName) + ' (G' + escapeHtml(s.gradeLevel) + ')</span>';
         }).join('');
       })
       .catch(function() {
@@ -107,10 +107,10 @@
         if (emptyEl) emptyEl.style.display = 'none';
         if (listEl) {
           listEl.innerHTML = classes.map(function(c) {
-            return '<div class="list-item clickable" data-class-id="' + c.classId + '">' +
+            return '<div class="list-item clickable" data-class-id="' + escapeHtml(c.classId) + '">' +
               '<div class="list-item-body">' +
-                '<div class="list-item-title">' + c.displayName + '</div>' +
-                '<div class="list-item-subtitle">Grade ' + c.gradeLevel + ' &middot; Stream: ' + c.streamName + '</div>' +
+                '<div class="list-item-title">' + escapeHtml(c.displayName) + '</div>' +
+                '<div class="list-item-subtitle">Grade ' + escapeHtml(c.gradeLevel) + ' &middot; Stream: ' + escapeHtml(c.streamName) + '</div>' +
               '</div>' +
               '<div class="list-item-trailing">' +
                 '<span class="badge badge-success">Active</span>' +

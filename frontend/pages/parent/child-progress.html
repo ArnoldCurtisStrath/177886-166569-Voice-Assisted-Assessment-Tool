@@ -77,35 +77,35 @@
           var bodyHtml = '<div style="max-height:55vh;overflow-y:auto;">';
 
           bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
-          bodyHtml += '<strong>' + data.subjectName + '</strong> &middot; ' + data.topic + '<br>';
-          bodyHtml += 'Date: ' + data.date + '<br>';
+          bodyHtml += '<strong>' + escapeHtml(data.subjectName) + '</strong> &middot; ' + escapeHtml(data.topic) + '<br>';
+          bodyHtml += 'Date: ' + escapeHtml(data.date) + '<br>';
           bodyHtml += '</div>';
 
           bodyHtml += '<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3);">';
           bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:2rem;font-weight:700;">' + scorePct + '%</div><div class="text-xs text-muted">Score</div></div>';
-          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;">' + (data.ratingLevel || '-') + '</div><div class="text-xs text-muted">Rating</div></div>';
-          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;color:' + getConfColor(data.confidence) + ';">' + (data.confidence || '-') + '</div><div class="text-xs text-muted">AI Confidence</div></div>';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;">' + (escapeHtml(data.ratingLevel || '-')) + '</div><div class="text-xs text-muted">Rating</div></div>';
+          bodyHtml += '<div style="flex:1;text-align:center;"><div style="font-size:1.2rem;font-weight:600;color:' + getConfColor(data.confidence) + ';">' + (escapeHtml(data.confidence || '-')) + '</div><div class="text-xs text-muted">AI Confidence</div></div>';
           bodyHtml += '</div>';
 
           if (data.evidence) {
-            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-2);font-style:italic;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">"' + data.evidence + '"</div>';
+            bodyHtml += '<div class="text-xs" style="margin-bottom:var(--space-2);font-style:italic;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">"' + escapeHtml(data.evidence) + '"</div>';
           }
 
           if (data.feedback && data.feedback !== 'No feedback available.') {
             bodyHtml += '<div style="margin-bottom:var(--space-2);"><div class="text-sm" style="font-weight:600;margin-bottom:var(--space-1);">Teacher Feedback</div>';
-            bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + data.feedback + '</div></div>';
+            bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;padding:var(--space-2);background:var(--color-bg);border-radius:var(--radius-sm);">' + escapeHtml(data.feedback) + '</div></div>';
           }
 
           if (data.rubricDesc) {
             bodyHtml += '<div class="text-xs text-muted" style="margin-top:var(--space-2);border-top:1px solid var(--color-border);padding-top:var(--space-2);">';
-            bodyHtml += '<strong>Rubric:</strong> ' + data.rubricDesc + '<br>';
-            bodyHtml += '<strong>Scale:</strong> ' + (data.ratingScale || '');
+            bodyHtml += '<strong>Rubric:</strong> ' + escapeHtml(data.rubricDesc) + '<br>';
+            bodyHtml += '<strong>Scale:</strong> ' + (escapeHtml(data.ratingScale || ''));
             bodyHtml += '</div>';
           }
 
           bodyHtml += '</div>';
 
-          showModal(data.subjectName + ' — ' + data.studentName,
+          showModal(escapeHtml(data.subjectName) + ' — ' + escapeHtml(data.studentName),
             bodyHtml,
             '<button class="btn btn-ghost btn-sm modal-close-btn">Close</button>');
         })
@@ -138,7 +138,7 @@
         // stats
         var statsEl = document.getElementById('progress-stats');
         statsEl.innerHTML =
-          '<div class="stat-card"><div class="stat-value">' + data.totalAssessments + '</div><div class="stat-label">Assessments</div></div>' +
+          '<div class="stat-card"><div class="stat-value">' + escapeHtml(data.totalAssessments) + '</div><div class="stat-label">Assessments</div></div>' +
           '<div class="stat-card"><div class="stat-value">' + (data.overallAveragePct || 0).toFixed(0) + '%</div><div class="stat-label">Overall Average</div></div>' +
           '<div class="stat-card"><div class="stat-value">' + (data.overallAverage || 0).toFixed(1) + '</div><div class="stat-label">Avg Score / 4</div></div>';
 
@@ -150,8 +150,8 @@
           var barColor = pct >= 75 ? 'var(--color-success)' : pct >= 50 ? 'var(--color-warning)' : 'var(--color-error)';
           return '<div style="margin-bottom:var(--space-2);">' +
             '<div style="display:flex;justify-content:space-between;margin-bottom:var(--space-1);">' +
-              '<span class="text-sm" style="font-weight:500;">' + s.subject + '</span>' +
-              '<span class="text-sm text-muted">' + s.count + ' assessments &middot; ' + pct + '%</span>' +
+              '<span class="text-sm" style="font-weight:500;">' + escapeHtml(s.subject) + '</span>' +
+              '<span class="text-sm text-muted">' + escapeHtml(s.count) + ' assessments &middot; ' + pct + '%</span>' +
             '</div>' +
             '<div style="height:8px;background:var(--color-border);border-radius:4px;overflow:hidden;">' +
               '<div style="height:100%;width:' + pct + '%;background:' + barColor + ';border-radius:4px;"></div>' +
@@ -164,12 +164,12 @@
         var rlEl = document.getElementById('recent-list');
         rlEl.innerHTML = recent.map(function(r) {
           var scorePct = ((r.score || 0) / 4.0 * 100).toFixed(0);
-          return '<div class="card assessment-card" data-record-id="' + (r.recordId || '') + '" style="cursor:pointer;">' +
+          return '<div class="card assessment-card" data-record-id="' + (escapeHtml(r.recordId || '')) + '" style="cursor:pointer;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
               '<div>' +
-                '<div style="font-weight:600;">' + r.subjectName + '</div>' +
-                '<div class="text-sm text-muted">' + r.topic + ' &middot; ' + r.date + '</div>' +
-                '<span class="badge" style="font-size:0.7rem;margin-top:var(--space-1);">' + (r.ratingLevel || '-') + '</span>' +
+                '<div style="font-weight:600;">' + escapeHtml(r.subjectName) + '</div>' +
+                '<div class="text-sm text-muted">' + escapeHtml(r.topic) + ' &middot; ' + escapeHtml(r.date) + '</div>' +
+                '<span class="badge" style="font-size:0.7rem;margin-top:var(--space-1);">' + (escapeHtml(r.ratingLevel || '-')) + '</span>' +
               '</div>' +
               '<div style="text-align:right;">' +
                 '<div style="font-size:1.3rem;font-weight:700;">' + scorePct + '%</div>' +

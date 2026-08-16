@@ -120,18 +120,18 @@
           var isActive = t.status && t.status.toUpperCase() === 'ACTIVE';
           var borderStyle = isActive ? 'border-left:4px solid var(--color-success);' : '';
           return (
-            '<div class="list-item clickable" data-term-id="' + t.termId + '" style="' + borderStyle + '">' +
+            '<div class="list-item clickable" data-term-id="' + escapeHtml(t.termId) + '" style="' + borderStyle + '">' +
               '<div class="list-item-body">' +
-                '<div class="list-item-title">' + t.termName + '</div>' +
+                '<div class="list-item-title">' + escapeHtml(t.termName) + '</div>' +
                 '<div class="list-item-subtitle">' +
                   formatDate(t.startDate) + ' — ' + formatDate(t.endDate) +
                 '</div>' +
               '</div>' +
               '<div class="list-item-trailing" style="gap:var(--space-2);">' +
                 (isActive ? '' :
-                  '<button class="btn btn-sm btn-ghost activate-term-btn" data-term-id="' + t.termId + '">Activate</button>'
+                  '<button class="btn btn-sm btn-ghost activate-term-btn" data-term-id="' + escapeHtml(t.termId) + '">Activate</button>'
                 ) +
-                '<span class="badge ' + statusBadgeClass(t.status) + '">' + (t.status || 'UNKNOWN') + '</span>' +
+                '<span class="badge ' + statusBadgeClass(t.status) + '">' + (escapeHtml(t.status || 'UNKNOWN')) + '</span>' +
               '</div>' +
             '</div>'
           );

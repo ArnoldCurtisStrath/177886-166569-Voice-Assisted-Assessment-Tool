@@ -172,8 +172,8 @@
         listEl.innerHTML = '<div class="list-stack">' + items.map(function(a) {
           return '<div class="list-item">' +
             '<div class="list-item-body">' +
-              '<div class="list-item-title">' + a.subjectName + ' — ' + a.className + '</div>' +
-              '<div class="list-item-subtitle">' + a.topic + ' &middot; ' + a.teacherName + ' &middot; ' + (a.date || '') + '</div>' +
+              '<div class="list-item-title">' + escapeHtml(a.subjectName) + ' — ' + escapeHtml(a.className) + '</div>' +
+              '<div class="list-item-subtitle">' + escapeHtml(a.topic) + ' &middot; ' + escapeHtml(a.teacherName) + ' &middot; ' + (escapeHtml(a.date || '')) + '</div>' +
             '</div>' +
             statusBadge(a.status) +
           '</div>';
