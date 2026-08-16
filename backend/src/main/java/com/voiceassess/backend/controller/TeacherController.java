@@ -147,7 +147,7 @@ public class TeacherController {
             map.put("classId", cls.getClassId().toString());
             map.put("gradeLevel", cls.getGradeLevel());
             map.put("streamName", cls.getStreamName());
-            map.put("displayName", "Grade " + cls.getGradeLevel() + cls.getStreamName());
+            map.put("displayName", "Grade " + cls.getGradeLevel() + " " + cls.getStreamName());
             result.add(map);
         }
         return ResponseEntity.ok(result);
@@ -252,7 +252,7 @@ public class TeacherController {
         }
 
         var resp = new LinkedHashMap<String, Object>();
-        resp.put("className", "Grade " + cls.getGradeLevel() + cls.getStreamName());
+        resp.put("className", "Grade " + cls.getGradeLevel() + " " + cls.getStreamName());
         resp.put("students", students);
         resp.put("assessments", assessmentCols);
         resp.put("scores", scores);
@@ -625,7 +625,7 @@ public class TeacherController {
             var map = new LinkedHashMap<String, Object>();
             map.put("stagingId", s.getStagingId().toString());
             map.put("audioId", a.getAudioId().toString());
-            map.put("className", "Grade " + cls.getGradeLevel() + cls.getStreamName());
+            map.put("className", "Grade " + cls.getGradeLevel() + " " + cls.getStreamName());
             map.put("subjectName", a.getSubject().getSubjectName());
             map.put("topic", a.getTopic());
             map.put("date", a.getDate() != null ? a.getDate().toString() : "");
@@ -1181,7 +1181,7 @@ public class TeacherController {
             resp.put("transcribed", false);
             resp.put("topic", assessment.getTopic());
             resp.put("subject", assessment.getSubject().getSubjectName());
-            resp.put("className", "Grade " + assessment.getClassRoom().getGradeLevel() + assessment.getClassRoom().getStreamName());
+            resp.put("className", "Grade " + assessment.getClassRoom().getGradeLevel() + " " + assessment.getClassRoom().getStreamName());
             return ResponseEntity.status(207).body(resp);
         }
 
@@ -1257,7 +1257,7 @@ public class TeacherController {
         resp.put("transcriptSnippet", transcript.length() > 200 ? transcript.substring(0, 200) + "..." : transcript);
         resp.put("topic", assessment.getTopic());
         resp.put("subject", assessment.getSubject().getSubjectName());
-        resp.put("className", "Grade " + assessment.getClassRoom().getGradeLevel() + assessment.getClassRoom().getStreamName());
+        resp.put("className", "Grade " + assessment.getClassRoom().getGradeLevel() + " " + assessment.getClassRoom().getStreamName());
 
         // AI assessment result
         resp.put("aiAssessed", aiAssessed);

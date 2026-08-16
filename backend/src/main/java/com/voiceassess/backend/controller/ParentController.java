@@ -40,10 +40,15 @@ public class ParentController {
         var parent = parentOpt.get();
         var rows = parentRepo.findChildrenByParentId(parent.getParentId());
 
+        // dedupe by student id — a student linked twice or in two classes
+        // would otherwise show up more than once
+        var seen = new HashSet<String>();
         var result = new ArrayList<Map<String, Object>>();
         for (var row : rows) {
+            var sid = row[0] != null ? row[0].toString() : "";
+            if (sid.isEmpty() || !seen.add(sid)) continue;
             var map = new LinkedHashMap<String, Object>();
-            map.put("studentId", row[0] != null ? row[0].toString() : "");
+            map.put("studentId", sid);
             map.put("fullName", row[1] != null ? row[1].toString() : "");
             map.put("gradeLevel", row[2] != null ? ((Number) row[2]).intValue() : 0);
             map.put("streamName", row[3] != null ? row[3].toString() : "");

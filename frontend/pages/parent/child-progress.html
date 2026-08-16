@@ -28,14 +28,37 @@
     <h4>No assessment data yet</h4>
     <p>Assessments will appear here once your child's teacher completes evaluations.</p>
   </div>
+
+  <div class="empty-state" id="progress-error" style="display:none;">
+    <div class="empty-state-icon">!</div>
+    <h4>Could not load progress</h4>
+    <p>Check your connection and try again.</p>
+    <button class="btn btn-primary btn-sm" id="progress-retry" style="margin-top:var(--space-2);">Retry</button>
+  </div>
 </div>
 
 <script>
   (function() {
     var childId = localStorage.getItem('voiceassess_selected_child');
-    if (!childId) {
-      document.getElementById('progress-loading').textContent = 'No child selected.';
-      return;
+
+    // if nothing is selected yet, pick the first child so the page isn't a dead end
+    function resolveChild(cb) {
+      if (childId) { cb(); return; }
+      API.get('/api/parent/children')
+        .then(function(children) {
+          if (children && children.length > 0) {
+            childId = children[0].studentId;
+            localStorage.setItem('voiceassess_selected_child', childId);
+          }
+          cb();
+        })
+        .catch(function() { cb(); });
+    }
+
+    function showError() {
+      document.getElementById('progress-loading').style.display = 'none';
+      document.getElementById('progress-content').classList.add('hidden');
+      document.getElementById('progress-error').style.display = '';
     }
 
     function getConfColor(conf) {
@@ -91,18 +114,26 @@
         });
     }
 
-    // load progress data
-    API.get('/api/parent/children/' + childId + '/progress')
-      .then(function(data) {
-        document.getElementById('progress-loading').style.display = 'none';
+    function loadProgress() {
+      if (!childId) {
+        document.getElementById('progress-loading').textContent = 'No child selected.';
+        return;
+      }
 
-        if (data.totalAssessments === 0) {
-          document.getElementById('progress-empty').style.display = '';
-          return;
-        }
+      // load progress data
+      API.get('/api/parent/children/' + childId + '/progress')
+        .then(function(data) {
+          document.getElementById('progress-loading').style.display = 'none';
+          document.getElementById('progress-error').style.display = 'none';
 
-        document.getElementById('progress-content').classList.remove('hidden');
-        document.getElementById('progress-title').textContent = data.studentName || 'Student Progress';
+          if (data.totalAssessments === 0) {
+            document.getElementById('progress-empty').style.display = '';
+            return;
+          }
+
+          document.getElementById('progress-empty').style.display = 'none';
+          document.getElementById('progress-content').classList.remove('hidden');
+          document.getElementById('progress-title').textContent = data.studentName || 'Student Progress';
 
         // stats
         var statsEl = document.getElementById('progress-stats');
@@ -156,8 +187,18 @@
           });
         });
       })
-      .catch(function(err) {
-        document.getElementById('progress-loading').textContent = 'Failed to load: ' + (err.message || 'Unknown error');
+      .catch(function() {
+        showError();
       });
+    }
+
+    var retryBtn = document.getElementById('progress-retry');
+    if (retryBtn) retryBtn.addEventListener('click', function() {
+      document.getElementById('progress-error').style.display = 'none';
+      document.getElementById('progress-loading').style.display = '';
+      loadProgress();
+    });
+
+    resolveChild(loadProgress);
   })();
 </script>

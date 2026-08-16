@@ -16,7 +16,7 @@ public interface ParentRepository extends JpaRepository<Parent, UUID> {
     List<Parent> findBySchool(School school);
 
     @Query(value = """
-        SELECT s.student_id, s.full_name, c.grade_level, c.stream_name, sch.school_name
+        SELECT DISTINCT s.student_id, s.full_name, c.grade_level, c.stream_name, sch.school_name
         FROM student_parents sp
         JOIN students s ON sp.student_id = s.student_id
         LEFT JOIN student_enrollments se ON s.student_id = se.student_id

@@ -1,5 +1,6 @@
 package com.voiceassess.backend.controller;
 
+import com.voiceassess.backend.model.AssessmentRecord;
 import com.voiceassess.backend.model.User;
 import com.voiceassess.backend.repository.*;
 import org.springframework.http.ResponseEntity;
@@ -243,6 +244,19 @@ public class StudentController {
         var student = studentOpt.get();
 
         var appeals = appealRepo.findByStudent(student);
+
+        // batch-load records + feedback once instead of querying per appeal
+        var records = recordRepo.findByStudentIn(List.of(student));
+        var feedbacks = feedbackRepo.findByAssessmentRecordIn(records);
+        var fbByRecord = new HashMap<UUID, String>();
+        for (var fb : feedbacks) {
+            fbByRecord.put(fb.getAssessmentRecord().getRecordId(), fb.getQualitativeFeedback());
+        }
+        var recordsByAudio = new HashMap<UUID, List<AssessmentRecord>>();
+        for (var r : records) {
+            recordsByAudio.computeIfAbsent(r.getAudioAssessment().getAudioId(), k -> new ArrayList<>()).add(r);
+        }
+
         var items = new ArrayList<Map<String, Object>>();
         for (var ap : appeals) {
             var a = ap.getAudioAssessment();
@@ -260,13 +274,12 @@ public class StudentController {
             map.put("resolutionNote", ap.getResolutionNote());
 
             // include current assessment details so student sees what the teacher set
-            var records = recordRepo.findByAudioAssessment(a);
-            for (var r : records) {
+            var audioRecords = recordsByAudio.getOrDefault(a.getAudioId(), List.of());
+            for (var r : audioRecords) {
                 if (r.getStudent().getStudentId().equals(student.getStudentId())) {
                     map.put("currentScore", r.getScore());
                     map.put("currentRating", r.getRatingLevel());
-                    var fbOpt = feedbackRepo.findByAssessmentRecord(r);
-                    map.put("currentFeedback", fbOpt.isPresent() ? fbOpt.get().getQualitativeFeedback() : "");
+                    map.put("currentFeedback", fbByRecord.getOrDefault(r.getRecordId(), ""));
                     break;
                 }
             }

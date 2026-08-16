@@ -29,6 +29,14 @@
     <h4>No assessments yet</h4>
     <p>Your teacher will evaluate you soon. Check back later.</p>
   </div>
+
+  <!-- error state — a failed load shouldn't masquerade as "no assessments" -->
+  <div class="empty-state" id="error-state" style="display:none;">
+    <div class="empty-state-icon">!</div>
+    <h4>Could not load assessments</h4>
+    <p>Check your connection and try again.</p>
+    <button class="btn btn-primary btn-sm" id="assessments-retry" style="margin-top:var(--space-2);">Retry</button>
+  </div>
 </div>
 
 <script>
@@ -48,12 +56,16 @@
     loadAssessments();
 
     function loadAssessments() {
+      var errEl = document.getElementById('error-state');
+      var emptyEl = document.getElementById('empty-state');
       API.get('/api/student/assessments')
         .then(function(data) {
           var items = data.assessments || [];
           var total = data.totalAssessments || 0;
           var avg = data.averageScore || 0;
           var appeals = data.pendingAppeals || 0;
+
+          if (errEl) errEl.style.display = 'none';
 
           document.getElementById('stat-total').textContent = total;
           document.getElementById('stat-avg').textContent = avg.toFixed(0) + '%';
@@ -62,12 +74,20 @@
           renderList(items);
         })
         .catch(function(err) {
-          document.getElementById('stat-total').textContent = '0';
+          document.getElementById('stat-total').textContent = '-';
           document.getElementById('stat-avg').textContent = '-';
-          document.getElementById('stat-appeals').textContent = '0';
-          renderList([]);
+          document.getElementById('stat-appeals').textContent = '-';
+          if (emptyEl) emptyEl.style.display = 'none';
+          document.getElementById('assessment-list').innerHTML = '';
+          if (errEl) errEl.style.display = '';
         });
     }
+
+    var retryBtn = document.getElementById('assessments-retry');
+    if (retryBtn) retryBtn.addEventListener('click', function() {
+      document.getElementById('error-state').style.display = 'none';
+      loadAssessments();
+    });
 
     function renderList(items) {
       var listEl = document.getElementById('assessment-list');

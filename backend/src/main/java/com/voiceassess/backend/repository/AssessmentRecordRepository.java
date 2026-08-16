@@ -12,4 +12,5 @@ import java.util.UUID;
 public interface AssessmentRecordRepository extends JpaRepository<AssessmentRecord, UUID> {
     List<AssessmentRecord> findByAudioAssessment(AudioAssessment audioAssessment);
     List<AssessmentRecord> findByStudent(Student student);
+    List<AssessmentRecord> findByStudentIn(List<Student> students);
 }
