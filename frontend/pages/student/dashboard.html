@@ -1,7 +1,12 @@
 <!-- VoiceAssess — Student Dashboard -->
 <div class="animate-fade-in">
-  <h2 style="font-size: var(--text-lg); margin-bottom: var(--space-1);" id="student-greeting">Hello</h2>
-  <p class="text-xs text-muted" style="margin-bottom: var(--space-5);" id="student-school">Loading...</p>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-3);">
+    <div>
+      <h2 style="font-size: var(--text-lg); margin-bottom: var(--space-1);" id="student-greeting">Hello</h2>
+      <p class="text-xs text-muted" style="margin-bottom: var(--space-5);" id="student-school">Loading...</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="student-refresh" style="flex-shrink:0;">Refresh</button>
+  </div>
 
   <div class="stat-row" style="margin-bottom: var(--space-6);">
     <div class="stat-card">
@@ -51,6 +56,16 @@
       .catch(function() {
         document.getElementById('student-school').textContent = 'Student Portal';
       });
+
+    // refresh button re-fetches assessments + badges
+    var refreshBtn = document.getElementById('student-refresh');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function() {
+        showToast('Refreshing...', 'info');
+        loadAssessments();
+        if (window.Router && Router.loadNavBadges) Router.loadNavBadges('STUDENT');
+      });
+    }
 
     // load assessments
     loadAssessments();
@@ -124,14 +139,14 @@
         }
         var resolvedByHtml = '';
         if (a.appealResolvedBy) {
-          resolvedByHtml = '<div class="text-xs text-muted" style="margin-top:var(--space-1);">Resolved by ' + escapeHtml(a.appealResolvedBy) + ' on ' + (escapeHtml(a.appealResolvedAt || '')) + '</div>';
+          resolvedByHtml = '<div class="text-xs text-muted" style="margin-top:var(--space-1);">Resolved by ' + escapeHtml(a.appealResolvedBy) + ' on ' + fmtDate(a.appealResolvedAt) + '</div>';
         }
 
         return '<div class="card assessment-item" data-record-id="' + escapeHtml(a.recordId) + '" data-audio-id="' + escapeHtml(a.audioId) + '" style="cursor:pointer;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;">' +
             '<div style="flex:1;min-width:0;">' +
               '<div style="font-weight:600;">' + escapeHtml(a.subjectName) + '</div>' +
-              '<div class="text-sm text-muted">' + escapeHtml(a.topic) + ' &middot; ' + escapeHtml(a.date) + '</div>' +
+              '<div class="text-sm text-muted">' + escapeHtml(a.topic) + ' &middot; ' + fmtDate(a.date) + '</div>' +
               '<div style="margin-top:var(--space-1);">' +
                 '<span class="badge" style="font-size:0.7rem;">' + (escapeHtml(a.ratingLevel || '-')) + '</span>' +
                 (a.confidence ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + confColor + ';margin-left:var(--space-2);vertical-align:middle;" title="AI confidence: ' + escapeHtml(a.confidence) + '"></span>' : '') +
@@ -165,7 +180,7 @@
 
           bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
           bodyHtml += '<strong>' + escapeHtml(data.subjectName) + '</strong> &middot; ' + escapeHtml(data.topic) + '<br>';
-          bodyHtml += 'Date: ' + escapeHtml(data.date) + '<br>';
+          bodyHtml += 'Date: ' + fmtDate(data.date) + '<br>';
           bodyHtml += '</div>';
 
           bodyHtml += '<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3);">';
@@ -192,7 +207,7 @@
               bodyHtml += '<div class="text-xs" style="white-space:pre-wrap;margin-bottom:var(--space-1);padding:var(--space-1);border-left:2px solid var(--color-primary);">Teacher note: "' + escapeHtml(data.appealResolutionNote) + '"</div>';
             }
             if (data.appealResolvedBy) {
-              bodyHtml += '<div class="text-xs text-muted">Resolved by ' + escapeHtml(data.appealResolvedBy) + ' on ' + (escapeHtml(data.appealResolvedAt || '')) + '</div>';
+              bodyHtml += '<div class="text-xs text-muted">Resolved by ' + escapeHtml(data.appealResolvedBy) + ' on ' + fmtDate(data.appealResolvedAt) + '</div>';
             }
             bodyHtml += '</div>';
           } else if (data.appealStatus === 'PENDING') {

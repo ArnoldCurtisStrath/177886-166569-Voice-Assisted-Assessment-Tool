@@ -48,6 +48,8 @@
         <input type="tel" id="pf-phone" class="input" placeholder="+254...">
       </div>
 
+      <div class="text-xs text-muted" id="pf-lastlogin" style="margin-bottom:var(--space-3);"></div>
+
       <div id="pf-error" style="display:none;padding:var(--space-3);background:#FDEDEC;border:1px solid var(--color-error);border-radius:var(--radius-sm);color:#8B1A1A;font-size:var(--text-sm);margin-bottom:var(--space-3);"></div>
 
       <button class="btn btn-primary" id="pf-save">Save Changes</button>
@@ -128,6 +130,22 @@
       // teachers and students don't have a phone field on the backend
       var phoneGroup = document.getElementById('pf-phone-group');
       phoneGroup.style.display = (role === 'ADMIN' || role === 'PARENT') ? '' : 'none';
+
+      // last login — raw ISO from the backend, formatted for humans
+      var loginEl = document.getElementById('pf-lastlogin');
+      if (data.lastLogin) {
+        var ll = new Date(data.lastLogin);
+        if (!isNaN(ll.getTime())) {
+          var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          var hours = ll.getHours().toString().padStart(2, '0');
+          var mins = ll.getMinutes().toString().padStart(2, '0');
+          loginEl.textContent = 'Last login: ' + ll.getDate() + ' ' + months[ll.getMonth()] + ' ' + ll.getFullYear() + ', ' + hours + ':' + mins;
+        } else {
+          loginEl.textContent = 'Last login: ' + data.lastLogin;
+        }
+      } else {
+        loginEl.textContent = '';
+      }
     }
 
     function initials(name) {

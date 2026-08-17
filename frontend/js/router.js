@@ -274,6 +274,73 @@ const Router = {
       const initials = names.map(n => n.charAt(0)).join('').slice(0, 2).toUpperCase();
       topbarAvatarEl.textContent = initials;
     }
+
+    this.loadNavBadges(role);
+  },
+
+  /**
+   * Put a small count badge on a nav item (sidebar + bottom nav).
+   * count < 1 removes the badge.
+   */
+  setNavBadge(route, count) {
+    const val = count > 99 ? '99+' : String(count);
+    document.querySelectorAll('[data-route="' + route + '"]').forEach(function(item) {
+      let badge = item.querySelector('.nav-badge');
+      if (count < 1) {
+        if (badge) badge.remove();
+        return;
+      }
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'nav-badge';
+        item.appendChild(badge);
+      }
+      badge.textContent = val;
+    });
+  },
+
+  /**
+   * Fetch pending-counts per role and badge the relevant nav items.
+   * Called after every nav render — cheap endpoints, fire and forget.
+   */
+  loadNavBadges(role) {
+    if (role === 'TEACHER') {
+      API.get('/api/teacher/reviews')
+        .then(function(data) {
+          var pending = (data || []).filter(function(r) { return r.status === 'PENDING_REVIEW'; }).length;
+          Router.setNavBadge('teacher/review', pending);
+        })
+        .catch(function() {});
+      API.get('/api/teacher/appeals')
+        .then(function(data) {
+          var pending = (data || []).filter(function(a) { return a.status === 'PENDING'; }).length;
+          Router.setNavBadge('teacher/appeals', pending);
+        })
+        .catch(function() {});
+    } else if (role === 'STUDENT') {
+      API.get('/api/student/assessments')
+        .then(function(data) {
+          Router.setNavBadge('student/appeal', (data && data.pendingAppeals) || 0);
+        })
+        .catch(function() {});
+    } else if (role === 'PARENT') {
+      // no single 'new assessments' endpoint — sum real progress totals
+      API.get('/api/parent/children')
+        .then(function(children) {
+          var total = 0;
+          var done = 0;
+          (children || []).forEach(function(c) {
+            API.get('/api/parent/children/' + c.studentId + '/progress')
+              .then(function(p) {
+                total += (p && p.totalAssessments) || 0;
+                done++;
+                if (done >= children.length) Router.setNavBadge('parent/child', total);
+              })
+              .catch(function() { done++; });
+          });
+        })
+        .catch(function() {});
+    }
   },
 
   /**

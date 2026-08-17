@@ -143,6 +143,7 @@
 }
 
 .sidebar-link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -198,6 +199,7 @@
 }
 
 .bottom-nav-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -207,6 +209,23 @@
   transition: color var(--transition-fast);
   padding: var(--space-1) var(--space-3);
   min-width: 56px;
+}
+
+/* small count badge on nav items (pending reviews, appeals, etc.) */
+.nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--color-error);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
 }
 
 .bottom-nav-item.active {

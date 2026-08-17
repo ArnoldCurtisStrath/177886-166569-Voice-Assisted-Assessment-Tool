@@ -147,6 +147,8 @@ public class AuthService {
         resp.put("userId", principal.getUserId().toString());
         resp.put("email", principal.getEmail());
         resp.put("role", principal.getRole().name());
+        // stamped on login (WP9) — shown on the profile page
+        resp.put("lastLogin", principal.getLastLogin() != null ? principal.getLastLogin().toString() : null);
 
         switch (principal.getRole()) {
             case ADMIN -> adminRepo.findByUserUserId(principal.getUserId())

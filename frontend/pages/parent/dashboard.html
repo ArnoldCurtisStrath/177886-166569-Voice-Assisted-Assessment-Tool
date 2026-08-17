@@ -2,6 +2,7 @@
 <div class="animate-fade-in">
   <div class="section-header">
     <span class="section-title">My Children</span>
+    <button class="btn btn-ghost btn-sm" id="parent-refresh" style="margin-left:auto;">Refresh</button>
   </div>
 
   <p class="text-sm text-secondary" style="margin-bottom: var(--space-5);">
@@ -113,6 +114,12 @@
     var retryBtn = document.getElementById('children-retry');
     if (retryBtn) retryBtn.addEventListener('click', loadChildren);
 
+    var refreshBtn = document.getElementById('parent-refresh');
+    if (refreshBtn) refreshBtn.addEventListener('click', function() {
+      showToast('Refreshing...', 'info');
+      loadChildren();
+    });
+
     loadChildren();
 
     function loadRecentActivity(children) {
@@ -162,7 +169,7 @@
         return '<div class="list-item clickable" data-record-id="' + (escapeHtml(a.recordId || '')) + '" data-child-id="' + (escapeHtml(a.childId || '')) + '">' +
           '<div class="list-item-body">' +
             '<div class="list-item-title">' + escapeHtml(a.studentName) + ' \u00B7 ' + escapeHtml(a.subjectName) + '</div>' +
-            '<div class="list-item-subtitle">' + escapeHtml(a.topic) + ' &middot; ' + escapeHtml(a.date) + ' &middot; ' + escapeHtml(a.ratingLevel) + '</div>' +
+              '<div class="list-item-subtitle">' + escapeHtml(a.topic) + ' &middot; ' + fmtDate(a.date) + ' &middot; ' + escapeHtml(a.ratingLevel) + '</div>' +
           '</div>' +
           '<span style="font-weight:600;">' + ((a.score || 0) / 4.0 * 100).toFixed(0) + '%</span>' +
         '</div>';
@@ -192,7 +199,7 @@
           bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
           bodyHtml += '<strong>' + escapeHtml(data.subjectName) + '</strong> &middot; ' + escapeHtml(data.topic) + '<br>';
           bodyHtml += 'Student: ' + escapeHtml(data.studentName) + '<br>';
-          bodyHtml += 'Date: ' + escapeHtml(data.date) + '<br>';
+          bodyHtml += 'Date: ' + fmtDate(data.date) + '<br>';
           bodyHtml += '</div>';
 
           bodyHtml += '<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3);">';

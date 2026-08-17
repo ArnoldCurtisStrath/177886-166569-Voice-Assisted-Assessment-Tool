@@ -14,7 +14,10 @@
 
     <div class="form-group">
       <label for="login-password">Password</label>
-      <input type="password" id="login-password" class="input" placeholder="Enter your password" autocomplete="current-password" required>
+      <div style="display:flex;gap:var(--space-2);">
+        <input type="password" id="login-password" class="input" placeholder="Enter your password" autocomplete="current-password" required style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm" id="login-pw-toggle" style="flex-shrink:0;">Show</button>
+      </div>
     </div>
 
     <div id="login-error" style="display: none; padding: var(--space-3); background: #FDEDEC; border: 1px solid var(--color-error); border-radius: var(--radius-sm); color: #8B1A1A; font-size: var(--text-sm);"></div>
@@ -86,6 +89,17 @@
     if (regBtn) {
       regBtn.addEventListener('click', function() {
         Router.navigate('register');
+      });
+    }
+
+    // password visibility toggle
+    var pwToggle = document.getElementById('login-pw-toggle');
+    var pwInput = document.getElementById('login-password');
+    if (pwToggle && pwInput) {
+      pwToggle.addEventListener('click', function() {
+        var show = pwInput.type === 'password';
+        pwInput.type = show ? 'text' : 'password';
+        pwToggle.textContent = show ? 'Hide' : 'Show';
       });
     }
   })();

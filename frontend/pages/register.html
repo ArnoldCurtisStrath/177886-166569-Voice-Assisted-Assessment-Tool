@@ -35,12 +35,27 @@
 
     <div class="form-group">
       <label for="reg-password">Password</label>
-      <input type="password" id="reg-password" class="input" placeholder="At least 6 characters" autocomplete="new-password" required>
+      <div style="display:flex;gap:var(--space-2);">
+        <input type="password" id="reg-password" class="input" placeholder="At least 6 characters" autocomplete="new-password" required style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm reg-pw-toggle" data-target="reg-password" style="flex-shrink:0;">Show</button>
+      </div>
+      <div id="reg-strength" style="display:none;margin-top:var(--space-2);">
+        <div style="display:flex;gap:4px;">
+          <div class="strength-bar" style="flex:1;height:4px;background:var(--border-color);border-radius:2px;"></div>
+          <div class="strength-bar" style="flex:1;height:4px;background:var(--border-color);border-radius:2px;"></div>
+          <div class="strength-bar" style="flex:1;height:4px;background:var(--border-color);border-radius:2px;"></div>
+          <div class="strength-bar" style="flex:1;height:4px;background:var(--border-color);border-radius:2px;"></div>
+        </div>
+        <span class="text-xs text-muted" id="reg-strength-label" style="margin-top:2px;display:block;"></span>
+      </div>
     </div>
 
     <div class="form-group">
       <label for="reg-confirm-password">Confirm Password</label>
-      <input type="password" id="reg-confirm-password" class="input" placeholder="Re-enter your password" autocomplete="new-password" required>
+      <div style="display:flex;gap:var(--space-2);">
+        <input type="password" id="reg-confirm-password" class="input" placeholder="Re-enter your password" autocomplete="new-password" required style="flex:1;">
+        <button type="button" class="btn btn-ghost btn-sm reg-pw-toggle" data-target="reg-confirm-password" style="flex-shrink:0;">Show</button>
+      </div>
     </div>
 
     <div class="form-group">
@@ -139,6 +154,45 @@
     if (backBtn) {
       backBtn.addEventListener('click', function() {
         Router.navigate('login');
+      });
+    }
+
+    // password visibility toggles
+    document.querySelectorAll('.reg-pw-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var input = document.getElementById(btn.getAttribute('data-target'));
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.textContent = show ? 'Hide' : 'Show';
+      });
+    });
+
+    // strength meter — 4 bars, weak/fair/good/strong
+    var pwInput = document.getElementById('reg-password');
+    var strengthBox = document.getElementById('reg-strength');
+    var strengthLabel = document.getElementById('reg-strength-label');
+    var bars = strengthBox ? strengthBox.querySelectorAll('.strength-bar') : [];
+
+    function scorePassword(pw) {
+      var score = 0;
+      if (pw.length >= 6) score++;
+      if (pw.length >= 10) score++;
+      if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+      if (/\d/.test(pw) || /[^A-Za-z0-9]/.test(pw)) score++;
+      return score;
+    }
+
+    if (pwInput && strengthBox) {
+      pwInput.addEventListener('input', function() {
+        var score = scorePassword(pwInput.value);
+        var labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+        var colors = ['', '#E74C3C', '#F39C12', '#2ECC71', '#1ABC9C'];
+        strengthBox.style.display = pwInput.value ? '' : 'none';
+        for (var i = 0; i < bars.length; i++) {
+          bars[i].style.background = i < score ? colors[score] : '';
+        }
+        strengthLabel.textContent = score > 0 ? labels[score] + ' password' : '';
       });
     }
   })();

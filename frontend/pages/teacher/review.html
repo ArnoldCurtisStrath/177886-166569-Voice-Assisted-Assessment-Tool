@@ -84,7 +84,7 @@
             '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-2);">' +
               '<div>' +
                 '<div style="font-weight:600;">' + escapeHtml(r.className) + ' &middot; ' + escapeHtml(r.subjectName) + statusBadge + '</div>' +
-                '<div class="text-sm text-muted">' + escapeHtml(r.topic) + ' &middot; ' + escapeHtml(r.date) + '</div>' +
+                '<div class="text-sm text-muted">' + escapeHtml(r.topic) + ' &middot; ' + fmtDate(r.date) + '</div>' +
               '</div>' +
               '<span class="text-sm text-muted">' + escapeHtml(r.studentCount) + ' students</span>' +
             '</div>' +
@@ -123,7 +123,7 @@
           // session info
           bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
           bodyHtml += '<strong>' + escapeHtml(data.subjectName) + '</strong> &middot; ' + escapeHtml(data.topic) + '<br>';
-          bodyHtml += 'Class: ' + escapeHtml(data.className) + ' &middot; ' + escapeHtml(data.date) + '<br>';
+            bodyHtml += 'Class: ' + escapeHtml(data.className) + ' &middot; ' + fmtDate(data.date) + '<br>';
           bodyHtml += 'Strand: ' + (escapeHtml(data.strand || '-')) + ' &middot; ' + (escapeHtml(data.subStrand || '-')) + '<br>';
           bodyHtml += '</div>';
 
@@ -267,7 +267,7 @@
               for (var j = 0; j < r.versions.length; j++) {
                 var v = r.versions[j];
                 html += '<div class="text-xs" style="margin-top:var(--space-1);padding:var(--space-1);background:var(--color-bg);border-radius:var(--radius-sm);">';
-                html += 'v' + escapeHtml(v.versionNumber) + (v.isOriginal ? ' (original)' : ' (edited)') + ' by ' + (escapeHtml(v.editedBy || '')) + ' &mdash; ' + (escapeHtml(v.editTimestamp || ''));
+                html += 'v' + escapeHtml(v.versionNumber) + (v.isOriginal ? ' (original)' : ' (edited)') + ' by ' + (escapeHtml(v.editedBy || '')) + ' &mdash; ' + fmtDate(v.editTimestamp);
                 html += '</div>';
               }
               html += '</details>';

@@ -1,8 +1,13 @@
 <!-- VoiceAssess — Teacher Dashboard -->
 <div class="animate-fade-in">
   <!-- Greeting -->
-  <h2 style="font-size: var(--text-lg); margin-bottom: var(--space-1);" id="teacher-greeting">Hello, Teacher</h2>
-  <p class="text-xs text-muted" style="margin-bottom: var(--space-5);" id="teacher-term">Term 1, 2026</p>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-3);">
+    <div>
+      <h2 style="font-size: var(--text-lg); margin-bottom: var(--space-1);" id="teacher-greeting">Hello, Teacher</h2>
+      <p class="text-xs text-muted" style="margin-bottom: var(--space-5);" id="teacher-term">Term 1, 2026</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="teacher-refresh" style="flex-shrink:0;">Refresh</button>
+  </div>
 
   <!-- Stats Row -->
   <div class="stat-row" style="margin-bottom: var(--space-6);">
@@ -50,11 +55,12 @@
 
 <script>
   (function() {
-    // greeting from auth
-    if (AuthStore.user) {
-      var greet = document.getElementById('teacher-greeting');
-      if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName;
-    }
+    function loadDashboard() {
+      // greeting from auth
+      if (AuthStore.user) {
+        var greet = document.getElementById('teacher-greeting');
+        if (greet) greet.textContent = 'Hello, ' + AuthStore.user.fullName;
+      }
 
     // load stats
     API.get('/api/teacher/stats')
@@ -113,7 +119,6 @@
                 '<div class="list-item-subtitle">Grade ' + escapeHtml(c.gradeLevel) + ' &middot; Stream: ' + escapeHtml(c.streamName) + '</div>' +
               '</div>' +
               '<div class="list-item-trailing">' +
-                '<span class="badge badge-success">Active</span>' +
                 '<span class="list-chevron">&#x25B8;</span>' +
               '</div>' +
             '</div>';
@@ -130,6 +135,7 @@
         }
       })
       .catch(function() { showToast('Could not load classes.', 'error'); });
+    }
 
     // navigate to review page when clicking pending stat
     var pendingCard = document.getElementById('stat-pending-card');
@@ -146,5 +152,16 @@
         Router.navigate('teacher/review');
       });
     }
+
+    // refresh button re-runs everything
+    var refreshBtn = document.getElementById('teacher-refresh');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function() {
+        showToast('Refreshing dashboard...', 'info');
+        loadDashboard();
+      });
+    }
+
+    loadDashboard();
   })();
 </script>

@@ -78,7 +78,7 @@
 
           bodyHtml += '<div class="text-sm" style="margin-bottom:var(--space-3);">';
           bodyHtml += '<strong>' + escapeHtml(data.subjectName) + '</strong> &middot; ' + escapeHtml(data.topic) + '<br>';
-          bodyHtml += 'Date: ' + escapeHtml(data.date) + '<br>';
+          bodyHtml += 'Date: ' + fmtDate(data.date) + '<br>';
           bodyHtml += '</div>';
 
           bodyHtml += '<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3);">';
@@ -168,7 +168,7 @@
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
               '<div>' +
                 '<div style="font-weight:600;">' + escapeHtml(r.subjectName) + '</div>' +
-                '<div class="text-sm text-muted">' + escapeHtml(r.topic) + ' &middot; ' + escapeHtml(r.date) + '</div>' +
+                '<div class="text-sm text-muted">' + escapeHtml(r.topic) + ' &middot; ' + fmtDate(r.date) + '</div>' +
                 '<span class="badge" style="font-size:0.7rem;margin-top:var(--space-1);">' + (escapeHtml(r.ratingLevel || '-')) + '</span>' +
               '</div>' +
               '<div style="text-align:right;">' +
