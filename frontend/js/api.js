@@ -131,13 +131,14 @@ var API = {
   /**
    * Download a file from an authenticated endpoint.
    * GETs the URL with JWT header, then triggers a browser download.
+   * Returns the promise so callers can show progress/finish feedback.
    */
   downloadFile(path, filename) {
     var headers = {};
     if (window.AuthStore && AuthStore.token) {
       headers['Authorization'] = 'Bearer ' + AuthStore.token;
     }
-    fetch(this.BASE + path, { headers: headers })
+    return fetch(this.BASE + path, { headers: headers })
       .then(function(resp) {
         if (!resp.ok) throw new Error('Download failed: ' + resp.status);
         return resp.blob();
@@ -151,9 +152,6 @@ var API = {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-      })
-      .catch(function(err) {
-        if (window.showToast) showToast(err.message, 'error');
       });
   }
 };

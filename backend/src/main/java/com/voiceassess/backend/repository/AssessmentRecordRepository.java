@@ -13,4 +13,5 @@ public interface AssessmentRecordRepository extends JpaRepository<AssessmentReco
     List<AssessmentRecord> findByAudioAssessment(AudioAssessment audioAssessment);
     List<AssessmentRecord> findByStudent(Student student);
     List<AssessmentRecord> findByStudentIn(List<Student> students);
+    List<AssessmentRecord> findByAudioAssessmentIn(List<AudioAssessment> audioAssessments);
 }

@@ -150,7 +150,14 @@
     document.getElementById('compliance-refresh').addEventListener('click', loadCompliance);
 
     document.getElementById('compliance-pdf-btn').addEventListener('click', function() {
-      API.downloadFile('/api/admin/reports/compliance', 'compliance_report.pdf');
+      var btn = this;
+      if (btn.disabled) return;
+      btn.disabled = true;
+      showToast('Generating compliance report...', 'info');
+      API.downloadFile('/api/admin/reports/compliance', 'compliance_report.pdf')
+        .then(function() { showToast('Compliance report downloaded.', 'success'); })
+        .catch(function() { showToast('Failed to generate report. Try again.', 'error'); })
+        .finally(function() { btn.disabled = false; });
     });
 
     loadCompliance();

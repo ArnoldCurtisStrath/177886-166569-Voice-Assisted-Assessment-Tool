@@ -202,4 +202,102 @@ class PdfReportTest {
         assertNotNull(pdfBytes);
         assertTrue(pdfBytes.length > 0);
     }
+
+    // a class big enough that the grid must spill onto a second page
+    @Test
+    void testClassReportBreaksPagesForManyStudents() throws Exception {
+        var assessment = audioRepo.findAll().stream()
+                .filter(a -> a.getClassRoom().getClassId().equals(cls.getClassId()))
+                .findFirst().orElseThrow();
+
+        // enroll 120 students — a landscape page fits ~50 rows, so this must break
+        for (int i = 0; i < 120; i++) {
+            var u = new User();
+            u.setEmail("pdf-bulk-" + i + "@test.com");
+            u.setPasswordHash("hash");
+            u.setRole(User.Role.STUDENT);
+            u.setActive(true);
+            u = userRepo.save(u);
+
+            var s = new Student();
+            s.setUser(u);
+            s.setSchool(school);
+            s.setFullName("Bulk Student " + i);
+            s.setDateOfBirth(LocalDate.of(2015, 1, 1));
+            s = studentRepo.save(s);
+
+            var enr = new StudentEnrollment();
+            enr.setStudent(s);
+            enr.setClassRoom(cls);
+            enrollmentRepo.save(enr);
+
+            var rec = new AssessmentRecord();
+            rec.setAudioAssessment(assessment);
+            rec.setStudent(s);
+            rec.setRubric(assessment.getRubric());
+            rec.setScore(2.5f);
+            rec.setRatingLevel("Approaching Expectations");
+            rec.setConfidence("medium");
+            rec.setEvidence("evidence");
+            recordRepo.save(rec);
+        }
+
+        var pdfBytes = pdfReportService.generateClassReport(cls.getClassId());
+        var pages = countPdfPages(pdfBytes);
+        assertTrue(pages > 1, "expected multi-page report, got " + pages + " page(s)");
+    }
+
+    // school report with many classes/subjects must also break pages instead of
+    // drawing off the bottom of a single page
+    @Test
+    void testSchoolReportBreaksPagesForManySubjects() throws Exception {
+        // add 60 subjects with completed assessments so the per-subject list is long
+        for (int i = 0; i < 60; i++) {
+            var subj = new Subject();
+            subj.setSchool(school);
+            subj.setSubjectName("Bulk Subject " + i);
+            subj.setGradeLevel(4);
+            subj = subjectRepo.save(subj);
+
+            var rubric = new KnecRubric();
+            rubric.setSubject(subj);
+            rubric.setCompetencyDesc("desc " + i);
+            rubric.setStrand("Strand " + i);
+            rubric.setSubStrand("Sub " + i);
+            rubric.setRatingScale("1-4");
+            rubric = rubricRepo.save(rubric);
+
+            var a = new AudioAssessment();
+            a.setTeacher(teacher);
+            a.setClassRoom(cls);
+            a.setSubject(subj);
+            a.setTopic("Topic " + i);
+            a.setRubric(rubric);
+            a.setDate(LocalDate.now());
+            a.setStatus("COMPLETED");
+            a = audioRepo.save(a);
+
+            var rec = new AssessmentRecord();
+            rec.setAudioAssessment(a);
+            rec.setStudent(student);
+            rec.setRubric(rubric);
+            rec.setScore(3.0f);
+            rec.setRatingLevel("Meeting Expectations");
+            rec.setConfidence("high");
+            rec.setEvidence("evidence");
+            recordRepo.save(rec);
+        }
+
+        var pdfBytes = pdfReportService.generateSchoolReport(school.getSchoolId());
+        var pages = countPdfPages(pdfBytes);
+        assertTrue(pages > 1, "expected multi-page school report, got " + pages + " page(s)");
+    }
+
+    // count pages properly — PDFBox compresses page objects into object streams,
+    // so scanning the raw bytes for '/Type /Page' sees nothing
+    private int countPdfPages(byte[] pdfBytes) throws Exception {
+        try (var doc = org.apache.pdfbox.Loader.loadPDF(pdfBytes)) {
+            return doc.getNumberOfPages();
+        }
+    }
 }

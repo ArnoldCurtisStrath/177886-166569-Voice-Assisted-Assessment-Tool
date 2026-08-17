@@ -63,6 +63,14 @@ public class PdfReportService {
         var assessments = audioRepo.findByClassRoomAndStatus(cls, "COMPLETED");
         var enrollments = enrollmentRepo.findByClassRoom(cls);
 
+        // batch-load every record for these assessments once — the old per-cell
+        // findByAudioAssessment hit the DB for every student x assessment slot
+        var allRecords = recordRepo.findByAudioAssessmentIn(assessments);
+        var recordsByAudio = new HashMap<UUID, List<AssessmentRecord>>();
+        for (var r : allRecords) {
+            recordsByAudio.computeIfAbsent(r.getAudioAssessment().getAudioId(), k -> new ArrayList<>()).add(r);
+        }
+
         var doc = new PDDocument();
         // landscape for wide grid
         var landscape = new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
@@ -82,7 +90,6 @@ public class PdfReportService {
 
             if (assessments.isEmpty()) {
                 drawText(cs, "No completed assessments for this class.", MARGIN, y, FONT, FONT_SIZE);
-                // let finally block handle close
             } else {
                 // column widths
                 float nameW = 140;
@@ -90,15 +97,24 @@ public class PdfReportService {
                 float avgW = 50;
 
                 // header row
-                float x = MARGIN;
-                drawCell(cs, x, y - LINE_HEIGHT, x + nameW, y, "Student", FONT_BOLD, FONT_SIZE);
-                x += nameW;
+                var headerXs = new ArrayList<Float>();
+                float hx = MARGIN;
+                headerXs.add(hx);
+                hx += nameW;
                 for (var a : assessments) {
-                    var label = truncate(a.getSubject().getSubjectName() + "\n" + a.getTopic(), 30);
-                    drawCell(cs, x, y - LINE_HEIGHT, x + cellW, y, label, FONT_BOLD, 7);
-                    x += cellW;
+                    headerXs.add(hx);
+                    hx += cellW;
                 }
-                drawCell(cs, x, y - LINE_HEIGHT, x + avgW, y, "Avg", FONT_BOLD, FONT_SIZE);
+                headerXs.add(hx);
+
+                var headerLabels = new ArrayList<String>();
+                headerLabels.add("Student");
+                for (var a : assessments) {
+                    headerLabels.add(truncate(a.getSubject().getSubjectName() + "\n" + a.getTopic(), 30));
+                }
+                headerLabels.add("Avg");
+
+                drawHeaderRow(cs, headerXs, headerLabels, y - LINE_HEIGHT, y, FONT_BOLD, 7, FONT_SIZE);
                 y -= LINE_HEIGHT;
 
                 // data rows
@@ -109,17 +125,20 @@ public class PdfReportService {
                         doc.addPage(page);
                         cs = new PDPageContentStream(doc, page);
                         y = page.getMediaBox().getHeight() - MARGIN;
+                        // repeat the header so a multi-page grid stays readable
+                        drawHeaderRow(cs, headerXs, headerLabels, y - LINE_HEIGHT, y, FONT_BOLD, 7, FONT_SIZE);
+                        y -= LINE_HEIGHT;
                     }
 
                     var student = enr.getStudent();
-                    x = MARGIN;
+                    float x = MARGIN;
                     drawCell(cs, x, y - LINE_HEIGHT, x + nameW, y, student.getFullName(), FONT, FONT_SIZE);
                     x += nameW;
 
                     float total = 0;
                     int count = 0;
                     for (var a : assessments) {
-                        var recs = recordRepo.findByAudioAssessment(a);
+                        var recs = recordsByAudio.getOrDefault(a.getAudioId(), List.of());
                         String val = "-";
                         for (var r : recs) {
                             if (r.getStudent().getStudentId().equals(student.getStudentId())) {
@@ -158,47 +177,60 @@ public class PdfReportService {
         var classes = classRepo.findBySchool(school);
         var subjects = subjectRepo.findBySchool(school);
 
-        var doc = new PDDocument();
-        var page = new PDPage(PDRectangle.A4);
-        doc.addPage(page);
+        // batch-load completed assessments and their records for the whole school —
+        // the old code queried per class and per assessment
+        var allCompleted = new ArrayList<AudioAssessment>();
+        var enrollCountByClass = new HashMap<UUID, Integer>();
+        for (var cls : classes) {
+            enrollCountByClass.put(cls.getClassId(), enrollmentRepo.findByClassRoom(cls).size());
+            allCompleted.addAll(audioRepo.findByClassRoomAndStatus(cls, "COMPLETED"));
+        }
+        var allRecords = recordRepo.findByAudioAssessmentIn(allCompleted);
+        var recordsByAudio = new HashMap<UUID, List<AssessmentRecord>>();
+        for (var r : allRecords) {
+            recordsByAudio.computeIfAbsent(r.getAudioAssessment().getAudioId(), k -> new ArrayList<>()).add(r);
+        }
 
-        try (var cs = new PDPageContentStream(doc, page)) {
-            float y = page.getMediaBox().getHeight() - MARGIN;
+        var doc = new PDDocument();
+        var cursor = new PageCursor(doc, new PDPage(PDRectangle.A4));
+
+        try {
+            float y = cursor.y;
 
             // title page
-            drawText(cs, school.getSchoolName(), MARGIN, y, FONT_BOLD, 18);
+            drawText(cursor.cs, school.getSchoolName(), MARGIN, y, FONT_BOLD, 18);
             y -= LINE_HEIGHT * 2;
-            drawText(cs, "School-Wide Assessment Report", MARGIN, y, FONT_BOLD, 14);
+            drawText(cursor.cs, "School-Wide Assessment Report", MARGIN, y, FONT_BOLD, 14);
             y -= LINE_HEIGHT * 2;
-            drawText(cs, "Generated: " + LocalDateTime.now().format(DATE_FMT), MARGIN, y, FONT, FONT_SIZE);
+            drawText(cursor.cs, "Generated: " + LocalDateTime.now().format(DATE_FMT), MARGIN, y, FONT, FONT_SIZE);
             y -= LINE_HEIGHT * 2;
 
             // summary stats
             long totalStudents = 0;
-            long totalAssessments = 0;
             for (var cls : classes) {
-                totalStudents += enrollmentRepo.findByClassRoom(cls).size();
-                totalAssessments += audioRepo.findByClassRoomAndStatus(cls, "COMPLETED").size();
+                totalStudents += enrollCountByClass.getOrDefault(cls.getClassId(), 0);
             }
 
-            drawText(cs, "Total Classes: " + classes.size(), MARGIN, y, FONT, FONT_SIZE);
+            drawText(cursor.cs, "Total Classes: " + classes.size(), MARGIN, y, FONT, FONT_SIZE);
             y -= LINE_HEIGHT;
-            drawText(cs, "Total Students: " + totalStudents, MARGIN, y, FONT, FONT_SIZE);
+            drawText(cursor.cs, "Total Students: " + totalStudents, MARGIN, y, FONT, FONT_SIZE);
             y -= LINE_HEIGHT;
-            drawText(cs, "Total Subjects: " + subjects.size(), MARGIN, y, FONT, FONT_SIZE);
+            drawText(cursor.cs, "Total Subjects: " + subjects.size(), MARGIN, y, FONT, FONT_SIZE);
             y -= LINE_HEIGHT;
-            drawText(cs, "Total Completed Assessments: " + totalAssessments, MARGIN, y, FONT, FONT_SIZE);
+            drawText(cursor.cs, "Total Completed Assessments: " + allCompleted.size(), MARGIN, y, FONT, FONT_SIZE);
             y -= LINE_HEIGHT * 2;
 
             // per-class breakdown
-            drawText(cs, "Per-Class Breakdown", MARGIN, y, FONT_BOLD, 12);
+            drawText(cursor.cs, "Per-Class Breakdown", MARGIN, y, FONT_BOLD, 12);
             y -= LINE_HEIGHT * 2;
 
             for (var cls : classes) {
-                if (y < 100) { newPage(doc, page, cs); y = page.getMediaBox().getHeight() - MARGIN; }
-
                 var compAssessments = audioRepo.findByClassRoomAndStatus(cls, "COMPLETED");
-                drawText(cs, clsDisplay(cls) + " — " + compAssessments.size() + " assessments",
+                // page break BEFORE the class line too — a class with many subjects
+                // can push the next class off the page
+                if (y < 100) { cursor.breakPage(doc); y = cursor.y; }
+
+                drawText(cursor.cs, clsDisplay(cls) + " — " + compAssessments.size() + " assessments",
                         MARGIN, y, FONT, FONT_SIZE);
                 y -= LINE_HEIGHT;
 
@@ -206,21 +238,26 @@ public class PdfReportService {
                 Map<String, List<Float>> subjectScores = new LinkedHashMap<>();
                 for (var a : compAssessments) {
                     var name = a.getSubject().getSubjectName();
-                    var recs = recordRepo.findByAudioAssessment(a);
+                    var recs = recordsByAudio.getOrDefault(a.getAudioId(), List.of());
                     for (var r : recs) {
                         subjectScores.computeIfAbsent(name, k -> new ArrayList<>()).add(r.getScore());
                     }
                 }
                 for (var entry : subjectScores.entrySet()) {
+                    // break inside the subject list — this is where the old report ran off-page
+                    if (y < 100) { cursor.breakPage(doc); y = cursor.y; }
+
                     var avg = entry.getValue().stream().mapToDouble(Float::doubleValue).average().orElse(0);
-                    drawText(cs, "  " + entry.getKey() + ": " + String.format("%.1f", avg),
+                    drawText(cursor.cs, "  " + entry.getKey() + ": " + String.format("%.1f", avg),
                             MARGIN, y, FONT, FONT_SIZE);
                     y -= LINE_HEIGHT;
                 }
                 y -= LINE_HEIGHT;
             }
 
-            cs.close();
+            cursor.close();
+        } finally {
+            cursor.close();
         }
 
         return toBytes(doc);
@@ -233,38 +270,37 @@ public class PdfReportService {
         var school = schoolRepo.findById(schoolId).orElseThrow(
                 () -> new IllegalArgumentException("School not found"));
 
-        var doc = new PDDocument();
-        var page = new PDPage(PDRectangle.A4);
-        doc.addPage(page);
-
-        var allAssessments = audioRepo.findAll();
-        // filter to this school
+        // school-scoped query instead of pulling every assessment in the platform
+        var schoolClasses = classRepo.findBySchool(school);
         var schoolAssessments = new ArrayList<AudioAssessment>();
-        for (var a : allAssessments) {
-            if (a.getTeacher() != null && a.getTeacher().getSchool() != null
-                && a.getTeacher().getSchool().getSchoolId().equals(schoolId)) {
+        for (var cls : schoolClasses) {
+            var clsAssessments = audioRepo.findByClassRoom(cls);
+            for (var a : clsAssessments) {
                 if (gradeLevel == null || a.getClassRoom().getGradeLevel() == gradeLevel) {
                     schoolAssessments.add(a);
                 }
             }
         }
 
-        try (var cs = new PDPageContentStream(doc, page)) {
-            float y = page.getMediaBox().getHeight() - MARGIN;
+        var doc = new PDDocument();
+        var cursor = new PageCursor(doc, new PDPage(PDRectangle.A4));
+
+        try {
+            float y = cursor.y;
 
             var gradeLabel = gradeLevel != null ? "Grade " + gradeLevel : "All Grades";
-            drawText(cs, school.getSchoolName() + " — CBC Compliance Report", MARGIN, y, FONT_BOLD, 14);
+            drawText(cursor.cs, school.getSchoolName() + " — CBC Compliance Report", MARGIN, y, FONT_BOLD, 14);
             y -= LINE_HEIGHT * 2;
-            drawText(cs, "Grade Filter: " + gradeLabel, MARGIN, y, FONT, FONT_SIZE);
+            drawText(cursor.cs, "Grade Filter: " + gradeLabel, MARGIN, y, FONT, FONT_SIZE);
             y -= LINE_HEIGHT;
-            drawText(cs, "Generated: " + LocalDateTime.now().format(DATE_FMT), MARGIN, y, FONT, FONT_SIZE);
+            drawText(cursor.cs, "Generated: " + LocalDateTime.now().format(DATE_FMT), MARGIN, y, FONT, FONT_SIZE);
             y -= LINE_HEIGHT * 2;
 
-            drawText(cs, "Total Assessments: " + schoolAssessments.size(), MARGIN, y, FONT, FONT_SIZE);
+            drawText(cursor.cs, "Total Assessments: " + schoolAssessments.size(), MARGIN, y, FONT, FONT_SIZE);
             y -= LINE_HEIGHT * 2;
 
             // by subject
-            drawText(cs, "Assessments by Subject", MARGIN, y, FONT_BOLD, 12);
+            drawText(cursor.cs, "Assessments by Subject", MARGIN, y, FONT_BOLD, 12);
             y -= LINE_HEIGHT * 2;
 
             Map<String, Long> bySubject = new LinkedHashMap<>();
@@ -272,14 +308,17 @@ public class PdfReportService {
                 bySubject.merge(a.getSubject().getSubjectName(), 1L, Long::sum);
             }
             for (var e : bySubject.entrySet()) {
-                drawText(cs, "  " + e.getKey() + ": " + e.getValue(), MARGIN, y, FONT, FONT_SIZE);
+                // a school with many subjects used to run off the single page
+                if (y < 100) { cursor.breakPage(doc); y = cursor.y; }
+
+                drawText(cursor.cs, "  " + e.getKey() + ": " + e.getValue(), MARGIN, y, FONT, FONT_SIZE);
                 y -= LINE_HEIGHT;
             }
 
             y -= LINE_HEIGHT;
 
             // by status
-            drawText(cs, "Assessments by Status", MARGIN, y, FONT_BOLD, 12);
+            drawText(cursor.cs, "Assessments by Status", MARGIN, y, FONT_BOLD, 12);
             y -= LINE_HEIGHT * 2;
 
             Map<String, Long> byStatus = new LinkedHashMap<>();
@@ -287,13 +326,17 @@ public class PdfReportService {
                 byStatus.merge(a.getStatus(), 1L, Long::sum);
             }
             for (var e : byStatus.entrySet()) {
-                drawText(cs, "  " + e.getKey() + ": " + e.getValue(), MARGIN, y, FONT, FONT_SIZE);
+                if (y < 100) { cursor.breakPage(doc); y = cursor.y; }
+
+                drawText(cursor.cs, "  " + e.getKey() + ": " + e.getValue(), MARGIN, y, FONT, FONT_SIZE);
                 y -= LINE_HEIGHT;
             }
 
             y -= LINE_HEIGHT * 2;
-            drawText(cs, "VoiceAssess — " + school.getSchoolName(), MARGIN, y, FONT, 8);
-            cs.close();
+            drawText(cursor.cs, "VoiceAssess — " + school.getSchoolName(), MARGIN, y, FONT, 8);
+            cursor.close();
+        } finally {
+            cursor.close();
         }
 
         return toBytes(doc);
@@ -336,8 +379,39 @@ public class PdfReportService {
         }
     }
 
-    private void newPage(PDDocument doc, PDPage current, PDPageContentStream cs) throws Exception {
-        // this is a simplified helper — not used extensively
+    // small cursor so page breaks can swap both the page and its content stream
+    private static class PageCursor {
+        PDPage page;
+        PDPageContentStream cs;
+        float y;
+
+        PageCursor(PDDocument doc, PDPage startPage) throws Exception {
+            this.page = startPage;
+            doc.addPage(startPage);
+            this.cs = new PDPageContentStream(doc, startPage);
+            this.y = startPage.getMediaBox().getHeight() - MARGIN;
+        }
+
+        // closes the current stream, appends a fresh page, reopens a stream on it
+        void breakPage(PDDocument doc) throws Exception {
+            cs.close();
+            page = new PDPage(page.getMediaBox());
+            doc.addPage(page);
+            cs = new PDPageContentStream(doc, page);
+            y = page.getMediaBox().getHeight() - MARGIN;
+        }
+
+        void close() throws Exception {
+            cs.close();
+        }
+    }
+
+    private void drawHeaderRow(PDPageContentStream cs, List<Float> xs, List<String> labels,
+                               float y1, float y2, PDType1Font font, float cellFont, float labelFont) throws Exception {
+        for (int i = 0; i < xs.size() - 1; i++) {
+            float size = (i == 0 || i == xs.size() - 1) ? labelFont : cellFont;
+            drawCell(cs, xs.get(i), y1, xs.get(i + 1), y2, labels.get(i), font, size);
+        }
     }
 
     private String truncate(String s, int max) {

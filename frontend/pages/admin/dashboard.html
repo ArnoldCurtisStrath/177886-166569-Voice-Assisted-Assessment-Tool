@@ -187,7 +187,14 @@
     // school report download
     document.getElementById('download-school-report').addEventListener('click', function(e) {
       e.preventDefault();
-      API.downloadFile('/api/admin/reports/school', 'school_report.pdf');
+      var link = this;
+      if (link.classList.contains('disabled')) return;
+      link.classList.add('disabled');
+      showToast('Generating school report...', 'info');
+      API.downloadFile('/api/admin/reports/school', 'school_report.pdf')
+        .then(function() { showToast('School report downloaded.', 'success'); })
+        .catch(function() { showToast('Failed to generate report. Try again.', 'error'); })
+        .finally(function() { link.classList.remove('disabled'); });
     });
   })();
 </script>
