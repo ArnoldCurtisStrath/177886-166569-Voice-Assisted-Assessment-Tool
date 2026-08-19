@@ -44,7 +44,10 @@ var API = {
     if (!resp.ok) {
       // expired/missing token: backend returns 401, or 403 with an empty body
       // from the security filter (ownership 403s always carry a JSON error)
-      var sessionProblem = resp.status === 401 || (resp.status === 403 && !parsed);
+      // login/register also return 401 for bad credentials — that's not a
+      // session problem, so let the backend's own error message through
+      var isPublicAuth = path === '/api/auth/login' || path === '/api/auth/register';
+      var sessionProblem = !isPublicAuth && (resp.status === 401 || (resp.status === 403 && !parsed));
       if (sessionProblem && window.AuthStore && AuthStore.token) {
         AuthStore.logout();
         if (window.Router) Router.navigate('login');

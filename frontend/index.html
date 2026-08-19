@@ -7,9 +7,14 @@
   <meta name="description" content="VoiceAssess — Voice-Assisted CBC Assessment Tool for Kenyan primary schools">
   <title>VoiceAssess</title>
 
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/layout.css">
+  <!-- inline SVG favicon so there's no favicon.ico 404 on every load -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230D7C66'/><text x='16' y='22' text-anchor='middle' font-family='Arial' font-size='18' fill='white'>V</text></svg>">
+
+  <!-- ?v=20260819 busts the browser cache — python http.server sends no
+       cache headers so Chrome was serving stale js/css for days -->
+  <link rel="stylesheet" href="css/base.css?v=20260819">
+  <link rel="stylesheet" href="css/components.css?v=20260819">
+  <link rel="stylesheet" href="css/layout.css?v=20260819">
 </head>
 <body>
   <!-- Accessibility skip link -->
@@ -73,11 +78,11 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <script src="js/helpers.js"></script>
-  <script src="js/offline-queue.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/router.js"></script>
+  <script src="js/helpers.js?v=20260819"></script>
+  <script src="js/offline-queue.js?v=20260819"></script>
+  <script src="js/api.js?v=20260819"></script>
+  <script src="js/auth.js?v=20260819"></script>
+  <script src="js/router.js?v=20260819"></script>
 
   <script>
     /* ---- App Initialization ---- */
